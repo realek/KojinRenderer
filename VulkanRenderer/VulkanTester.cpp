@@ -116,8 +116,10 @@ int main()
 		switch (msgboxID)
 		{
 		case IDOK:
+			delete(renderer);
+			IMG_Quit();
 			SDL_Quit();
-			break;
+			return 0;
 		}
 
 #else
