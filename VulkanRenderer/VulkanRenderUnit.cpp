@@ -5,7 +5,7 @@
 #include "Mesh.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-
+#include <glm\vec4.hpp>
 
 
 Vk::VulkanRenderUnit::~VulkanRenderUnit()
@@ -687,6 +687,7 @@ void Vk::VulkanRenderUnit::CreateTextureSampler(VulkanObjectContainer<VkSampler>
 
 void Vk::VulkanRenderUnit::CreateUniformBuffer() {
 	
+	//Vertex shader UBO
 	VkDeviceSize bufferSize = sizeof(Vk::UniformBufferObject);
 
 	uniformStagingBuffer = VulkanObjectContainer<VkBuffer>{m_devicePtr,vkDestroyBuffer};
@@ -704,15 +705,33 @@ void Vk::VulkanRenderUnit::CreateUniformBuffer() {
 		throw e;
 	}
 
+	//lights UBO
+	bufferSize = sizeof(Vk::LightsUniformBuffer);
+
+	lightsUniformStagingBuffer = VulkanObjectContainer<VkBuffer>{ m_devicePtr,vkDestroyBuffer };
+	lightsUniformStagingBufferMemory = VulkanObjectContainer<VkDeviceMemory>{ m_devicePtr,vkFreeMemory };
+	lightsUniformBuffer = VulkanObjectContainer<VkBuffer>{ m_devicePtr,vkDestroyBuffer };
+	lightsUniformBufferMemory = VulkanObjectContainer<VkDeviceMemory>{ m_devicePtr,vkFreeMemory };
+	try
+	{
+		CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, lightsUniformStagingBuffer, lightsUniformStagingBufferMemory);
+		CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, lightsUniformBuffer, lightsUniformBufferMemory);
+	}
+	catch (std::runtime_error e)
+	{
+		throw e;
+	}
 }
 
 void Vk::VulkanRenderUnit::CreateDescriptorPool()
 {
-	std::array<VkDescriptorPoolSize, 2> poolSizes = {};
+	std::array<VkDescriptorPoolSize, 3> poolSizes = {};
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	poolSizes[0].descriptorCount = 1;
 	poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	poolSizes[1].descriptorCount = 1;
+	poolSizes[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	poolSizes[2].descriptorCount = 1;
 
 	VkDescriptorPoolCreateInfo poolCI = {};
 	poolCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -743,7 +762,14 @@ void Vk::VulkanRenderUnit::CreateDescriptorSetLayout()
 	samplerDescSetLB.pImmutableSamplers = nullptr;
 	samplerDescSetLB.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-	std::array<VkDescriptorSetLayoutBinding, 2> bindings = { UBODescSetLB, samplerDescSetLB };
+	VkDescriptorSetLayoutBinding UBOLightsDescSetLB = {};
+	UBOLightsDescSetLB.binding = 2;
+	UBOLightsDescSetLB.descriptorCount = 1;
+	UBOLightsDescSetLB.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	UBOLightsDescSetLB.pImmutableSamplers = nullptr;
+	UBOLightsDescSetLB.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+	std::array<VkDescriptorSetLayoutBinding, 3> bindings = { UBODescSetLB, samplerDescSetLB,UBOLightsDescSetLB };
 	VkDescriptorSetLayoutCreateInfo descSetLayoutCI = {};
 	descSetLayoutCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 	descSetLayoutCI.bindingCount = bindings.size();
@@ -772,17 +798,22 @@ void Vk::VulkanRenderUnit::CreateDescriptorSets(VkImage textureImage,VkImageView
 	if (result != VK_SUCCESS)
 		throw std::runtime_error("Unable to allocate descriptor set. Reason: "+ Vk::VkResultToString(result));
 
-	VkDescriptorBufferInfo bufferInfo = {};
-	bufferInfo.buffer = uniformBuffer;
-	bufferInfo.offset = 0;
-	bufferInfo.range = sizeof(UniformBufferObject);
+	VkDescriptorBufferInfo vertexUniformBufferInfo = {};
+	vertexUniformBufferInfo.buffer = uniformBuffer;
+	vertexUniformBufferInfo.offset = 0;
+	vertexUniformBufferInfo.range = sizeof(UniformBufferObject);
 
 	VkDescriptorImageInfo imageInfo = {};
 	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	imageInfo.imageView = textureImageView;
 	imageInfo.sampler = m_defaultSampler;
 
-	std::array<VkWriteDescriptorSet, 2> descriptorWrites = {};
+	VkDescriptorBufferInfo lightsUniformBufferInfo = {};
+	lightsUniformBufferInfo.buffer = lightsUniformBuffer;
+	lightsUniformBufferInfo.offset = 0;
+	lightsUniformBufferInfo.range = sizeof(LightsUniformBuffer);
+
+	std::array<VkWriteDescriptorSet, 3> descriptorWrites = {};
 
 	descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	descriptorWrites[0].dstSet = descriptorSet;
@@ -790,7 +821,7 @@ void Vk::VulkanRenderUnit::CreateDescriptorSets(VkImage textureImage,VkImageView
 	descriptorWrites[0].dstArrayElement = 0;
 	descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	descriptorWrites[0].descriptorCount = 1;
-	descriptorWrites[0].pBufferInfo = &bufferInfo;
+	descriptorWrites[0].pBufferInfo = &vertexUniformBufferInfo;
 
 	descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	descriptorWrites[1].dstSet = descriptorSet;
@@ -799,6 +830,14 @@ void Vk::VulkanRenderUnit::CreateDescriptorSets(VkImage textureImage,VkImageView
 	descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	descriptorWrites[1].descriptorCount = 1;
 	descriptorWrites[1].pImageInfo = &imageInfo;
+
+	descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	descriptorWrites[2].dstSet = descriptorSet;
+	descriptorWrites[2].dstBinding = 2;
+	descriptorWrites[2].dstArrayElement = 0;
+	descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	descriptorWrites[2].descriptorCount = 1;
+	descriptorWrites[2].pBufferInfo = &lightsUniformBufferInfo;
 
 	vkUpdateDescriptorSets(device, descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
 }
@@ -852,7 +891,31 @@ void Vk::VulkanRenderUnit::UpdateStaticUniformBuffer(float time) {
 	{
 		throw e;
 	}
+	data = nullptr;
 
+	Vk::LightsUniformBuffer lightsUbo = {};
+	lightsUbo.ambientLightColor = glm::vec4(1.0, 1.0, 1.0, 0.5);
+	lightsUbo.perFragmentLightPos[0] = glm::vec4(0.0, -3.0, 0.0, 1.0); // Note to self : world up is -y in Vulkan  >_<
+	lightsUbo.perFragmentLightPos[1] = glm::vec4(0.0, 0.0, 0.0, 0.0);
+	lightsUbo.perFragmentLightPos[2] = glm::vec4(0.0, 0.0, 0.0, 0.0);
+	lightsUbo.perFragmentLightPos[3] = glm::vec4(0.0, 0.0, 0.0, 0.0);
+	lightsUbo.perFragmentLightColor[0] = glm::vec4(0.0, 1.0, 0.0, 0.0);
+	lightsUbo.perFragmentLightColor[1] = glm::vec4(0.0, 0.0, 0.0, 0.0);
+	lightsUbo.perFragmentLightColor[2] = glm::vec4(0.0, 0.0, 0.0, 0.0);
+	lightsUbo.perFragmentLightColor[3] = glm::vec4(0.0, 0.0, 0.0, 0.0);
+
+	vkMapMemory(device, lightsUniformStagingBufferMemory, 0, sizeof(lightsUbo), 0, &data);
+	memcpy(data, &lightsUbo, sizeof(lightsUbo));
+	vkUnmapMemory(device, lightsUniformStagingBufferMemory);
+
+	try
+	{
+		CopyBuffer(lightsUniformStagingBuffer, lightsUniformBuffer, sizeof(lightsUbo));
+	}
+	catch (std::runtime_error e)
+	{
+		throw e;
+	}
 
 }
 

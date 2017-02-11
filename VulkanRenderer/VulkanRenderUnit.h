@@ -44,6 +44,11 @@ namespace Vk
 		VulkanObjectContainer<VkDeviceMemory> uniformStagingBufferMemory;
 		VulkanObjectContainer<VkBuffer> uniformBuffer;
 		VulkanObjectContainer<VkDeviceMemory> uniformBufferMemory;
+		//temp uniform light object impl
+		VulkanObjectContainer<VkBuffer> lightsUniformStagingBuffer;
+		VulkanObjectContainer<VkDeviceMemory> lightsUniformStagingBufferMemory;
+		VulkanObjectContainer<VkBuffer> lightsUniformBuffer;
+		VulkanObjectContainer<VkDeviceMemory> lightsUniformBufferMemory;
 		//descriptor pool for ubo
 		VulkanObjectContainer<VkDescriptorPool> descriptorPool;
 		VkDescriptorSet descriptorSet;

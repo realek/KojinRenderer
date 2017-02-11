@@ -14,13 +14,17 @@ layout(location = 3) in vec2 inTexCoord;
 
 layout(location = 0) out vec3 fragColor;
 layout(location = 1) out vec2 fragTexCoord;
+layout(location = 2) out vec3 fragNormal;
+layout(location = 3) out vec3 fragEye;
 
 out gl_PerVertex {
     vec4 gl_Position;
 };
 
 void main() {
-    gl_Position = ubo.proj * ubo.view * ubo.model * vec4(inPosition, 1.0);
+	mat4 mvMatrix = ubo.view * ubo.model;
+    gl_Position = ubo.proj * mvMatrix * vec4(inPosition, 1.0);
     fragColor = inColor;
     fragTexCoord = inTexCoord;
+	fragNormal = vec3(normalize(transpose(inverse(mvMatrix)) * vec4(inNormal,1.0)));
 }

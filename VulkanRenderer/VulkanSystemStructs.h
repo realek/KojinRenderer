@@ -201,6 +201,13 @@ namespace Vk
 		glm::mat4 proj;
 	};
 
+	struct LightsUniformBuffer
+	{
+		glm::vec4 ambientLightColor;
+		glm::vec4 perFragmentLightPos[4];
+		glm::vec4 perFragmentLightColor[4];
+	};
+
 
 }
 
