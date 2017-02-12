@@ -199,13 +199,24 @@ namespace Vk
 		glm::mat4 model;
 		glm::mat4 view;
 		glm::mat4 proj;
+		glm::mat4 modelView;
+		glm::mat4 modelViewProjection;
+		glm::mat3 normal;
+
+		inline void ComputeMatrices()
+		{
+			modelView = view*model;
+			normal = glm::transpose(glm::inverse(modelView));
+			modelViewProjection = proj*modelView;
+		}
 	};
 
-	struct LightsUniformBuffer
+	struct LightingUniformBuffer
 	{
 		glm::vec4 ambientLightColor;
 		glm::vec4 perFragmentLightPos[4];
 		glm::vec4 perFragmentLightColor[4];
+		float specularity;
 	};
 
 

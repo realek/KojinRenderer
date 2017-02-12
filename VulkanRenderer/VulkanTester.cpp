@@ -94,6 +94,7 @@ int main()
 		//renderUnit->Initialize(baseSystem,&baseShader);
 		renderer = new Vk::KojinRenderer{window,"Vulkan Tester",appVer};
 		tex = Vk::Texture2D::CreateFromFile("textures/model.png");
+		//tex = Vk::Texture2D::GetWhiteTexture();
 		mesh = Vk::Mesh::LoadMesh("models/model.obj");
 	}
 	catch(std::runtime_error e)

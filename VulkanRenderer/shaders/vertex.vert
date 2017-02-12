@@ -5,6 +5,9 @@ layout(binding = 0) uniform UniformBufferObject {
     mat4 model;
     mat4 view;
     mat4 proj;
+	mat4 modelView;
+	mat4 modelViewProjection;
+	mat3 normal;
 } ubo;
 
 layout(location = 0) in vec3 inPosition;
@@ -22,9 +25,11 @@ out gl_PerVertex {
 };
 
 void main() {
-	mat4 mvMatrix = ubo.view * ubo.model;
-    gl_Position = ubo.proj * mvMatrix * vec4(inPosition, 1.0);
+
+	vec4 position = vec4(inPosition, 1.0);
+    gl_Position = ubo.modelViewProjection * position;
     fragColor = inColor;
     fragTexCoord = inTexCoord;
-	fragNormal = vec3(normalize(transpose(inverse(mvMatrix)) * vec4(inNormal,1.0)));
+	fragNormal = vec3(ubo.normal * inNormal);
+	fragEye = vec3(ubo.modelView * -position);
 }

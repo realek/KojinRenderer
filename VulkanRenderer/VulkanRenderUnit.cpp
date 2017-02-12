@@ -5,7 +5,6 @@
 #include "Mesh.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <glm\vec4.hpp>
 
 
 Vk::VulkanRenderUnit::~VulkanRenderUnit()
@@ -706,7 +705,7 @@ void Vk::VulkanRenderUnit::CreateUniformBuffer() {
 	}
 
 	//lights UBO
-	bufferSize = sizeof(Vk::LightsUniformBuffer);
+	bufferSize = sizeof(Vk::LightingUniformBuffer);
 
 	lightsUniformStagingBuffer = VulkanObjectContainer<VkBuffer>{ m_devicePtr,vkDestroyBuffer };
 	lightsUniformStagingBufferMemory = VulkanObjectContainer<VkDeviceMemory>{ m_devicePtr,vkFreeMemory };
@@ -811,7 +810,7 @@ void Vk::VulkanRenderUnit::CreateDescriptorSets(VkImage textureImage,VkImageView
 	VkDescriptorBufferInfo lightsUniformBufferInfo = {};
 	lightsUniformBufferInfo.buffer = lightsUniformBuffer;
 	lightsUniformBufferInfo.offset = 0;
-	lightsUniformBufferInfo.range = sizeof(LightsUniformBuffer);
+	lightsUniformBufferInfo.range = sizeof(LightingUniformBuffer);
 
 	std::array<VkWriteDescriptorSet, 3> descriptorWrites = {};
 
@@ -876,6 +875,7 @@ void Vk::VulkanRenderUnit::UpdateStaticUniformBuffer(float time) {
 	ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, -1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
 	ubo.proj[1][1] *= -1;
+	ubo.ComputeMatrices();
 
 	auto device = m_devicePtr->Get();
 	void* data;
@@ -893,16 +893,18 @@ void Vk::VulkanRenderUnit::UpdateStaticUniformBuffer(float time) {
 	}
 	data = nullptr;
 
-	Vk::LightsUniformBuffer lightsUbo = {};
-	lightsUbo.ambientLightColor = glm::vec4(1.0, 1.0, 1.0, 0.5);
-	lightsUbo.perFragmentLightPos[0] = glm::vec4(0.0, -3.0, 0.0, 1.0); // Note to self : world up is -y in Vulkan  >_<
-	lightsUbo.perFragmentLightPos[1] = glm::vec4(0.0, 0.0, 0.0, 0.0);
-	lightsUbo.perFragmentLightPos[2] = glm::vec4(0.0, 0.0, 0.0, 0.0);
-	lightsUbo.perFragmentLightPos[3] = glm::vec4(0.0, 0.0, 0.0, 0.0);
-	lightsUbo.perFragmentLightColor[0] = glm::vec4(0.0, 1.0, 0.0, 0.0);
-	lightsUbo.perFragmentLightColor[1] = glm::vec4(0.0, 0.0, 0.0, 0.0);
-	lightsUbo.perFragmentLightColor[2] = glm::vec4(0.0, 0.0, 0.0, 0.0);
-	lightsUbo.perFragmentLightColor[3] = glm::vec4(0.0, 0.0, 0.0, 0.0);
+	Vk::LightingUniformBuffer lightsUbo = {};
+	lightsUbo.ambientLightColor = glm::vec4(1.0, 1.0, 1.0, 1.0);
+	lightsUbo.perFragmentLightPos[0] = glm::vec4(0.0, -2.0, 0.0, 1.0); // Note to self : world up is -y in Vulkan  >_<
+	lightsUbo.perFragmentLightPos[1] = glm::vec4(1.0, -1.0, 1.0, 1.0);
+	lightsUbo.perFragmentLightPos[2] = glm::vec4(0.0, 1.0, -1.0, 1.0);
+	lightsUbo.perFragmentLightPos[3] = glm::vec4(-1.0, 0.0, 0.0, 1.0);
+
+	lightsUbo.perFragmentLightColor[0] = glm::vec4(0.0, 1.0, 0.0, 1.0);
+	lightsUbo.perFragmentLightColor[1] = glm::vec4(0.0, 0.0, 1.0, 1.0);
+	lightsUbo.perFragmentLightColor[2] = glm::vec4(1.0, 0.0, 0.0, 1.0);
+	lightsUbo.perFragmentLightColor[3] = glm::vec4(0.0, 0.0, 0.0, 1.0);
+	lightsUbo.specularity = 10;
 
 	vkMapMemory(device, lightsUniformStagingBufferMemory, 0, sizeof(lightsUbo), 0, &data);
 	memcpy(data, &lightsUbo, sizeof(lightsUbo));
