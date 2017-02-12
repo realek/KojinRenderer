@@ -201,7 +201,7 @@ namespace Vk
 		glm::mat4 proj;
 		glm::mat4 modelView;
 		glm::mat4 modelViewProjection;
-		glm::mat3 normal;
+		glm::mat4 normal;
 
 		inline void ComputeMatrices()
 		{

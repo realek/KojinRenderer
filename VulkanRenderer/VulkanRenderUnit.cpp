@@ -872,6 +872,7 @@ void Vk::VulkanRenderUnit::UpdateStaticUniformBuffer(float time) {
 
 	Vk::UniformBufferObject ubo = {};
 	ubo.model = glm::rotate(glm::mat4(), glm::radians(rotationAngle), glm::vec3(0.0f, 1.0f, 0.0f));
+	ubo.model = glm::translate(ubo.model, glm::vec3(0, 0, 0));
 	ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, -1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
 	ubo.proj[1][1] *= -1;
@@ -894,17 +895,17 @@ void Vk::VulkanRenderUnit::UpdateStaticUniformBuffer(float time) {
 	data = nullptr;
 
 	Vk::LightingUniformBuffer lightsUbo = {};
-	lightsUbo.ambientLightColor = glm::vec4(1.0, 1.0, 1.0, 1.0);
-	lightsUbo.perFragmentLightPos[0] = glm::vec4(0.0, -2.0, 0.0, 1.0); // Note to self : world up is -y in Vulkan  >_<
-	lightsUbo.perFragmentLightPos[1] = glm::vec4(1.0, -1.0, 1.0, 1.0);
-	lightsUbo.perFragmentLightPos[2] = glm::vec4(0.0, 1.0, -1.0, 1.0);
+	lightsUbo.ambientLightColor = glm::vec4(0.5, 0.5, 0.5, 0.25);
+	lightsUbo.perFragmentLightPos[0] = glm::vec4(0.0, -1.0, 0.0, 1.0); // Note to self : world up is -y in Vulkan  >_<
+	lightsUbo.perFragmentLightPos[1] = glm::vec4(0.0, 0.0, 1.0, 1.0);
+	lightsUbo.perFragmentLightPos[2] = glm::vec4(0.0, 0.0, -1.0, 1.0);
 	lightsUbo.perFragmentLightPos[3] = glm::vec4(-1.0, 0.0, 0.0, 1.0);
 
-	lightsUbo.perFragmentLightColor[0] = glm::vec4(0.0, 1.0, 0.0, 1.0);
-	lightsUbo.perFragmentLightColor[1] = glm::vec4(0.0, 0.0, 1.0, 1.0);
-	lightsUbo.perFragmentLightColor[2] = glm::vec4(1.0, 0.0, 0.0, 1.0);
-	lightsUbo.perFragmentLightColor[3] = glm::vec4(0.0, 0.0, 0.0, 1.0);
-	lightsUbo.specularity = 10;
+	lightsUbo.perFragmentLightColor[0] = glm::vec4(0.75, 0.26, 0.75, 1.0);
+	lightsUbo.perFragmentLightColor[1] = glm::vec4(0.0, 0.5, 0.5, 1.0);
+	lightsUbo.perFragmentLightColor[2] = glm::vec4(0.0, 0.25, 0.0, 1.0);
+	lightsUbo.perFragmentLightColor[3] = glm::vec4(0.5, 0.0, 0.0, 1.0);
+	lightsUbo.specularity = 32;
 
 	vkMapMemory(device, lightsUniformStagingBufferMemory, 0, sizeof(lightsUbo), 0, &data);
 	memcpy(data, &lightsUbo, sizeof(lightsUbo));
