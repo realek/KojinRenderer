@@ -75,7 +75,7 @@ namespace Vk
 		void CreateUniformBuffer();
 		void CreateDescriptorPool();
 
-		void CreateDescriptorSets(VkImage textureImage, VkImageView textureImageView);
+		void CreateDescriptorSets(VkImageView textureImageView);
 		void CreateSemaphores();
 
 	};

@@ -260,24 +260,12 @@ void Vk::VulkanRenderUnit::CreateGraphicsPipeline(VkExtent2D & swapChainExtent)
 	inputAssemblyStateCI.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	inputAssemblyStateCI.primitiveRestartEnable = VK_FALSE;
 
-	VkViewport viewport = {};
-	viewport.x = 0.0f;
-	viewport.y = 0.0f;
-	viewport.width = (float)swapChainExtent.width;
-	viewport.height = (float)swapChainExtent.height;
-	viewport.minDepth = 0.0f;
-	viewport.maxDepth = 1.0f;
 
-	VkRect2D scissor = {};
-	scissor.offset = { 0, 0 };
-	scissor.extent = swapChainExtent;
 
 	VkPipelineViewportStateCreateInfo viewportStateCI = {};
 	viewportStateCI.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 	viewportStateCI.viewportCount = 1;
-	viewportStateCI.pViewports = &viewport;
 	viewportStateCI.scissorCount = 1;
-	viewportStateCI.pScissors = &scissor;
 
 	VkPipelineRasterizationStateCreateInfo rasterizerStateCI = {};
 	rasterizerStateCI.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -329,6 +317,19 @@ void Vk::VulkanRenderUnit::CreateGraphicsPipeline(VkExtent2D & swapChainExtent)
 	if (result != VK_SUCCESS)
 		throw std::runtime_error("Unable to create pipeline layout. Reason: " + Vk::VkResultToString(result));
 
+	//enable viewport and scrissor as dynamic states in order to change at runtime
+	std::array<VkDynamicState,2> dynamicStateEnables = {
+		VK_DYNAMIC_STATE_VIEWPORT,
+		VK_DYNAMIC_STATE_SCISSOR
+	};
+	VkPipelineDynamicStateCreateInfo dynamicStateCI = {};
+	dynamicStateCI.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+	dynamicStateCI.dynamicStateCount = dynamicStateEnables.size();
+	dynamicStateCI.pDynamicStates = dynamicStateEnables.data();
+	dynamicStateCI.flags = 0;
+
+
+
 	VkGraphicsPipelineCreateInfo graphicsPipelineCI = {};
 	graphicsPipelineCI.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	graphicsPipelineCI.stageCount = 2;
@@ -340,10 +341,12 @@ void Vk::VulkanRenderUnit::CreateGraphicsPipeline(VkExtent2D & swapChainExtent)
 	graphicsPipelineCI.pMultisampleState = &multisamplingStateCI;
 	graphicsPipelineCI.pDepthStencilState = &depthStencilStateCI;
 	graphicsPipelineCI.pColorBlendState = &colorBlendingStateCI;
+	graphicsPipelineCI.pDynamicState = &dynamicStateCI;
 	graphicsPipelineCI.layout = m_pipelineLayout;
 	graphicsPipelineCI.renderPass = m_renderPass;
 	graphicsPipelineCI.subpass = 0;
 	graphicsPipelineCI.basePipelineHandle = VK_NULL_HANDLE;
+
 
 	m_pipeline = VulkanObjectContainer<VkPipeline>{ m_devicePtr, vkDestroyPipeline };
 	result = vkCreateGraphicsPipelines(m_devicePtr->Get(), VK_NULL_HANDLE, 1, &graphicsPipelineCI, nullptr, ++m_pipeline);
@@ -533,7 +536,7 @@ void Vk::VulkanRenderUnit::Render(Vk::Texture2D * texture,Vk::Mesh * mesh)
 {
 	try
 	{
-		CreateDescriptorSets(texture->m_textureImage, texture->m_textureImageView);
+		CreateDescriptorSets(texture->m_textureImageView);
 	}
 	catch(std::runtime_error e)
 	{
@@ -544,16 +547,37 @@ void Vk::VulkanRenderUnit::Render(Vk::Texture2D * texture,Vk::Mesh * mesh)
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 	
+	VkRenderPassBeginInfo renderPassInfo = {};
+	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	renderPassInfo.renderPass = m_renderPass;
+
+	// must replace view port & scrissor with camera abstraction that also contains view+proj matrix
+	VkViewport viewport = {};
+	viewport.x = 0.0f;
+	viewport.y = 0.0f;
+	viewport.width = (float)m_swapChainUnit->m_swapChainExtent2D.width;
+	viewport.height = (float)m_swapChainUnit->m_swapChainExtent2D.height;
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+
+	VkRect2D scissor = {};
+	scissor.offset = { 0, 0 };
+	scissor.extent = m_swapChainUnit->m_swapChainExtent2D;
+
+
 	for(size_t i = 0 ; i < m_commandUnit->m_swapChainCommandBuffers.size();i++)
 	{
 		vkBeginCommandBuffer(m_commandUnit->m_swapChainCommandBuffers[i], &beginInfo);
 
-		VkRenderPassBeginInfo renderPassInfo = {};
-		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassInfo.renderPass = m_renderPass;
+
 		renderPassInfo.framebuffer = m_swapChainUnit->m_swapChainFB[i];
 		renderPassInfo.renderArea.offset = { 0, 0 };
 		renderPassInfo.renderArea.extent = m_swapChainUnit->m_swapChainExtent2D;
+
+		//set viewport and scrissor for each cmd buffer
+		vkCmdSetScissor(m_commandUnit->m_swapChainCommandBuffers[i], 0, 1, &scissor);
+		vkCmdSetViewport(m_commandUnit->m_swapChainCommandBuffers[i], 0,1, &viewport);
+
 
 		std::array<VkClearValue, 2> clearValues = {};
 		clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -781,7 +805,7 @@ void Vk::VulkanRenderUnit::CreateDescriptorSetLayout()
 		throw std::runtime_error("Unable to create descriptor set layout. Reason: "+ Vk::VkResultToString(result));
 }
 
-void Vk::VulkanRenderUnit::CreateDescriptorSets(VkImage textureImage,VkImageView textureImageView)
+void Vk::VulkanRenderUnit::CreateDescriptorSets(VkImageView textureImageView)
 {
 
 	VkDescriptorSetLayout layouts[] = { m_descSetLayout };

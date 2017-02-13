@@ -167,6 +167,7 @@
     <ClCompile Include="VulkanTester.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Allocation.h" />
     <ClInclude Include="KojinRenderer.h" />
     <ClInclude Include="Debug.h" />
     <ClInclude Include="Filesystem.h" />

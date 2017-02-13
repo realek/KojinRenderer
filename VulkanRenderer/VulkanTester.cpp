@@ -18,12 +18,15 @@
 SDL_Window * window;
 
 #ifdef _WIN32
-//HWND GetHwnd() {
-//	SDL_SysWMinfo windowinfo;
-//	
-//	if (!SDL_GetWMInfo(&windowinfo)) return(NULL);
-//	return(windowinfo.window);
-//}
+
+HWND GetHwnd(SDL_Window * window) {
+	SDL_SysWMinfo windowinfo;
+	
+	if (!SDL_GetWindowWMInfo(window, &windowinfo)) {
+		throw std::runtime_error("SDL2 Window Manager info couldn't be retrieved.");
+	}
+	return (HWND)windowinfo.subsystem;
+}
 
 #endif // _WIN32
 

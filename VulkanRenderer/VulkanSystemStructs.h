@@ -211,6 +211,11 @@ namespace Vk
 		}
 	};
 
+	struct DynamicUniformBuffer
+	{
+		glm::mat4 * model;
+	};
+
 	struct LightingUniformBuffer
 	{
 		glm::vec4 ambientLightColor;
