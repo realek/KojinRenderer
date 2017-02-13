@@ -895,7 +895,7 @@ void Vk::VulkanRenderUnit::UpdateStaticUniformBuffer(float time) {
 	data = nullptr;
 
 	Vk::LightingUniformBuffer lightsUbo = {};
-	lightsUbo.ambientLightColor = glm::vec4(0.5, 0.5, 0.5, 0.25);
+	lightsUbo.ambientLightColor = glm::vec4(0.5, 0.5, 0.5, 0.05);
 	lightsUbo.perFragmentLightPos[0] = glm::vec4(0.0, -1.0, 0.0, 1.0); // Note to self : world up is -y in Vulkan  >_<
 	lightsUbo.perFragmentLightPos[1] = glm::vec4(0.0, 0.0, 1.0, 1.0);
 	lightsUbo.perFragmentLightPos[2] = glm::vec4(0.0, 0.0, -1.0, 1.0);
@@ -905,6 +905,11 @@ void Vk::VulkanRenderUnit::UpdateStaticUniformBuffer(float time) {
 	lightsUbo.perFragmentLightColor[1] = glm::vec4(0.0, 0.5, 0.5, 1.0);
 	lightsUbo.perFragmentLightColor[2] = glm::vec4(0.0, 0.25, 0.0, 1.0);
 	lightsUbo.perFragmentLightColor[3] = glm::vec4(0.5, 0.0, 0.0, 1.0);
+
+	lightsUbo.perFragmentLightIntensity[0] = glm::vec4(1.5, 1.5, 1.5, 1.0);
+	lightsUbo.perFragmentLightIntensity[1] = glm::vec4(1.5, 1.5, 1.5, 1.0);
+	lightsUbo.perFragmentLightIntensity[2] = glm::vec4(1.5, 1.5, 1.5, 1.0);
+	lightsUbo.perFragmentLightIntensity[3] = glm::vec4(1.5, 1.5, 1.5, 1.0);
 	lightsUbo.specularity = 32;
 
 	vkMapMemory(device, lightsUniformStagingBufferMemory, 0, sizeof(lightsUbo), 0, &data);

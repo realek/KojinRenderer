@@ -216,6 +216,7 @@ namespace Vk
 		glm::vec4 ambientLightColor;
 		glm::vec4 perFragmentLightPos[4];
 		glm::vec4 perFragmentLightColor[4];
+		glm::vec4 perFragmentLightIntensity[4];
 		float specularity;
 	};
 

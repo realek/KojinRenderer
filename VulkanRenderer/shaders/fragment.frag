@@ -11,6 +11,7 @@ layout(binding = 2) uniform LightingBufferObject {
 	vec4 ambientLightColor;
 	vec4 perFragmentLightPos[4];
 	vec4 perFragmentLightColor[4];
+	vec4 perFragmentLightIntensity[4];
 	float specularity;
 
 } lightubo;
@@ -19,21 +20,21 @@ layout(location = 0) out vec4 outColor;
 void main() {
 	vec3 N = normalize(-fragNormal);
     outColor = vec4(fragColor,1.0) * texture(texSampler, fragTexCoord);
-	vec3 lightColor = lightubo.ambientLightColor.xyz;
+	vec4 lightColor = vec4(lightubo.ambientLightColor.xyz,1.0);
 	float diffuseFrac = 1.0 - lightubo.ambientLightColor.w;
 	vec3 specular = vec3(0.0,0.0,0.0);
-	vec3 diffuse = vec3(0.0,0.0,0.0);
+	vec4 diffuse = vec4(0.0,0.0,0.0,0.0);
 	for(int i = 0;i < 4;i++)
 	{
 		vec3 L = normalize(lightubo.perFragmentLightPos[i].xyz - fragPos); // light dir
 		vec3 V = normalize(vec3(0.0,0.0,0.0) - fragPos);// eye coord
 		vec3 R = reflect(-L, N); // reflection
 		
-		float diffuseFactor = max(0.0,dot(L, N));
+		float incidenceAngle = max(0.0,dot(L, N));
 		
-		if(diffuseFactor > 0.0)
+		if(incidenceAngle > 0.0)
 		{
-			diffuse = diffuseFrac * diffuseFactor * lightubo.perFragmentLightColor[i].xyz; // diffuse component
+			diffuse = diffuseFrac * incidenceAngle * lightubo.perFragmentLightColor[i]; // diffuse component
 		}
 		
 		if(lightubo.specularity > 0.0)
@@ -44,8 +45,8 @@ void main() {
 
 		
 		
-		lightColor += diffuse + specular;		
+		lightColor += (diffuse * lightubo.perFragmentLightIntensity[i]) + vec4(specular,1.0);		
 	}
 	
-	outColor *=vec4(lightColor,1.0);
+	outColor *=lightColor;
 }
