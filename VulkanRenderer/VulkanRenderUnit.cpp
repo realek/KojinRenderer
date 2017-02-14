@@ -9,6 +9,7 @@
 
 std::vector<VkViewport*> Vulkan::VulkanRenderUnit::m_viewports;
 std::vector<VkRect2D*> Vulkan::VulkanRenderUnit::m_scrissors;
+std::map<size_t, Vulkan::VkCamera> Vulkan::VulkanRenderUnit::m_cameras;
 
 Vulkan::VulkanRenderUnit::~VulkanRenderUnit()
 {
@@ -574,18 +575,17 @@ void Vulkan::VulkanRenderUnit::Render(Vulkan::Texture2D * texture,Vulkan::Mesh *
 		vkBeginCommandBuffer(m_commandUnit->m_swapChainCommandBuffers[i], &beginInfo);
 		vkCmdBeginRenderPass(m_commandUnit->m_swapChainCommandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-
-
 		vkCmdBindDescriptorSets(m_commandUnit->m_swapChainCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
 		VkBuffer vertexBuffers[] = { mesh->vertexBuffer };
 		VkDeviceSize offsets[] = { 0 };
 		vkCmdBindVertexBuffers(m_commandUnit->m_swapChainCommandBuffers[i], 0, 1, vertexBuffers, offsets);
 		vkCmdBindIndexBuffer(m_commandUnit->m_swapChainCommandBuffers[i], mesh->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-		for (int j = 0; j < m_viewports.size(); j++)
+		
+		for (auto it = m_cameras.begin(); it != m_cameras.end(); ++it)
 		{
-			vkCmdSetScissor(m_commandUnit->m_swapChainCommandBuffers[i], 0, 1, m_scrissors[j]);
-			vkCmdSetViewport(m_commandUnit->m_swapChainCommandBuffers[i], 0, 1, m_viewports[j]);
+			vkCmdSetScissor(m_commandUnit->m_swapChainCommandBuffers[i], 0, 1, it->second.scissor);
+			vkCmdSetViewport(m_commandUnit->m_swapChainCommandBuffers[i], 0, 1, it->second.viewport);
 			vkCmdBindPipeline(m_commandUnit->m_swapChainCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
 			vkCmdDrawIndexed(m_commandUnit->m_swapChainCommandBuffers[i], mesh->indices.size(), 1, 0, 0, 0);
 
@@ -598,13 +598,7 @@ void Vulkan::VulkanRenderUnit::Render(Vulkan::Texture2D * texture,Vulkan::Mesh *
 		VkResult result = vkEndCommandBuffer(m_commandUnit->m_swapChainCommandBuffers[i]);
 		if (result != VK_SUCCESS) {
 			throw std::runtime_error("Command buffer recording failed. Reason: " + VkResultToString(result));
-		}
-
-
-
-
-
-		
+		}		
 	}
 
 	
@@ -665,7 +659,7 @@ void Vulkan::VulkanRenderUnit::PresentFrame() {
 
 }
 
-inline void Vulkan::VulkanRenderUnit::CreateDepthResources(VkFormat depthFormat,VkExtent2D swapChainExtent) {
+void Vulkan::VulkanRenderUnit::CreateDepthResources(VkFormat depthFormat,VkExtent2D swapChainExtent) {
 
 	m_depthImage = VulkanObjectContainer<VkImage>{ m_devicePtr,vkDestroyImage };
 	m_depthImageMemory = VulkanObjectContainer<VkDeviceMemory>{ m_devicePtr, vkFreeMemory };
@@ -894,15 +888,15 @@ void Vulkan::VulkanRenderUnit::UpdateStaticUniformBuffer(float time) {
 
 	auto swapChainExtent = m_swapChainUnit->swapChainExtent2D;
 	//just a simple derpy thing
-	rotationAngle+=2*time;
+	rotationAngle+=5*time;
 	if (rotationAngle >= 360)
 		rotationAngle -= 360;
 	//nothing to see here X_X 
 
 	Vulkan::UniformBufferObject ubo = {};
 	ubo.model = glm::rotate(glm::mat4(), glm::radians(rotationAngle), glm::vec3(0.0f, 1.0f, 0.0f));
-	ubo.model = glm::translate(ubo.model, glm::vec3(0, 0, 0));
-	ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, -1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	ubo.model = glm::scale(glm::translate(ubo.model, glm::vec3(0, 0, 0)),glm::vec3(0.25,0.25,0.25));
+	ubo.view = glm::lookAt(glm::vec3(0.0f, 1.0f, -1.0f), glm::vec3(0.0f, 0.5f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
 	ubo.proj[1][1] *= -1;
 	ubo.ComputeMatrices();
@@ -924,21 +918,21 @@ void Vulkan::VulkanRenderUnit::UpdateStaticUniformBuffer(float time) {
 	data = nullptr;
 
 	Vulkan::LightingUniformBuffer lightsUbo = {};
-	lightsUbo.ambientLightColor = glm::vec4(0.5, 0.5, 0.5, 0.05);
-	lightsUbo.perFragmentLightPos[0] = glm::vec4(0.0, -1.0, 0.0, 1.0); // Note to self : world up is -y in Vulkan  >_<
-	lightsUbo.perFragmentLightPos[1] = glm::vec4(0.0, 0.0, 1.0, 1.0);
-	lightsUbo.perFragmentLightPos[2] = glm::vec4(0.0, 0.0, -1.0, 1.0);
-	lightsUbo.perFragmentLightPos[3] = glm::vec4(-1.0, 0.0, 0.0, 1.0);
+	lightsUbo.ambientLightColor = glm::vec4(0.5, 0.5, 0.5, 0.5);
+	lightsUbo.perFragmentLightPos[0] = glm::vec4(0.0, -4.0, 5.0, 1.0); // Note to self : world up is -y in Vulkan  >_<
+	lightsUbo.perFragmentLightPos[1] = glm::vec4(0.0, -5.0, -5.0, 1.0);
+	lightsUbo.perFragmentLightPos[2] = glm::vec4(-3.0, -2.0, 0.0, 1.0);
+	lightsUbo.perFragmentLightPos[3] = glm::vec4(3.0, -2.0, 0.0, 1.0);
 
-	lightsUbo.perFragmentLightColor[0] = glm::vec4(0.75, 0.26, 0.75, 1.0);
-	lightsUbo.perFragmentLightColor[1] = glm::vec4(0.0, 0.5, 0.5, 1.0);
-	lightsUbo.perFragmentLightColor[2] = glm::vec4(0.0, 0.25, 0.0, 1.0);
-	lightsUbo.perFragmentLightColor[3] = glm::vec4(0.5, 0.0, 0.0, 1.0);
+	lightsUbo.perFragmentLightColor[0] = glm::vec4(1.0, 0.0, 0.0, 1.0);
+	lightsUbo.perFragmentLightColor[1] = glm::vec4(0.0, 0.0, 1.0, 1.0);
+	lightsUbo.perFragmentLightColor[2] = glm::vec4(0.0, 1.0, 0.0, 1.0);
+	lightsUbo.perFragmentLightColor[3] = glm::vec4(0.75, 0.0, 0.75, 1.0);
 
-	lightsUbo.perFragmentLightIntensity[0] = glm::vec4(1.5, 1.5, 1.5, 1.0);
-	lightsUbo.perFragmentLightIntensity[1] = glm::vec4(1.5, 1.5, 1.5, 1.0);
-	lightsUbo.perFragmentLightIntensity[2] = glm::vec4(1.5, 1.5, 1.5, 1.0);
-	lightsUbo.perFragmentLightIntensity[3] = glm::vec4(1.5, 1.5, 1.5, 1.0);
+	lightsUbo.perFragmentLightIntensity[0] = glm::vec4(1.0, 1.0, 1.0, 1.0);
+	lightsUbo.perFragmentLightIntensity[1] = glm::vec4(1.0, 1.0, 1.0, 1.0);
+	lightsUbo.perFragmentLightIntensity[2] = glm::vec4(1.0, 1.0, 1.0, 1.0);
+	lightsUbo.perFragmentLightIntensity[3] = glm::vec4(1.0, 1.0, 1.0, 1.0);
 	lightsUbo.specularity = 32;
 
 	vkMapMemory(device, lightsUniformStagingBufferMemory, 0, sizeof(lightsUbo), 0, &data);
@@ -956,10 +950,19 @@ void Vulkan::VulkanRenderUnit::UpdateStaticUniformBuffer(float time) {
 
 }
 
-size_t Vulkan::VulkanRenderUnit::AddCamera(VkViewport * viewport, VkRect2D * scissor)
+void Vulkan::VulkanRenderUnit::AddCamera(int id, VkViewport * viewport, VkRect2D * scissor)
 {
-	m_viewports.push_back(viewport);
-	m_scrissors.push_back(scissor);
-	return m_viewports.size() - 1;
+	VkCamera cam = {};
+	cam.viewport = viewport;
+	cam.scissor = scissor;
+	m_cameras.insert(std::make_pair(id, cam));
+}
+
+void Vulkan::VulkanRenderUnit::RemoveCamera(int id)
+{
+
+	auto it = m_cameras.find(id);
+	if (it != m_cameras.end())
+		m_cameras.erase(it);
 }
 

@@ -1,7 +1,8 @@
 #include "KojinCamera.h"
 #include "VulkanRenderUnit.h"
 
-Vulkan::KojinCamera::KojinCamera()
+std::atomic<int> Vulkan::KojinCamera::globalID = 0;
+Vulkan::KojinCamera::KojinCamera() : m_cameraID(++globalID)
 {
 	auto swapChainExtent = VulkanSwapChainUnit::swapChainExtent2D;
 	m_cameraViewport = {};
@@ -23,6 +24,11 @@ Vulkan::KojinCamera::KojinCamera()
 	m_cameraUniformData.view = glm::mat4(1);
 
 
+}
+
+Vulkan::KojinCamera::~KojinCamera()
+{
+	UnBind();
 }
 
 void Vulkan::KojinCamera::SetPosition(glm::vec3 position)
@@ -53,10 +59,10 @@ void Vulkan::KojinCamera::SetViewPortScale(glm::vec2 scale)
 
 void Vulkan::KojinCamera::Bind()
 {
-	m_cameraID = VulkanRenderUnit::AddCamera(&m_cameraViewport, &m_cameraScissor);
+	VulkanRenderUnit::AddCamera(m_cameraID,&m_cameraViewport, &m_cameraScissor);
 }
 
 void Vulkan::KojinCamera::UnBind()
 {
-
+	VulkanRenderUnit::RemoveCamera(m_cameraID);
 }

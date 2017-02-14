@@ -194,6 +194,13 @@ namespace Vulkan
 		}
 	};
 
+	struct VkCamera
+	{
+		VkViewport* viewport;
+		VkRect2D* scissor;
+
+	};
+
 	struct CameraUniformBufferObject
 	{
 		glm::mat4 view;

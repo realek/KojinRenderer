@@ -26,11 +26,11 @@ void main() {
 	vec4 diffuse = vec4(0.0,0.0,0.0,0.0);
 	for(int i = 0;i < 4;i++)
 	{
-		vec3 L = normalize(lightubo.perFragmentLightPos[i].xyz - fragPos); // light dir
-		vec3 V = normalize(vec3(0.0,0.0,0.0) - fragPos);// eye coord
+		vec3 L = normalize(fragPos - lightubo.perFragmentLightPos[i].xyz); // light dir
+		vec3 V = normalize(-fragPos);// eye coord
 		vec3 R = reflect(-L, N); // reflection
 		
-		float incidenceAngle = max(0.0,dot(L, N));
+		float incidenceAngle = max(0.0,dot(-L, N));
 		
 		if(incidenceAngle > 0.0)
 		{

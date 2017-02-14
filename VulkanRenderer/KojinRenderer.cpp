@@ -29,8 +29,8 @@ Vulkan::KojinRenderer::KojinRenderer(SDL_Window * window, const char * appName, 
 	defaultCamera = new KojinCamera();
 	defaultCamera->Bind();
 	auto camera2 = new KojinCamera();
-	camera2->SetCameraOrigin({ 0.75, 0.75 });
-	camera2->SetViewPortScale({ 0.25,0.25 });
+	camera2->SetCameraOrigin({ 0.65, 0.65 });
+	camera2->SetViewPortScale({ 0.35,0.35 });
 	camera2->Bind();
 }
 

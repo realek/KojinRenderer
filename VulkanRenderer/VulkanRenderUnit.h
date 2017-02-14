@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+#include <map>
 #include "VulkanCommandUnit.h"
 #include "VulkanImageUnit.h"
 
@@ -23,7 +24,8 @@ namespace Vulkan
 		void PresentFrame();
 		//Dummy uniform update function
 		void UpdateStaticUniformBuffer(float time);
-		static size_t AddCamera(VkViewport * viewport, VkRect2D * scissor);
+		static void AddCamera(int id, VkViewport * viewport, VkRect2D * scissor);
+		static void RemoveCamera(int id);
 		~VulkanRenderUnit();
 	private:
 		bool m_initialized = false;
@@ -31,6 +33,7 @@ namespace Vulkan
 		VkPhysicalDevice m_currentPhysicalDevice;
 		std::shared_ptr<Vulkan::VulkanCommandUnit> m_commandUnit;
 		std::shared_ptr<Vulkan::VulkanSwapChainUnit> m_swapChainUnit;
+		std::shared_ptr<Vulkan::VulkanImageUnit> m_imageUnit;
 		VulkanObjectContainer<VkDevice> * m_devicePtr;
 		VkFormat m_currentImageFormat;
 		VulkanObjectContainer<VkRenderPass> m_renderPass;
@@ -74,6 +77,7 @@ namespace Vulkan
 
 		static std::vector<VkViewport*> m_viewports;
 		static std::vector<VkRect2D*> m_scrissors;
+		static std::map<size_t, VkCamera> m_cameras;
 		void CreateRenderPass(VkFormat & desiredFormat);
 		void CreateDescriptorSetLayout();
 		void CreateGraphicsPipeline(VkExtent2D & swapChainExtent);

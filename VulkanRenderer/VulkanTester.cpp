@@ -83,9 +83,9 @@ int main()
 	try
 	{
 		renderer = new Vulkan::KojinRenderer{window,"Vulkan Tester",appVer};
-		tex = Vulkan::Texture2D::CreateFromFile("textures/model.png");
+		tex = Vulkan::Texture2D::CreateFromFile("textures/Stormtrooper_Diffuse.png");
 		//tex = Vk::Texture2D::GetWhiteTexture();
-		mesh = Vulkan::Mesh::LoadMesh("models/model.obj");
+		mesh = Vulkan::Mesh::LoadMesh("models/Stormtrooper.obj");
 	}
 	catch(std::runtime_error e)
 	{
