@@ -1,7 +1,7 @@
 #pragma once
 #include <vector>
 #include <fstream>
-namespace Vk 
+namespace Vulkan 
 {
 	template<typename>
 	class VulkanObjectContainer;

@@ -1,8 +1,8 @@
 #pragma once
 #include "VulkanObject.h"
-#include <vector>
+#include <map>
 
-namespace Vk
+namespace Vulkan
 {
 	class VulkanRenderUnit;
 	class Texture2D
@@ -13,8 +13,7 @@ namespace Vk
 
 	private:
 		Texture2D() {};
-		static std::vector<Texture2D*> textures;
-
+		static std::map<const char*,Texture2D*> textures;
 		int width, height;
 		bool m_isEmpty = true;
 		static Texture2D * m_whiteTexture;
@@ -22,12 +21,12 @@ namespace Vk
 		static VulkanObjectContainer<VkDevice> * devicePtr;
 		static const int defaultTexturesHeight = 1280;
 		static const int defaultTexturesWidth = 1280;
-		friend class VulkanRenderUnit;
 		static void CleanUp();
 		VulkanObjectContainer<VkImage> m_textureImage;
 		VulkanObjectContainer<VkDeviceMemory> m_textureImageMemory;
 		VulkanObjectContainer<VkImageView> m_textureImageView;
-
+		friend class VulkanRenderUnit;
+		static const char * WhiteTextureNoAlphaPath;
 	private:
 		static void CreateWhiteTextureNoAlpha(Texture2D * tex);
 

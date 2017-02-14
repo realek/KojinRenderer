@@ -20,7 +20,7 @@ const std::vector<const char*> deviceExtensions = {
 };
 
 
-namespace Vk 
+namespace Vulkan 
 {
 
 	const std::vector<VkFormat> k_depthFormats{ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT };
@@ -39,6 +39,7 @@ namespace Vk
 		void GetScreenSizes(int & width, int & height);
 		VulkanObjectContainer<VkDevice> * GetCurrentLogical();
 		const VkPhysicalDevice GetCurrentPhysical();
+		const VkPhysicalDeviceProperties GetCurrentPhysicalProperties();
 		const VulkanObjectContainer<VkInstance> * GetInstance();
 		const VkSurfaceKHR GetSurface() const;
 		const VkQueueFamilyIDs GetQueueFamilies() const;

@@ -7,13 +7,16 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 
-Vk::VulkanRenderUnit::~VulkanRenderUnit()
+std::vector<VkViewport*> Vulkan::VulkanRenderUnit::m_viewports;
+std::vector<VkRect2D*> Vulkan::VulkanRenderUnit::m_scrissors;
+
+Vulkan::VulkanRenderUnit::~VulkanRenderUnit()
 {
 	Texture2D::CleanUp();
 	Mesh::CleanUp();
 }
 
-void Vk::VulkanRenderUnit::Initialize(Vk::VulkanSystem * system, Vk::SPIRVShader * shader)
+void Vulkan::VulkanRenderUnit::Initialize(Vulkan::VulkanSystem * system, Vulkan::SPIRVShader * shader)
 {
 	if (shader == nullptr)
 		throw std::runtime_error("shader parameter cannot be null");
@@ -27,7 +30,7 @@ void Vk::VulkanRenderUnit::Initialize(Vk::VulkanSystem * system, Vk::SPIRVShader
 	this->m_currentPhysicalDevice = system->GetCurrentPhysical();
 	this->m_deviceQueues = system->GetQueues();
 
-	auto cmd = new Vk::VulkanCommandUnit();
+	auto cmd = new Vulkan::VulkanCommandUnit();
 	m_commandUnit = std::shared_ptr<VulkanCommandUnit>(cmd);
 	try
 	{
@@ -38,7 +41,7 @@ void Vk::VulkanRenderUnit::Initialize(Vk::VulkanSystem * system, Vk::SPIRVShader
 		throw e;
 	}
 
-	auto swp = new Vk::VulkanSwapChainUnit();
+	auto swp = new Vulkan::VulkanSwapChainUnit();
 	m_swapChainUnit = std::shared_ptr<VulkanSwapChainUnit>(swp);
 	try
 	{
@@ -51,11 +54,11 @@ void Vk::VulkanRenderUnit::Initialize(Vk::VulkanSystem * system, Vk::SPIRVShader
 	}
 
 	
-	m_currentImageFormat = m_swapChainUnit->m_swapChainImageFormat;
+	m_currentImageFormat = m_swapChainUnit->swapChainImageFormat;
 
 
 	auto depthFormat = system->GetDepthFormat();
-	auto swapChainExt = m_swapChainUnit->m_swapChainExtent2D;
+	auto swapChainExt = m_swapChainUnit->swapChainExtent2D;
 
 	try
 	{
@@ -68,6 +71,7 @@ void Vk::VulkanRenderUnit::Initialize(Vk::VulkanSystem * system, Vk::SPIRVShader
 		this->m_commandUnit->CreateSwapChainCommandBuffers(m_swapChainUnit->m_swapChainFB.size());
 		this->CreateUniformBuffer();
 		this->CreateDescriptorPool();
+		this->CreateDescriptorSets();
 		this->CreateSemaphores();
 		
 	}
@@ -86,9 +90,11 @@ void Vk::VulkanRenderUnit::Initialize(Vk::VulkanSystem * system, Vk::SPIRVShader
 	Mesh::renderUnitPtr = this;
 	Mesh::devicePtr = this->m_devicePtr;
 
+
+
 }
 
-void Vk::VulkanRenderUnit::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, Vk::VulkanObjectContainer<VkImageView>& imageView) {
+void Vulkan::VulkanRenderUnit::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, Vulkan::VulkanObjectContainer<VkImageView>& imageView) {
 	
 	VkResult result;
 
@@ -105,10 +111,10 @@ void Vk::VulkanRenderUnit::CreateImageView(VkImage image, VkFormat format, VkIma
 
 	result = vkCreateImageView(m_devicePtr->Get(), &viewCI, nullptr, ++imageView);
 	if (result != VK_SUCCESS)
-		throw std::runtime_error("Unable to create texture image view. Reason: " + Vk::VkResultToString(result));
+		throw std::runtime_error("Unable to create texture image view. Reason: " + Vulkan::VkResultToString(result));
 }
 
-void Vk::VulkanRenderUnit::CreateImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, Vk::VulkanObjectContainer<VkImage>& image, Vk::VulkanObjectContainer<VkDeviceMemory>& imageMemory) {
+void Vulkan::VulkanRenderUnit::CreateImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, Vulkan::VulkanObjectContainer<VkImage>& image, Vulkan::VulkanObjectContainer<VkDeviceMemory>& imageMemory) {
 	
 	VkResult result;
 	VkImageCreateInfo imageCI = {};
@@ -130,7 +136,7 @@ void Vk::VulkanRenderUnit::CreateImage(uint32_t width, uint32_t height, VkFormat
 	result = vkCreateImage(device, &imageCI, nullptr, ++image);
 
 	if (result != VK_SUCCESS)
-		throw std::runtime_error("Unable to create image. Reason: " + Vk::VkResultToString(result));
+		throw std::runtime_error("Unable to create image. Reason: " + Vulkan::VkResultToString(result));
 
 	VkMemoryRequirements memRequirements;
 	vkGetImageMemoryRequirements(device, image, &memRequirements);
@@ -143,15 +149,15 @@ void Vk::VulkanRenderUnit::CreateImage(uint32_t width, uint32_t height, VkFormat
 	result = vkAllocateMemory(device, &allocInfo, nullptr, ++imageMemory);
 
 	if (result != VK_SUCCESS)
-		throw std::runtime_error("Unable to allocate memory. Reason: " + Vk::VkResultToString(result));
+		throw std::runtime_error("Unable to allocate memory. Reason: " + Vulkan::VkResultToString(result));
 
 	result = vkBindImageMemory(device, image, imageMemory, 0);
 
 	if(result != VK_SUCCESS)
-		throw std::runtime_error("Unable to bind image memory. Reason: " + Vk::VkResultToString(result));
+		throw std::runtime_error("Unable to bind image memory. Reason: " + Vulkan::VkResultToString(result));
 }
 
-void Vk::VulkanRenderUnit::CreateRenderPass(VkFormat & desiredFormat)
+void Vulkan::VulkanRenderUnit::CreateRenderPass(VkFormat & desiredFormat)
 {
 	VkResult result;
 
@@ -211,10 +217,10 @@ void Vk::VulkanRenderUnit::CreateRenderPass(VkFormat & desiredFormat)
 	
 	result = vkCreateRenderPass(m_devicePtr->Get(), &renderPassCI, nullptr, ++m_renderPass);
 	if (result != VK_SUCCESS)
-		throw std::runtime_error("Unable to create render pass. Reason: " + Vk::VkResultToString(result));
+		throw std::runtime_error("Unable to create render pass. Reason: " + Vulkan::VkResultToString(result));
 }
 
-void Vk::VulkanRenderUnit::CreateGraphicsPipeline(VkExtent2D & swapChainExtent)
+void Vulkan::VulkanRenderUnit::CreateGraphicsPipeline(VkExtent2D & swapChainExtent)
 {
 	VkResult result;
 	VulkanObjectContainer<VkShaderModule> vertShaderModule{ m_devicePtr, vkDestroyShaderModule };
@@ -315,7 +321,7 @@ void Vk::VulkanRenderUnit::CreateGraphicsPipeline(VkExtent2D & swapChainExtent)
 	result = vkCreatePipelineLayout(m_devicePtr->Get(), &pipelineLayoutCI, nullptr, ++m_pipelineLayout);
 
 	if (result != VK_SUCCESS)
-		throw std::runtime_error("Unable to create pipeline layout. Reason: " + Vk::VkResultToString(result));
+		throw std::runtime_error("Unable to create pipeline layout. Reason: " + Vulkan::VkResultToString(result));
 
 	//enable viewport and scrissor as dynamic states in order to change at runtime
 	std::array<VkDynamicState,2> dynamicStateEnables = {
@@ -351,12 +357,12 @@ void Vk::VulkanRenderUnit::CreateGraphicsPipeline(VkExtent2D & swapChainExtent)
 	m_pipeline = VulkanObjectContainer<VkPipeline>{ m_devicePtr, vkDestroyPipeline };
 	result = vkCreateGraphicsPipelines(m_devicePtr->Get(), VK_NULL_HANDLE, 1, &graphicsPipelineCI, nullptr, ++m_pipeline);
 	if (result != VK_SUCCESS)
-		throw std::runtime_error("Unable to create graphics pipeline. Reason: " + Vk::VkResultToString(result));
+		throw std::runtime_error("Unable to create graphics pipeline. Reason: " + Vulkan::VkResultToString(result));
 
 
 }
 
-inline void Vk::VulkanRenderUnit::CreateShaderModule(std::vector<char>& code, VulkanObjectContainer<VkShaderModule>& shader)
+inline void Vulkan::VulkanRenderUnit::CreateShaderModule(std::vector<char>& code, VulkanObjectContainer<VkShaderModule>& shader)
 {
 	VkResult result;
 	VkShaderModuleCreateInfo shaderModuleCI = {};
@@ -366,10 +372,10 @@ inline void Vk::VulkanRenderUnit::CreateShaderModule(std::vector<char>& code, Vu
 	result = vkCreateShaderModule(m_devicePtr->Get(), &shaderModuleCI, nullptr, ++shader);
 
 	if (result != VK_SUCCESS)
-		throw std::runtime_error("Unable to create shader module. Reason: "+Vk::VkResultToString(result));
+		throw std::runtime_error("Unable to create shader module. Reason: "+Vulkan::VkResultToString(result));
 }
 
-inline uint32_t Vk::VulkanRenderUnit::GetMemoryType(uint32_t desiredType,VkMemoryPropertyFlags memFlags) {
+uint32_t Vulkan::VulkanRenderUnit::GetMemoryType(uint32_t desiredType,VkMemoryPropertyFlags memFlags) {
 
 
 
@@ -385,7 +391,7 @@ inline uint32_t Vk::VulkanRenderUnit::GetMemoryType(uint32_t desiredType,VkMemor
 	throw std::runtime_error("Unable to find desired memory type.");
 }
 
-void Vk::VulkanRenderUnit::TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
+void Vulkan::VulkanRenderUnit::TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
 	
 	VkCommandBuffer commandBuffer = m_commandUnit->BeginOneTimeCommand();
 	VkImageMemoryBarrier imageMemoryBarrier = {};
@@ -446,7 +452,7 @@ void Vk::VulkanRenderUnit::TransitionImageLayout(VkImage image, VkFormat format,
 	}
 }
 
-void Vk::VulkanRenderUnit::CopyImage(VkImage source, VkImage destination, uint32_t width, uint32_t height)
+void Vulkan::VulkanRenderUnit::CopyImage(VkImage source, VkImage destination, uint32_t width, uint32_t height)
 {
 	VkCommandBuffer cmdBuffer = m_commandUnit->BeginOneTimeCommand();
 
@@ -482,7 +488,7 @@ void Vk::VulkanRenderUnit::CopyImage(VkImage source, VkImage destination, uint32
 	}
 }
 
-void Vk::VulkanRenderUnit::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, Vk::VulkanObjectContainer<VkBuffer>& buffer, Vk::VulkanObjectContainer<VkDeviceMemory>& bufferMemory) {
+void Vulkan::VulkanRenderUnit::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, Vulkan::VulkanObjectContainer<VkBuffer>& buffer, Vulkan::VulkanObjectContainer<VkDeviceMemory>& bufferMemory) {
 	
 	VkResult result;
 
@@ -495,7 +501,7 @@ void Vk::VulkanRenderUnit::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags us
 	auto device = m_devicePtr->Get();
 	result = vkCreateBuffer(device, &bufferInfo, nullptr, ++buffer);
 	if (result != VK_SUCCESS)
-		throw std::runtime_error("Unable to create buffer. Reason: "+ Vk::VkResultToString(result));
+		throw std::runtime_error("Unable to create buffer. Reason: "+ Vulkan::VkResultToString(result));
 
 	VkMemoryRequirements memRequirements;
 	vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
@@ -507,14 +513,14 @@ void Vk::VulkanRenderUnit::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags us
 
 	result = vkAllocateMemory(device, &allocInfo, nullptr, ++bufferMemory);
 	if (result != VK_SUCCESS)
-		throw std::runtime_error("Unable to allocate buffer memory from local device. Reason: "+ Vk::VkResultToString(result));
+		throw std::runtime_error("Unable to allocate buffer memory from local device. Reason: "+ Vulkan::VkResultToString(result));
 
 	result = vkBindBufferMemory(device, buffer, bufferMemory, 0);
 	if (result != VK_SUCCESS)
-		throw std::runtime_error("Unable to bind buffer memory from local device. Reason: " + Vk::VkResultToString(result));
+		throw std::runtime_error("Unable to bind buffer memory from local device. Reason: " + Vulkan::VkResultToString(result));
 }
 
-void Vk::VulkanRenderUnit::CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
+void Vulkan::VulkanRenderUnit::CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
 	VkCommandBuffer cmd = m_commandUnit->BeginOneTimeCommand();
 
 	VkBufferCopy copyRegion = {};
@@ -532,11 +538,11 @@ void Vk::VulkanRenderUnit::CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, Vk
 
 }
 
-void Vk::VulkanRenderUnit::Render(Vk::Texture2D * texture,Vk::Mesh * mesh)
+void Vulkan::VulkanRenderUnit::Render(Vulkan::Texture2D * texture,Vulkan::Mesh * mesh)
 {
 	try
 	{
-		CreateDescriptorSets(texture->m_textureImageView);
+		WriteDescriptorSets(texture->m_textureImageView);
 	}
 	catch(std::runtime_error e)
 	{
@@ -550,68 +556,61 @@ void Vk::VulkanRenderUnit::Render(Vk::Texture2D * texture,Vk::Mesh * mesh)
 	VkRenderPassBeginInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	renderPassInfo.renderPass = m_renderPass;
-
+	std::array<VkClearValue, 2> clearValues = {};
+	clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
+	clearValues[1].depthStencil = { 1.0f, 0 };
+	renderPassInfo.clearValueCount = clearValues.size();
+	renderPassInfo.pClearValues = clearValues.data();
 	// must replace view port & scrissor with camera abstraction that also contains view+proj matrix
-	VkViewport viewport = {};
-	viewport.x = 0.0f;
-	viewport.y = 0.0f;
-	viewport.width = (float)m_swapChainUnit->m_swapChainExtent2D.width;
-	viewport.height = (float)m_swapChainUnit->m_swapChainExtent2D.height;
-	viewport.minDepth = 0.0f;
-	viewport.maxDepth = 1.0f;
-
-	VkRect2D scissor = {};
-	scissor.offset = { 0, 0 };
-	scissor.extent = m_swapChainUnit->m_swapChainExtent2D;
-
 
 	for(size_t i = 0 ; i < m_commandUnit->m_swapChainCommandBuffers.size();i++)
 	{
-		vkBeginCommandBuffer(m_commandUnit->m_swapChainCommandBuffers[i], &beginInfo);
 
-
+		
 		renderPassInfo.framebuffer = m_swapChainUnit->m_swapChainFB[i];
 		renderPassInfo.renderArea.offset = { 0, 0 };
-		renderPassInfo.renderArea.extent = m_swapChainUnit->m_swapChainExtent2D;
+		renderPassInfo.renderArea.extent = m_swapChainUnit->swapChainExtent2D;
 
-		//set viewport and scrissor for each cmd buffer
-		vkCmdSetScissor(m_commandUnit->m_swapChainCommandBuffers[i], 0, 1, &scissor);
-		vkCmdSetViewport(m_commandUnit->m_swapChainCommandBuffers[i], 0,1, &viewport);
-
-
-		std::array<VkClearValue, 2> clearValues = {};
-		clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
-		clearValues[1].depthStencil = { 1.0f, 0 };
-
-		renderPassInfo.clearValueCount = clearValues.size();
-		renderPassInfo.pClearValues = clearValues.data();
-
+		vkBeginCommandBuffer(m_commandUnit->m_swapChainCommandBuffers[i], &beginInfo);
 		vkCmdBeginRenderPass(m_commandUnit->m_swapChainCommandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-		vkCmdBindPipeline(m_commandUnit->m_swapChainCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
 
 
+		vkCmdBindDescriptorSets(m_commandUnit->m_swapChainCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
 		VkBuffer vertexBuffers[] = { mesh->vertexBuffer };
 		VkDeviceSize offsets[] = { 0 };
 		vkCmdBindVertexBuffers(m_commandUnit->m_swapChainCommandBuffers[i], 0, 1, vertexBuffers, offsets);
-
 		vkCmdBindIndexBuffer(m_commandUnit->m_swapChainCommandBuffers[i], mesh->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-		vkCmdBindDescriptorSets(m_commandUnit->m_swapChainCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
+		for (int j = 0; j < m_viewports.size(); j++)
+		{
+			vkCmdSetScissor(m_commandUnit->m_swapChainCommandBuffers[i], 0, 1, m_scrissors[j]);
+			vkCmdSetViewport(m_commandUnit->m_swapChainCommandBuffers[i], 0, 1, m_viewports[j]);
+			vkCmdBindPipeline(m_commandUnit->m_swapChainCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
+			vkCmdDrawIndexed(m_commandUnit->m_swapChainCommandBuffers[i], mesh->indices.size(), 1, 0, 0, 0);
 
-		vkCmdDrawIndexed(m_commandUnit->m_swapChainCommandBuffers[i], mesh->indices.size(), 1, 0, 0, 0);
+		}
+
+
 
 		vkCmdEndRenderPass(m_commandUnit->m_swapChainCommandBuffers[i]);
+
 		VkResult result = vkEndCommandBuffer(m_commandUnit->m_swapChainCommandBuffers[i]);
 		if (result != VK_SUCCESS) {
-			throw std::runtime_error("Command buffer recording failed. Reason: "+VkResultToString(result));
+			throw std::runtime_error("Command buffer recording failed. Reason: " + VkResultToString(result));
 		}
+
+
+
+
+
+		
 	}
 
 	
 }
 
-void Vk::VulkanRenderUnit::PresentFrame() {
+void Vulkan::VulkanRenderUnit::PresentFrame() {
 	uint32_t imageIndex;
 	auto device = m_devicePtr->Get();
 	VkResult result = vkAcquireNextImageKHR(device, m_swapChainUnit->m_swapChain, std::numeric_limits<uint64_t>::max(), m_frameAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
@@ -621,7 +620,7 @@ void Vk::VulkanRenderUnit::PresentFrame() {
 		return;
 	}
 	else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
-		throw std::runtime_error("Failed to acquire next swapchain image. Reason: " + Vk::VkResultToString(result));
+		throw std::runtime_error("Failed to acquire next swapchain image. Reason: " + Vulkan::VkResultToString(result));
 
 	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -642,7 +641,7 @@ void Vk::VulkanRenderUnit::PresentFrame() {
 	result = vkQueueSubmit(m_deviceQueues.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
 
 	if (result != VK_SUCCESS)
-		throw std::runtime_error("Unable to submit draw command buffer. Reason: " + Vk::VkResultToString(result));
+		throw std::runtime_error("Unable to submit draw command buffer. Reason: " + Vulkan::VkResultToString(result));
 
 	VkPresentInfoKHR presentInfo = {};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -662,11 +661,11 @@ void Vk::VulkanRenderUnit::PresentFrame() {
 		//recreate swap chain
 	}
 	else if (result != VK_SUCCESS)
-		throw std::runtime_error("Unable to present swap chain image. Reason: " + Vk::VkResultToString(result));
+		throw std::runtime_error("Unable to present swap chain image. Reason: " + Vulkan::VkResultToString(result));
 
 }
 
-inline void Vk::VulkanRenderUnit::CreateDepthResources(VkFormat depthFormat,VkExtent2D swapChainExtent) {
+inline void Vulkan::VulkanRenderUnit::CreateDepthResources(VkFormat depthFormat,VkExtent2D swapChainExtent) {
 
 	m_depthImage = VulkanObjectContainer<VkImage>{ m_devicePtr,vkDestroyImage };
 	m_depthImageMemory = VulkanObjectContainer<VkDeviceMemory>{ m_devicePtr, vkFreeMemory };
@@ -685,7 +684,7 @@ inline void Vk::VulkanRenderUnit::CreateDepthResources(VkFormat depthFormat,VkEx
 
 }
 
-void Vk::VulkanRenderUnit::CreateTextureSampler(VulkanObjectContainer<VkSampler>& textureSampler)
+void Vulkan::VulkanRenderUnit::CreateTextureSampler(VulkanObjectContainer<VkSampler>& textureSampler)
 {
 	textureSampler = VulkanObjectContainer<VkSampler>{ m_devicePtr,vkDestroySampler };
 	VkSamplerCreateInfo samplerInfo = {};
@@ -705,13 +704,13 @@ void Vk::VulkanRenderUnit::CreateTextureSampler(VulkanObjectContainer<VkSampler>
 
 	VkResult result = vkCreateSampler(m_devicePtr->Get(), &samplerInfo, nullptr, ++textureSampler);
 	if (result != VK_SUCCESS)
-		throw std::runtime_error("Unable to create texture sampler. Reason: "+ Vk::VkResultToString(result));
+		throw std::runtime_error("Unable to create texture sampler. Reason: "+ Vulkan::VkResultToString(result));
 }
 
-void Vk::VulkanRenderUnit::CreateUniformBuffer() {
+void Vulkan::VulkanRenderUnit::CreateUniformBuffer() {
 	
 	//Vertex shader UBO
-	VkDeviceSize bufferSize = sizeof(Vk::UniformBufferObject);
+	VkDeviceSize bufferSize = sizeof(Vulkan::UniformBufferObject);
 
 	uniformStagingBuffer = VulkanObjectContainer<VkBuffer>{m_devicePtr,vkDestroyBuffer};
 	uniformStagingBufferMemory = VulkanObjectContainer<VkDeviceMemory>{ m_devicePtr,vkFreeMemory };
@@ -729,7 +728,7 @@ void Vk::VulkanRenderUnit::CreateUniformBuffer() {
 	}
 
 	//lights UBO
-	bufferSize = sizeof(Vk::LightingUniformBuffer);
+	bufferSize = sizeof(Vulkan::LightingUniformBuffer);
 
 	lightsUniformStagingBuffer = VulkanObjectContainer<VkBuffer>{ m_devicePtr,vkDestroyBuffer };
 	lightsUniformStagingBufferMemory = VulkanObjectContainer<VkDeviceMemory>{ m_devicePtr,vkFreeMemory };
@@ -744,9 +743,10 @@ void Vk::VulkanRenderUnit::CreateUniformBuffer() {
 	{
 		throw e;
 	}
+
 }
 
-void Vk::VulkanRenderUnit::CreateDescriptorPool()
+void Vulkan::VulkanRenderUnit::CreateDescriptorPool()
 {
 	std::array<VkDescriptorPoolSize, 3> poolSizes = {};
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -762,14 +762,14 @@ void Vk::VulkanRenderUnit::CreateDescriptorPool()
 	poolCI.pPoolSizes = poolSizes.data();
 	poolCI.maxSets = 1;
 
-	descriptorPool = Vk::VulkanObjectContainer<VkDescriptorPool>{ m_devicePtr,vkDestroyDescriptorPool };
+	descriptorPool = Vulkan::VulkanObjectContainer<VkDescriptorPool>{ m_devicePtr,vkDestroyDescriptorPool };
 	VkResult result = vkCreateDescriptorPool(m_devicePtr->Get(), &poolCI, nullptr, ++descriptorPool);
 
 	if (result != VK_SUCCESS)
-		throw std::runtime_error("Unable to create descriptor pool. Reason: "+ Vk::VkResultToString(result));
+		throw std::runtime_error("Unable to create descriptor pool. Reason: "+ Vulkan::VkResultToString(result));
 }
 
-void Vk::VulkanRenderUnit::CreateDescriptorSetLayout()
+void Vulkan::VulkanRenderUnit::CreateDescriptorSetLayout()
 {
 	VkDescriptorSetLayoutBinding UBODescSetLB = {};
 	UBODescSetLB.binding = 0;
@@ -798,16 +798,15 @@ void Vk::VulkanRenderUnit::CreateDescriptorSetLayout()
 	descSetLayoutCI.bindingCount = bindings.size();
 	descSetLayoutCI.pBindings = bindings.data();
 
-	m_descSetLayout = Vk::VulkanObjectContainer<VkDescriptorSetLayout>{ m_devicePtr, vkDestroyDescriptorSetLayout };
+	m_descSetLayout = Vulkan::VulkanObjectContainer<VkDescriptorSetLayout>{ m_devicePtr, vkDestroyDescriptorSetLayout };
 	
 	VkResult result = vkCreateDescriptorSetLayout(m_devicePtr->Get(), &descSetLayoutCI, nullptr, ++m_descSetLayout);
 	if (result != VK_SUCCESS)
-		throw std::runtime_error("Unable to create descriptor set layout. Reason: "+ Vk::VkResultToString(result));
+		throw std::runtime_error("Unable to create descriptor set layout. Reason: "+ Vulkan::VkResultToString(result));
 }
 
-void Vk::VulkanRenderUnit::CreateDescriptorSets(VkImageView textureImageView)
+void Vulkan::VulkanRenderUnit::CreateDescriptorSets()
 {
-
 	VkDescriptorSetLayout layouts[] = { m_descSetLayout };
 	VkDescriptorSetAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -819,7 +818,13 @@ void Vk::VulkanRenderUnit::CreateDescriptorSets(VkImageView textureImageView)
 
 	VkResult result = vkAllocateDescriptorSets(device, &allocInfo, &descriptorSet);
 	if (result != VK_SUCCESS)
-		throw std::runtime_error("Unable to allocate descriptor set. Reason: "+ Vk::VkResultToString(result));
+		throw std::runtime_error("Unable to allocate descriptor set. Reason: " + Vulkan::VkResultToString(result));
+
+}
+
+void Vulkan::VulkanRenderUnit::WriteDescriptorSets(VkImageView textureImageView)
+{
+	auto device = m_devicePtr->Get();
 
 	VkDescriptorBufferInfo vertexUniformBufferInfo = {};
 	vertexUniformBufferInfo.buffer = uniformBuffer;
@@ -866,10 +871,10 @@ void Vk::VulkanRenderUnit::CreateDescriptorSets(VkImageView textureImageView)
 }
 
 //needs to be modified to create semaphores one by one
-void Vk::VulkanRenderUnit::CreateSemaphores()
+void Vulkan::VulkanRenderUnit::CreateSemaphores()
 {
-	m_frameAvailableSemaphore = Vk::VulkanObjectContainer<VkSemaphore>{ m_devicePtr,vkDestroySemaphore };
-	m_framePresentedSemaphore = Vk::VulkanObjectContainer<VkSemaphore>{ m_devicePtr,vkDestroySemaphore };
+	m_frameAvailableSemaphore = Vulkan::VulkanObjectContainer<VkSemaphore>{ m_devicePtr,vkDestroySemaphore };
+	m_framePresentedSemaphore = Vulkan::VulkanObjectContainer<VkSemaphore>{ m_devicePtr,vkDestroySemaphore };
 
 	VkSemaphoreCreateInfo semaphoreInfo = {};
 	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -879,22 +884,22 @@ void Vk::VulkanRenderUnit::CreateSemaphores()
 	auto device = m_devicePtr->Get();
 	VkResult result = vkCreateSemaphore(device, &semaphoreInfo, nullptr, ++m_frameAvailableSemaphore);
 	if (result != VK_SUCCESS)
-		throw std::runtime_error("Unable to create semaphore. Reason: "+Vk::VkResultToString(result));
+		throw std::runtime_error("Unable to create semaphore. Reason: "+Vulkan::VkResultToString(result));
 	result = vkCreateSemaphore(device, &semaphoreInfo, nullptr, ++m_framePresentedSemaphore);
 	if (result != VK_SUCCESS)
-		throw std::runtime_error("Unable to create semaphore. Reason: " + Vk::VkResultToString(result));
+		throw std::runtime_error("Unable to create semaphore. Reason: " + Vulkan::VkResultToString(result));
 }
 
-void Vk::VulkanRenderUnit::UpdateStaticUniformBuffer(float time) {
+void Vulkan::VulkanRenderUnit::UpdateStaticUniformBuffer(float time) {
 
-	auto swapChainExtent = m_swapChainUnit->m_swapChainExtent2D;
+	auto swapChainExtent = m_swapChainUnit->swapChainExtent2D;
 	//just a simple derpy thing
 	rotationAngle+=2*time;
 	if (rotationAngle >= 360)
 		rotationAngle -= 360;
 	//nothing to see here X_X 
 
-	Vk::UniformBufferObject ubo = {};
+	Vulkan::UniformBufferObject ubo = {};
 	ubo.model = glm::rotate(glm::mat4(), glm::radians(rotationAngle), glm::vec3(0.0f, 1.0f, 0.0f));
 	ubo.model = glm::translate(ubo.model, glm::vec3(0, 0, 0));
 	ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, -1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -918,7 +923,7 @@ void Vk::VulkanRenderUnit::UpdateStaticUniformBuffer(float time) {
 	}
 	data = nullptr;
 
-	Vk::LightingUniformBuffer lightsUbo = {};
+	Vulkan::LightingUniformBuffer lightsUbo = {};
 	lightsUbo.ambientLightColor = glm::vec4(0.5, 0.5, 0.5, 0.05);
 	lightsUbo.perFragmentLightPos[0] = glm::vec4(0.0, -1.0, 0.0, 1.0); // Note to self : world up is -y in Vulkan  >_<
 	lightsUbo.perFragmentLightPos[1] = glm::vec4(0.0, 0.0, 1.0, 1.0);
@@ -949,5 +954,12 @@ void Vk::VulkanRenderUnit::UpdateStaticUniformBuffer(float time) {
 		throw e;
 	}
 
+}
+
+size_t Vulkan::VulkanRenderUnit::AddCamera(VkViewport * viewport, VkRect2D * scissor)
+{
+	m_viewports.push_back(viewport);
+	m_scrissors.push_back(scissor);
+	return m_viewports.size() - 1;
 }
 

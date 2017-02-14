@@ -6,7 +6,7 @@
 
 
 struct aiScene;
-namespace Vk
+namespace Vulkan
 {
 
 	class VulkanRenderUnit;

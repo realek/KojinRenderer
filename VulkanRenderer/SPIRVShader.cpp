@@ -1,11 +1,11 @@
 #include "SPIRVShader.h"
 
-std::vector<char> Vk::SPIRVShader::GetVertCode()
+std::vector<char> Vulkan::SPIRVShader::GetVertCode()
 {
 	return m_vertShaderCode;
 }
 
-std::vector<char> Vk::SPIRVShader::GetFragCode()
+std::vector<char> Vulkan::SPIRVShader::GetFragCode()
 {
 	return m_fragShaderCode;
 }

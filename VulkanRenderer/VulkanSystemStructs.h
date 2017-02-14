@@ -6,7 +6,7 @@
 #include <glm\vec3.hpp>
 #include <glm\vec4.hpp>
 #include <glm\matrix.hpp>
-namespace Vk
+namespace Vulkan
 {
 
 	static std::string VkResultToString(VkResult errorCode)
@@ -192,6 +192,13 @@ namespace Vk
 
 			return attributeDescriptions;
 		}
+	};
+
+	struct CameraUniformBufferObject
+	{
+		glm::mat4 view;
+		glm::mat4 projection;
+		glm::mat4 viewProjection;
 	};
 
 	struct UniformBufferObject

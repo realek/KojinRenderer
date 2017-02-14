@@ -1,6 +1,6 @@
 #include "VulkanCommandUnit.h"
 
-void Vk::VulkanCommandUnit::Initialize(VulkanSystem * system)
+void Vulkan::VulkanCommandUnit::Initialize(VulkanSystem * system)
 {
 	m_devicePtr = system->GetCurrentLogical();
 	auto pDevice = system->GetCurrentPhysical(); // need?
@@ -17,7 +17,7 @@ void Vk::VulkanCommandUnit::Initialize(VulkanSystem * system)
 	this->m_graphicsQueue = system->GetQueues().graphicsQueue;
 }
 
-void Vk::VulkanCommandUnit::CreateSwapChainCommandBuffers(uint32_t count)
+void Vulkan::VulkanCommandUnit::CreateSwapChainCommandBuffers(uint32_t count)
 {
 	auto device = m_devicePtr->Get();
 	if (m_swapChainCommandBuffers.size() > 0) {
@@ -31,7 +31,6 @@ void Vk::VulkanCommandUnit::CreateSwapChainCommandBuffers(uint32_t count)
 	allocInfo.commandPool = m_commandPool;
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	allocInfo.commandBufferCount = count;
-
 	m_swapChainCommandBuffers.resize(count);
 
 	if (vkAllocateCommandBuffers(device, &allocInfo, m_swapChainCommandBuffers.data()) != VK_SUCCESS) {
@@ -39,7 +38,7 @@ void Vk::VulkanCommandUnit::CreateSwapChainCommandBuffers(uint32_t count)
 	}
 }
 
-VkCommandBuffer Vk::VulkanCommandUnit::BeginOneTimeCommand() {
+VkCommandBuffer Vulkan::VulkanCommandUnit::BeginOneTimeCommand() {
 
 	VkCommandBuffer commandBuffer;
 
@@ -59,7 +58,7 @@ VkCommandBuffer Vk::VulkanCommandUnit::BeginOneTimeCommand() {
 	return commandBuffer;
 }
 
-void Vk::VulkanCommandUnit::EndOneTimeCommand(VkCommandBuffer & commandBuffer) {
+void Vulkan::VulkanCommandUnit::EndOneTimeCommand(VkCommandBuffer & commandBuffer) {
 	
 	VkResult result;
 
@@ -71,7 +70,7 @@ void Vk::VulkanCommandUnit::EndOneTimeCommand(VkCommandBuffer & commandBuffer) {
 
 	result = vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
 	if (result != VK_SUCCESS)
-		throw std::runtime_error("Unable to submit one time command cmd buffer. Reason" + Vk::VkResultToString(result));
+		throw std::runtime_error("Unable to submit one time command cmd buffer. Reason" + Vulkan::VkResultToString(result));
 	vkQueueWaitIdle(m_graphicsQueue);
 
 	vkFreeCommandBuffers(m_devicePtr->Get(), m_commandPool, 1, &commandBuffer);

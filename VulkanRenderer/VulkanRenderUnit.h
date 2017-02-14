@@ -1,33 +1,36 @@
 #pragma once
 #include <memory>
 #include "VulkanCommandUnit.h"
-namespace Vk 
+#include "VulkanImageUnit.h"
+
+namespace Vulkan 
 {
 	class SPIRVShader;
 	class Texture2D;
 	class Mesh;
 	class VulkanRenderUnit
 	{
+	
 	public:
 		void Initialize(VulkanSystem * system, SPIRVShader * shader);
-		void CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, Vk::VulkanObjectContainer<VkImageView>& imageView);
-		void CreateImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, Vk::VulkanObjectContainer<VkImage>& image, Vk::VulkanObjectContainer<VkDeviceMemory>& imageMemory);
+		void CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, Vulkan::VulkanObjectContainer<VkImageView>& imageView);
+		void CreateImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, Vulkan::VulkanObjectContainer<VkImage>& image, Vulkan::VulkanObjectContainer<VkDeviceMemory>& imageMemory);
 		void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
 		void CopyImage(VkImage source, VkImage destination, uint32_t width, uint32_t height);
-		void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, Vk::VulkanObjectContainer<VkBuffer>& buffer, Vk::VulkanObjectContainer<VkDeviceMemory>& bufferMemory);
+		void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, Vulkan::VulkanObjectContainer<VkBuffer>& buffer, Vulkan::VulkanObjectContainer<VkDeviceMemory>& bufferMemory);
 		void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
-		void Render(Vk::Texture2D * texture, Vk::Mesh * mesh);
+		void Render(Vulkan::Texture2D * texture, Vulkan::Mesh * mesh);
 		void PresentFrame();
 		//Dummy uniform update function
 		void UpdateStaticUniformBuffer(float time);
-
-
+		static size_t AddCamera(VkViewport * viewport, VkRect2D * scissor);
 		~VulkanRenderUnit();
 	private:
+		bool m_initialized = false;
 		SPIRVShader * m_defaultShader;
 		VkPhysicalDevice m_currentPhysicalDevice;
-		std::shared_ptr<Vk::VulkanCommandUnit> m_commandUnit;
-		std::shared_ptr<Vk::VulkanSwapChainUnit> m_swapChainUnit;
+		std::shared_ptr<Vulkan::VulkanCommandUnit> m_commandUnit;
+		std::shared_ptr<Vulkan::VulkanSwapChainUnit> m_swapChainUnit;
 		VulkanObjectContainer<VkDevice> * m_devicePtr;
 		VkFormat m_currentImageFormat;
 		VulkanObjectContainer<VkRenderPass> m_renderPass;
@@ -39,6 +42,14 @@ namespace Vk
 		VulkanObjectContainer<VkImageView> m_depthImageView;
 		VulkanObjectContainer<VkSampler> m_defaultSampler;
 		VkQueueContainer m_deviceQueues;
+
+		//camera uniform buffers
+		VulkanObjectContainer<VkBuffer> cameraUniformStagingBuffer;
+		VulkanObjectContainer<VkDeviceMemory> cameraUniformStagingBufferMemory;
+		VulkanObjectContainer<VkBuffer> cameraUniformBuffer;
+		VulkanObjectContainer<VkDeviceMemory> cameraUniformBufferMemory;
+
+
 		//temp uniform object impl
 		VulkanObjectContainer<VkBuffer> uniformStagingBuffer;
 		VulkanObjectContainer<VkDeviceMemory> uniformStagingBufferMemory;
@@ -49,7 +60,7 @@ namespace Vk
 		VulkanObjectContainer<VkDeviceMemory> lightsUniformStagingBufferMemory;
 		VulkanObjectContainer<VkBuffer> lightsUniformBuffer;
 		VulkanObjectContainer<VkDeviceMemory> lightsUniformBufferMemory;
-		//descriptor pool for ubo
+		
 		VulkanObjectContainer<VkDescriptorPool> descriptorPool;
 		VkDescriptorSet descriptorSet;
 		//semaphores
@@ -61,6 +72,8 @@ namespace Vk
 		
 	private:
 
+		static std::vector<VkViewport*> m_viewports;
+		static std::vector<VkRect2D*> m_scrissors;
 		void CreateRenderPass(VkFormat & desiredFormat);
 		void CreateDescriptorSetLayout();
 		void CreateGraphicsPipeline(VkExtent2D & swapChainExtent);
@@ -74,8 +87,8 @@ namespace Vk
 		//temp functions
 		void CreateUniformBuffer();
 		void CreateDescriptorPool();
-
-		void CreateDescriptorSets(VkImageView textureImageView);
+		void CreateDescriptorSets();
+		void WriteDescriptorSets(VkImageView textureImageView);
 		void CreateSemaphores();
 
 	};

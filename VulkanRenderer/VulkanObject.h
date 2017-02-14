@@ -5,7 +5,7 @@
 #endif
 #include <vulkan\vulkan.h>
 
-namespace Vk
+namespace Vulkan
 {
 	template <typename T>
 	class VulkanObjectContainer

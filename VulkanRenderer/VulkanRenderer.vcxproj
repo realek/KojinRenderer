@@ -156,11 +156,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="KojinCamera.cpp" />
     <ClCompile Include="KojinRenderer.cpp" />
+    <ClCompile Include="Material.cpp" />
     <ClCompile Include="SPIRVShader.cpp" />
     <ClCompile Include="Texture2D.cpp" />
     <ClCompile Include="Mesh.cpp" />
     <ClCompile Include="VulkanCommandUnit.cpp" />
+    <ClCompile Include="VulkanImageUnit.cpp" />
     <ClCompile Include="VulkanRenderUnit.cpp" />
     <ClCompile Include="VulkanSwapChainUnit.cpp" />
     <ClCompile Include="VulkanSystem.cpp" />
@@ -168,15 +171,18 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Allocation.h" />
+    <ClInclude Include="KojinCamera.h" />
     <ClInclude Include="KojinRenderer.h" />
     <ClInclude Include="Debug.h" />
     <ClInclude Include="Filesystem.h" />
     <ClInclude Include="Gamepad.h" />
     <ClInclude Include="Keyboard.h" />
+    <ClInclude Include="Material.h" />
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="Mouse.h" />
     <ClInclude Include="SPIRVShader.h" />
     <ClInclude Include="Texture2D.h" />
+    <ClInclude Include="VulkanImageUnit.h" />
     <ClInclude Include="VulkanSystemStructs.h" />
     <ClInclude Include="VulkanCommandUnit.h" />
     <ClInclude Include="VulkanObject.h" />
@@ -184,6 +190,7 @@
     <ClInclude Include="VulkanShaderAssembly.h" />
     <ClInclude Include="VulkanSwapChainUnit.h" />
     <ClInclude Include="VulkanSystem.h" />
+    <ClInclude Include="VulkanUtils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -75,30 +75,17 @@ int main()
 		assert(window != nullptr);
 	}
 
-
-
-
 	int appVer[3] = { 1,0,0 };
-	//int engVer[3] = { 1,0,0 };
 
-	//Vk::VulkanSystem * baseSystem = nullptr;
-	//Vk::VulkanRenderUnit * renderUnit = nullptr;
-	//auto vertShaderCode = FileSystem::ReadBinaryFile("shaders/vert.spv");
-	//auto fragShaderCode = FileSystem::ReadBinaryFile("shaders/frag.spv");
-	//Vk::SPIRVShader baseShader(vertShaderCode,fragShaderCode);
-	Vk::KojinRenderer * renderer = nullptr;
-	Vk::Texture2D * tex = nullptr;
-	Vk::Mesh * mesh = nullptr;
+	Vulkan::KojinRenderer * renderer = nullptr;
+	Vulkan::Texture2D * tex = nullptr;
+	Vulkan::Mesh * mesh = nullptr;
 	try
 	{
-		//baseSystem = new Vk::VulkanSystem{ window,"My vulkan App",appVer,"My vulkan Engine",engVer };
-		//baseSystem->Initialize(-1, nullptr, width, height);
-		//renderUnit = new Vk::VulkanRenderUnit();
-		//renderUnit->Initialize(baseSystem,&baseShader);
-		renderer = new Vk::KojinRenderer{window,"Vulkan Tester",appVer};
-		tex = Vk::Texture2D::CreateFromFile("textures/model.png");
+		renderer = new Vulkan::KojinRenderer{window,"Vulkan Tester",appVer};
+		tex = Vulkan::Texture2D::CreateFromFile("textures/model.png");
 		//tex = Vk::Texture2D::GetWhiteTexture();
-		mesh = Vk::Mesh::LoadMesh("models/model.obj");
+		mesh = Vulkan::Mesh::LoadMesh("models/model.obj");
 	}
 	catch(std::runtime_error e)
 	{

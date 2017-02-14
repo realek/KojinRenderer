@@ -6,7 +6,7 @@
 #include <string>
 #include <set>
 
-Vk::VulkanSystem::VulkanSystem(SDL_Window * window, const char * appName, int appVer[3], const char * engineName, int engineVer[3])
+Vulkan::VulkanSystem::VulkanSystem(SDL_Window * window, const char * appName, int appVer[3], const char * engineName, int engineVer[3])
 {
 
 	if (window == nullptr)
@@ -30,7 +30,7 @@ Vk::VulkanSystem::VulkanSystem(SDL_Window * window, const char * appName, int ap
 
 }
 
-void Vk::VulkanSystem::Initialize(int physicalDeviceId, VkPhysicalDeviceRequiredQueues * queues, int screenWidth, int screenHeight)
+void Vulkan::VulkanSystem::Initialize(int physicalDeviceId, VkPhysicalDeviceRequiredQueues * queues, int screenWidth, int screenHeight)
 {
 	this->CreateLogicalDeviceFromSelectedPhysicalDevice(physicalDeviceId,queues);
 	this->m_width = screenWidth;
@@ -38,48 +38,55 @@ void Vk::VulkanSystem::Initialize(int physicalDeviceId, VkPhysicalDeviceRequired
 	//this->CreateSwapChain(screenWidth, screenHeight);
 
 }
-void Vk::VulkanSystem::GetScreenSizes(int & width, int & height)
+void Vulkan::VulkanSystem::GetScreenSizes(int & width, int & height)
 {
 	width = this->m_width;
 	height = this->m_height;
 }
-Vk::VulkanObjectContainer<VkDevice> * Vk::VulkanSystem::GetCurrentLogical()
+Vulkan::VulkanObjectContainer<VkDevice> * Vulkan::VulkanSystem::GetCurrentLogical()
 {
 	return &m_currentLogicalDevice;
 }
 
-const VkPhysicalDevice Vk::VulkanSystem::GetCurrentPhysical()
+const VkPhysicalDevice Vulkan::VulkanSystem::GetCurrentPhysical()
 {
 	return m_selectedPhysicalDevice;
 }
 
+const VkPhysicalDeviceProperties Vulkan::VulkanSystem::GetCurrentPhysicalProperties()
+{
+	VkPhysicalDeviceProperties deviceProperties;
+	vkGetPhysicalDeviceProperties(m_selectedPhysicalDevice, &deviceProperties);
+	return deviceProperties;
+}
 
-const Vk::VulkanObjectContainer<VkInstance> * Vk::VulkanSystem::GetInstance()
+
+const Vulkan::VulkanObjectContainer<VkInstance> * Vulkan::VulkanSystem::GetInstance()
 {
 	return &m_vulkanInstance;
 }
 
-const VkSurfaceKHR Vk::VulkanSystem::GetSurface() const
+const VkSurfaceKHR Vulkan::VulkanSystem::GetSurface() const
 {
 	return m_vulkanSurface;
 }
 
-const Vk::VkQueueFamilyIDs Vk::VulkanSystem::GetQueueFamilies() const
+const Vulkan::VkQueueFamilyIDs Vulkan::VulkanSystem::GetQueueFamilies() const
 {
 	return m_selectedPhysicalDeviceQueueIds;
 }
 
-const Vk::VkQueueContainer Vk::VulkanSystem::GetQueues() const
+const Vulkan::VkQueueContainer Vulkan::VulkanSystem::GetQueues() const
 {
 	return m_currentLogicalDeviceQueues;
 }
 
-const Vk::VkSwapChainSupportData * Vk::VulkanSystem::GetSwapChainSupportData()
+const Vulkan::VkSwapChainSupportData * Vulkan::VulkanSystem::GetSwapChainSupportData()
 {
 	return &m_selectedPhysicalDeviceSCData;
 }
 
-const VkFormat Vk::VulkanSystem::GetDepthFormat() const
+const VkFormat Vulkan::VulkanSystem::GetDepthFormat() const
 {
 	for (VkFormat format : k_depthFormats) {
 		VkFormatProperties props;
@@ -99,7 +106,7 @@ const VkFormat Vk::VulkanSystem::GetDepthFormat() const
 
 
 
-bool Vk::VulkanSystem::ReportValidationLayers()
+bool Vulkan::VulkanSystem::ReportValidationLayers()
 {
 	uint32_t layerCount = 0;
 	vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
@@ -126,7 +133,7 @@ bool Vk::VulkanSystem::ReportValidationLayers()
 
 }
 
-const std::vector<const char*> Vk::VulkanSystem::GetExtensions()
+const std::vector<const char*> Vulkan::VulkanSystem::GetExtensions()
 {
 	std::vector<const char*> extensions;
 	extensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
@@ -144,7 +151,7 @@ const std::vector<const char*> Vk::VulkanSystem::GetExtensions()
 	return extensions;
 }
 
-void Vk::VulkanSystem::CreateVulkanInstance(const VkApplicationInfo * appInfo)
+void Vulkan::VulkanSystem::CreateVulkanInstance(const VkApplicationInfo * appInfo)
 {
 	if (enableValidationLayers && !ReportValidationLayers())
 		throw std::runtime_error("Reported validation layers did not match, requested layers");
@@ -166,7 +173,7 @@ void Vk::VulkanSystem::CreateVulkanInstance(const VkApplicationInfo * appInfo)
 		throw std::runtime_error("Unable to create Vulkan instance.");
 }
 
-void Vk::VulkanSystem::CreateVulkanSurface(SDL_Window* window)
+void Vulkan::VulkanSystem::CreateVulkanSurface(SDL_Window* window)
 {
 	if (m_vulkanInstance.Get() == VK_NULL_HANDLE)
 		throw std::runtime_error("Vulkan instance was not created. Aborting...");
@@ -190,7 +197,7 @@ void Vk::VulkanSystem::CreateVulkanSurface(SDL_Window* window)
 
 }
 
-inline void Vk::VulkanSystem::GetPhysicalDevices()
+inline void Vulkan::VulkanSystem::GetPhysicalDevices()
 {
 	uint32_t count = 0;
 	vkEnumeratePhysicalDevices(m_vulkanInstance, &count, nullptr);
@@ -202,7 +209,7 @@ inline void Vk::VulkanSystem::GetPhysicalDevices()
 	vkEnumeratePhysicalDevices(m_vulkanInstance, &count, systemDevices.data());
 }
 
-Vk::VkQueueFamilyIDs Vk::VulkanSystem::GetPhysicalDeviceQueueFamilies(const VkPhysicalDevice device, VkPhysicalDeviceRequiredQueues * reqs)
+Vulkan::VkQueueFamilyIDs Vulkan::VulkanSystem::GetPhysicalDeviceQueueFamilies(const VkPhysicalDevice device, VkPhysicalDeviceRequiredQueues * reqs)
 {
 	VkQueueFamilyIDs indices;
 
@@ -246,7 +253,7 @@ Vk::VkQueueFamilyIDs Vk::VulkanSystem::GetPhysicalDeviceQueueFamilies(const VkPh
 
 }
 
-bool Vk::VulkanSystem::CheckPhysicalDeviceExtensions(const VkPhysicalDevice device)
+bool Vulkan::VulkanSystem::CheckPhysicalDeviceExtensions(const VkPhysicalDevice device)
 {
 	uint32_t extCount;
 	vkEnumerateDeviceExtensionProperties(device, nullptr, &extCount, nullptr);
@@ -263,7 +270,7 @@ bool Vk::VulkanSystem::CheckPhysicalDeviceExtensions(const VkPhysicalDevice devi
 	return reqExts.empty();
 }
 
-Vk::VkSwapChainSupportData Vk::VulkanSystem::GetPhysicalDeviceSwapChainSupport(const VkPhysicalDevice device)
+Vulkan::VkSwapChainSupportData Vulkan::VulkanSystem::GetPhysicalDeviceSwapChainSupport(const VkPhysicalDevice device)
 {
 	VkSwapChainSupportData data;
 
@@ -289,7 +296,7 @@ Vk::VkSwapChainSupportData Vk::VulkanSystem::GetPhysicalDeviceSwapChainSupport(c
 	return data;
 }
 
-inline void Vk::VulkanSystem::CreateLogicalDeviceFromSelectedPhysicalDevice(int physicalDeviceId, VkPhysicalDeviceRequiredQueues * reqQueues)
+inline void Vulkan::VulkanSystem::CreateLogicalDeviceFromSelectedPhysicalDevice(int physicalDeviceId, VkPhysicalDeviceRequiredQueues * reqQueues)
 {
 	VkPhysicalDeviceRequiredQueues * required = &m_defaultRequiredQueues;
 	if (reqQueues != nullptr)
@@ -318,7 +325,6 @@ inline void Vk::VulkanSystem::CreateLogicalDeviceFromSelectedPhysicalDevice(int 
 
 		if (m_selectedPhysicalDevice == VK_NULL_HANDLE)
 			throw std::runtime_error("No suitable GPU was detected on the system.");
-
 
 		std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 		std::set<uint32_t> uniqueQueueFamilies = { m_selectedPhysicalDeviceQueueIds.graphicsFamily, m_selectedPhysicalDeviceQueueIds.presentFamily };

@@ -1,8 +1,10 @@
 #define NOMINMAX
 #include "VulkanSwapChainUnit.h"
 
+VkFormat Vulkan::VulkanSwapChainUnit::swapChainImageFormat;
+VkExtent2D Vulkan::VulkanSwapChainUnit::swapChainExtent2D;
 
-void Vk::VulkanSwapChainUnit::Initialize(VulkanSystem * system, bool vSync)
+void Vulkan::VulkanSwapChainUnit::Initialize(VulkanSystem * system, bool vSync)
 {
 	m_vSync = vSync;
 	auto device = system->GetCurrentLogical();
@@ -22,9 +24,9 @@ void Vk::VulkanSwapChainUnit::Initialize(VulkanSystem * system, bool vSync)
 	CreateSwapChainImageViews(device);
 }
 
-void Vk::VulkanSwapChainUnit::CreateSwapChainFrameBuffers(Vk::VulkanObjectContainer<VkDevice> * device,Vk::VulkanObjectContainer<VkImageView> * depthImageView, Vk::VulkanObjectContainer<VkRenderPass> * renderPass)
+void Vulkan::VulkanSwapChainUnit::CreateSwapChainFrameBuffers(Vulkan::VulkanObjectContainer<VkDevice> * device,Vulkan::VulkanObjectContainer<VkImageView> * depthImageView, Vulkan::VulkanObjectContainer<VkRenderPass> * renderPass)
 {
-	m_swapChainFB.resize(m_swapChainIV.size(), Vk::VulkanObjectContainer<VkFramebuffer>{device, vkDestroyFramebuffer});
+	m_swapChainFB.resize(m_swapChainIV.size(), Vulkan::VulkanObjectContainer<VkFramebuffer>{device, vkDestroyFramebuffer});
 
 	for (size_t i = 0; i < m_swapChainIV.size(); i++) {
 		std::array<VkImageView, 2> attachments = {
@@ -37,8 +39,8 @@ void Vk::VulkanSwapChainUnit::CreateSwapChainFrameBuffers(Vk::VulkanObjectContai
 		framebufferInfo.renderPass = renderPass->Get();
 		framebufferInfo.attachmentCount = attachments.size();
 		framebufferInfo.pAttachments = attachments.data();
-		framebufferInfo.width = m_swapChainExtent2D.width;
-		framebufferInfo.height = m_swapChainExtent2D.height;
+		framebufferInfo.width = swapChainExtent2D.width;
+		framebufferInfo.height = swapChainExtent2D.height;
 		framebufferInfo.layers = 1;
 
 		if (vkCreateFramebuffer(device->Get(), &framebufferInfo, nullptr, ++(m_swapChainFB[i])) != VK_SUCCESS) {
@@ -47,7 +49,7 @@ void Vk::VulkanSwapChainUnit::CreateSwapChainFrameBuffers(Vk::VulkanObjectContai
 	}
 }
 
-inline VkSurfaceFormatKHR Vk::VulkanSwapChainUnit::GetSupportedSurfaceFormat(const std::vector<VkSurfaceFormatKHR>* surfaceFormats)
+inline VkSurfaceFormatKHR Vulkan::VulkanSwapChainUnit::GetSupportedSurfaceFormat(const std::vector<VkSurfaceFormatKHR>* surfaceFormats)
 {
 	if (surfaceFormats->size() == 1 && surfaceFormats->at(0).format == VK_FORMAT_UNDEFINED)
 		return{ VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
@@ -59,7 +61,7 @@ inline VkSurfaceFormatKHR Vk::VulkanSwapChainUnit::GetSupportedSurfaceFormat(con
 	return surfaceFormats->at(0);
 }
 
-inline VkPresentModeKHR Vk::VulkanSwapChainUnit::GetSupportedPresentMode(const std::vector<VkPresentModeKHR>* presentModes)
+inline VkPresentModeKHR Vulkan::VulkanSwapChainUnit::GetSupportedPresentMode(const std::vector<VkPresentModeKHR>* presentModes)
 {
 	if (!m_vSync)
 	{
@@ -72,7 +74,7 @@ inline VkPresentModeKHR Vk::VulkanSwapChainUnit::GetSupportedPresentMode(const s
 	return VK_PRESENT_MODE_FIFO_KHR;
 }
 
-inline VkExtent2D Vk::VulkanSwapChainUnit::GetExtent2D(const VkSurfaceCapabilitiesKHR * capabilities, int width, int height)
+inline VkExtent2D Vulkan::VulkanSwapChainUnit::GetExtent2D(const VkSurfaceCapabilitiesKHR * capabilities, int width, int height)
 {
 
 	if (capabilities->currentExtent.width != std::numeric_limits<uint32_t>::max())
@@ -86,7 +88,7 @@ inline VkExtent2D Vk::VulkanSwapChainUnit::GetExtent2D(const VkSurfaceCapabiliti
 	}
 }
 
-void Vk::VulkanSwapChainUnit::CreateSwapChain(VkSurfaceKHR surface, VkDevice device, uint32_t minImageCount, uint32_t maxImageCount, VkSurfaceTransformFlagBitsKHR transformFlags,VkSurfaceFormatKHR & format, VkPresentModeKHR presentMode, VkExtent2D & extent2D, Vk::VkQueueFamilyIDs queueIds)
+void Vulkan::VulkanSwapChainUnit::CreateSwapChain(VkSurfaceKHR surface, VkDevice device, uint32_t minImageCount, uint32_t maxImageCount, VkSurfaceTransformFlagBitsKHR transformFlags,VkSurfaceFormatKHR & format, VkPresentModeKHR presentMode, VkExtent2D & extent2D, Vulkan::VkQueueFamilyIDs queueIds)
 {
 
 	minImageCount++;
@@ -132,14 +134,14 @@ void Vk::VulkanSwapChainUnit::CreateSwapChain(VkSurfaceKHR surface, VkDevice dev
 	m_swapChainI.resize(minImageCount);
 	vkGetSwapchainImagesKHR(device, m_swapChain, &minImageCount, m_swapChainI.data());
 
-	m_swapChainImageFormat = format.format;
-	m_swapChainExtent2D = extent2D;
+	VulkanSwapChainUnit::swapChainImageFormat = format.format;
+	VulkanSwapChainUnit::swapChainExtent2D = extent2D;
 
 
 
 }
 
-void Vk::VulkanSwapChainUnit::CreateSwapChainImageViews(Vk::VulkanObjectContainer<VkDevice> * device)
+void Vulkan::VulkanSwapChainUnit::CreateSwapChainImageViews(Vulkan::VulkanObjectContainer<VkDevice> * device)
 {
 	m_swapChainIV.resize(m_swapChainI.size(), VulkanObjectContainer<VkImageView>{device, vkDestroyImageView});
 	for (uint32_t i = 0; i < m_swapChainI.size(); i++) {
@@ -148,7 +150,7 @@ void Vk::VulkanSwapChainUnit::CreateSwapChainImageViews(Vk::VulkanObjectContaine
 		imageViewCI.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		imageViewCI.image = m_swapChainI[i];
 		imageViewCI.viewType = VK_IMAGE_VIEW_TYPE_2D;
-		imageViewCI.format = m_swapChainImageFormat;
+		imageViewCI.format = swapChainImageFormat;
 		imageViewCI.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
 		imageViewCI.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
 		imageViewCI.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;

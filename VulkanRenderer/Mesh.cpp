@@ -5,23 +5,23 @@
 #include <assimp/postprocess.h>
 #include <assimp/cimport.h>
 
-Vk::VulkanObjectContainer<VkDevice>* Vk::Mesh::devicePtr = nullptr;
-Vk::VulkanRenderUnit* Vk::Mesh::renderUnitPtr = nullptr;
-std::vector<Vk::Mesh*> Vk::Mesh::meshes;
+Vulkan::VulkanObjectContainer<VkDevice>* Vulkan::Mesh::devicePtr = nullptr;
+Vulkan::VulkanRenderUnit* Vulkan::Mesh::renderUnitPtr = nullptr;
+std::vector<Vulkan::Mesh*> Vulkan::Mesh::meshes;
 
 
 
 
-Vk::Mesh::Mesh() : vertCount(0)
+Vulkan::Mesh::Mesh() : vertCount(0)
 {
 }
 
-Vk::Mesh* Vk::Mesh::LoadMesh(const char * filename,int flags)
+Vulkan::Mesh* Vulkan::Mesh::LoadMesh(const char * filename,int flags)
 {
 	if (devicePtr == nullptr || renderUnitPtr == nullptr)
 		throw std::runtime_error("Render unit was not initialized.");
 
-	auto iMesh = new Vk::Mesh();
+	auto iMesh = new Vulkan::Mesh();
 
 	{
 		Assimp::Importer Importer;
@@ -97,12 +97,12 @@ Vk::Mesh* Vk::Mesh::LoadMesh(const char * filename,int flags)
 
 }
 
-Vk::Mesh::~Mesh()
+Vulkan::Mesh::~Mesh()
 {
 
 }
 
-inline void Vk::Mesh::BuildVertexBuffer() {
+inline void Vulkan::Mesh::BuildVertexBuffer() {
 	VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
 
 	VulkanObjectContainer<VkBuffer> stagingBuffer{ devicePtr, vkDestroyBuffer };
@@ -121,7 +121,7 @@ inline void Vk::Mesh::BuildVertexBuffer() {
 
 	renderUnitPtr->CopyBuffer(stagingBuffer, vertexBuffer, bufferSize);
 }
-inline void Vk::Mesh::BuildIndexBuffer()
+inline void Vulkan::Mesh::BuildIndexBuffer()
 {
 	VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
 
@@ -138,7 +138,7 @@ inline void Vk::Mesh::BuildIndexBuffer()
 
 	renderUnitPtr->CopyBuffer(stagingBuffer, indexBuffer, bufferSize);
 }
-void Vk::Mesh::CleanUp()
+void Vulkan::Mesh::CleanUp()
 {
 	if (meshes.size() > 0)
 	{
