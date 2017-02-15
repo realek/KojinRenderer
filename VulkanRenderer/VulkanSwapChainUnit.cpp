@@ -2,60 +2,181 @@
 #include "VulkanSwapChainUnit.h"
 #include "VulkanImageUnit.h"
 
-void Vulkan::VulkanSwapchainUnit::Initialize(VulkanSystem * system,VulkanImageUnit * imageUnit)
+Vulkan::VulkanSwapchainUnit::VulkanSwapchainUnit()
+{
+}
+
+void Vulkan::VulkanSwapchainUnit::Initialize(VulkanSystem * systemPtr,VulkanImageUnit * imageUnitPtr)
 {
 	
-	auto swapChainSupport = system->GetSwapChainSupportData();
-	m_device = system->GetCurrentLogicalHandle();
+	auto swapChainSupport = systemPtr->GetSwapChainSupportData();
+	m_device = systemPtr->LogicalDevice();
 	int width, height;
-	system->GetScreenSizes(width, height);
-	m_imageUnit = imageUnit;
+	systemPtr->GetScreenSizes(width, height);
+	m_imageUnit = imageUnitPtr;
 	CreateSwapChain(
-		system->GetSurface(),
+		systemPtr->GetSurface(),
 		swapChainSupport->capabilities.minImageCount,
 		swapChainSupport->capabilities.maxImageCount,
 		swapChainSupport->capabilities.currentTransform,
 		GetSupportedSurfaceFormat(&swapChainSupport->formats),
 		GetSupportedPresentMode(&swapChainSupport->presentModes),
 		GetExtent2D(&swapChainSupport->capabilities,width,height),
-		system->GetQueueFamilies()
+		systemPtr->GetQueueFamilies()
 		);
+	m_depthFormat = systemPtr->GetDepthFormat();
 	CreateSwapChainImageViews();
+	CreateDepthImage();
+	m_renderPass = VulkanObjectContainer <VkRenderPass>{ m_device, vkDestroyRenderPass };
+	CreateRenderPass(m_renderPass);
+
 }
 
-void Vulkan::VulkanSwapchainUnit::CreateSwapChainFrameBuffers(Vulkan::VulkanObjectContainer<VkDevice> * device,Vulkan::VulkanObjectContainer<VkImageView> * depthImageView, Vulkan::VulkanObjectContainer<VkRenderPass> * renderPass)
+void Vulkan::VulkanSwapchainUnit::CreateSwapChainFrameBuffers()
 {
-	m_swapChainFB.resize(m_swapChainBuffers.size(), Vulkan::VulkanObjectContainer<VkFramebuffer>{m_device, vkDestroyFramebuffer});
+	m_swapchainFrameBuffers.resize(m_swapChainBuffers.size(), Vulkan::VulkanObjectContainer<VkFramebuffer>{m_device, vkDestroyFramebuffer});
 
 	for (size_t i = 0; i < m_swapChainBuffers.size(); i++) {
 		std::array<VkImageView, 2> attachments = {
 			m_swapChainBuffers[i].imageView,
-			depthImageView->Get()
+			m_depthImage.imageView
 		};
 
 		VkFramebufferCreateInfo framebufferInfo = {};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferInfo.renderPass = renderPass->Get();
+		framebufferInfo.renderPass = m_renderPass;
 		framebufferInfo.attachmentCount = attachments.size();
 		framebufferInfo.pAttachments = attachments.data();
 		framebufferInfo.width = swapChainExtent2D.width;
 		framebufferInfo.height = swapChainExtent2D.height;
 		framebufferInfo.layers = 1;
 
-		if (vkCreateFramebuffer(m_device, &framebufferInfo, nullptr, ++(m_swapChainFB[i])) != VK_SUCCESS) {
+		if (vkCreateFramebuffer(m_device, &framebufferInfo, nullptr, ++(m_swapchainFrameBuffers[i])) != VK_SUCCESS) {
 			throw std::runtime_error("Unable to create frame buffers");
 		}
 	}
 }
 
-std::vector<Vulkan::VulkanObjectContainer<VkFramebuffer>>& Vulkan::VulkanSwapchainUnit::FrameBuffers()
+void Vulkan::VulkanSwapchainUnit::CreateDepthImage()
 {
-	return m_swapChainFB;
+	m_depthImage = { m_device };
+
+	try
+	{
+		m_imageUnit->CreateImage(
+			swapChainExtent2D.width, 
+			swapChainExtent2D.height, 
+			m_depthFormat, 
+			VK_IMAGE_TILING_OPTIMAL, 
+			VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
+			m_depthImage.image, 
+			m_depthImage.imageMemory);
+
+		m_imageUnit->CreateImageView(
+			m_depthImage.image, m_depthFormat,
+			VK_IMAGE_ASPECT_DEPTH_BIT, 
+			m_depthImage.imageView);
+
+		m_imageUnit->TransitionImageLayout(
+			m_depthImage.image, 
+			m_depthFormat, 
+			VK_IMAGE_LAYOUT_UNDEFINED, 
+			VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+	}
+	catch (std::runtime_error e)
+	{
+		throw e;
+	}
 }
 
-std::vector<Vulkan::VulkanSwapchainBuffer>& Vulkan::VulkanSwapchainUnit::SwapchainBuffers()
+void Vulkan::VulkanSwapchainUnit::CreateRenderPass(VulkanObjectContainer<VkRenderPass>& renderPass)
+{
+	VkResult result;
+
+	VkAttachmentDescription colorAttachmentDesc = {};
+	colorAttachmentDesc.format = swapChainImageFormat;
+	colorAttachmentDesc.samples = VK_SAMPLE_COUNT_1_BIT;
+	colorAttachmentDesc.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	colorAttachmentDesc.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	colorAttachmentDesc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	colorAttachmentDesc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	colorAttachmentDesc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	colorAttachmentDesc.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+	VkAttachmentDescription depthAttachmentDesc = {};
+	depthAttachmentDesc.format = k_depthFormats[0];
+	depthAttachmentDesc.samples = VK_SAMPLE_COUNT_1_BIT;
+	depthAttachmentDesc.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depthAttachmentDesc.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depthAttachmentDesc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	depthAttachmentDesc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+	depthAttachmentDesc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	depthAttachmentDesc.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+
+	VkAttachmentReference colorAttachmentRef = {};
+	colorAttachmentRef.attachment = 0;
+	colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentReference depthAttachmentRef = {};
+	depthAttachmentRef.attachment = 1;
+	depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	VkSubpassDescription subPassDesc = {};
+	subPassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	subPassDesc.colorAttachmentCount = 1;
+	subPassDesc.pColorAttachments = &colorAttachmentRef;
+	subPassDesc.pDepthStencilAttachment = &depthAttachmentRef;
+
+	std::array<VkSubpassDependency, 2> subPassDeps;
+
+	subPassDeps[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+	subPassDeps[0].dstSubpass = 0;
+	subPassDeps[0].srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+	subPassDeps[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	subPassDeps[0].srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+	subPassDeps[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	subPassDeps[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+	subPassDeps[1].srcSubpass = 0;
+	subPassDeps[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+	subPassDeps[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	subPassDeps[1].dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+	subPassDeps[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	subPassDeps[1].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+	subPassDeps[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+	std::array<VkAttachmentDescription, 2> attachments{ colorAttachmentDesc, depthAttachmentDesc };
+
+	VkRenderPassCreateInfo renderPassCI = {};
+	renderPassCI.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	renderPassCI.attachmentCount = attachments.size();
+	renderPassCI.pAttachments = attachments.data();
+	renderPassCI.subpassCount = 1;
+	renderPassCI.pSubpasses = &subPassDesc;
+	renderPassCI.dependencyCount = subPassDeps.size();
+	renderPassCI.pDependencies = subPassDeps.data();
+
+
+	result = vkCreateRenderPass(m_device, &renderPassCI, nullptr, ++renderPass);
+	if (result != VK_SUCCESS)
+		throw std::runtime_error("Unable to create render pass. Reason: " + Vulkan::VkResultToString(result));
+}
+
+inline std::vector<Vulkan::VulkanObjectContainer<VkFramebuffer>>& Vulkan::VulkanSwapchainUnit::FrameBuffers()
+{
+	return m_swapchainFrameBuffers;
+}
+
+inline std::vector<Vulkan::VulkanSwapchainBuffer>& Vulkan::VulkanSwapchainUnit::SwapchainBuffers()
 {
 	return m_swapChainBuffers;
+}
+
+VkRenderPass Vulkan::VulkanSwapchainUnit::RenderPass()
+{
+	return m_renderPass;
 }
 
 inline VkSurfaceFormatKHR Vulkan::VulkanSwapchainUnit::GetSupportedSurfaceFormat(const std::vector<VkSurfaceFormatKHR>* surfaceFormats)
@@ -140,7 +261,7 @@ void Vulkan::VulkanSwapchainUnit::CreateSwapChain(VkSurfaceKHR surface, uint32_t
 	std::vector<VkImage> images;
 	images.resize(minImageCount);
 	vkGetSwapchainImagesKHR(m_device, m_swapChain, &minImageCount, images.data());
-	for(auto i = 0; i < minImageCount; ++i)
+	for(uint32_t i = 0; i < minImageCount; ++i)
 	{
 		m_swapChainBuffers[i].image = images[i];
 	}

@@ -5,8 +5,8 @@
 #include <assimp/postprocess.h>
 #include <assimp/cimport.h>
 
-Vulkan::VulkanObjectContainer<VkDevice>* Vulkan::Mesh::devicePtr = nullptr;
-Vulkan::VulkanRenderUnit* Vulkan::Mesh::renderUnitPtr = nullptr;
+//Vulkan::VulkanObjectContainer<VkDevice>* Vulkan::Mesh::devicePtr = nullptr;
+//Vulkan::VulkanRenderUnit* Vulkan::Mesh::renderUnitPtr = nullptr;
 std::vector<Vulkan::Mesh*> Vulkan::Mesh::meshes;
 
 
@@ -18,8 +18,8 @@ Vulkan::Mesh::Mesh() : vertCount(0)
 
 Vulkan::Mesh* Vulkan::Mesh::LoadMesh(const char * filename,int flags)
 {
-	if (devicePtr == nullptr || renderUnitPtr == nullptr)
-		throw std::runtime_error("Render unit was not initialized.");
+	//if (devicePtr == nullptr || renderUnitPtr == nullptr)
+	//	throw std::runtime_error("Render unit was not initialized.");
 
 	auto iMesh = new Vulkan::Mesh();
 
@@ -77,10 +77,10 @@ Vulkan::Mesh* Vulkan::Mesh::LoadMesh(const char * filename,int flags)
 
 	
 
-	iMesh->vertexBuffer = VulkanObjectContainer<VkBuffer>{ devicePtr,vkDestroyBuffer };
-	iMesh->vertexBufferMemory = VulkanObjectContainer<VkDeviceMemory>{ devicePtr,vkFreeMemory };
-	iMesh->indiceBuffer = VulkanObjectContainer<VkBuffer>{ devicePtr,vkDestroyBuffer };
-	iMesh->indiceBufferMemory = VulkanObjectContainer<VkDeviceMemory>{ devicePtr,vkFreeMemory };
+	//iMesh->vertexBuffer = VulkanObjectContainer<VkBuffer>{ devicePtr,vkDestroyBuffer };
+	//iMesh->vertexBufferMemory = VulkanObjectContainer<VkDeviceMemory>{ devicePtr,vkFreeMemory };
+	//iMesh->indiceBuffer = VulkanObjectContainer<VkBuffer>{ devicePtr,vkDestroyBuffer };
+	//iMesh->indiceBufferMemory = VulkanObjectContainer<VkDeviceMemory>{ devicePtr,vkFreeMemory };
 
 	try
 	{
@@ -105,38 +105,38 @@ Vulkan::Mesh::~Mesh()
 inline void Vulkan::Mesh::BuildVertexBuffer() {
 	VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
 
-	VulkanObjectContainer<VkBuffer> stagingBuffer{ devicePtr, vkDestroyBuffer };
-	VulkanObjectContainer<VkDeviceMemory> stagingBufferMemory{ devicePtr, vkFreeMemory };
+	//VulkanObjectContainer<VkBuffer> stagingBuffer{ devicePtr, vkDestroyBuffer };
+	//VulkanObjectContainer<VkDeviceMemory> stagingBufferMemory{ devicePtr, vkFreeMemory };
 
-	renderUnitPtr->CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+	//renderUnitPtr->CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
 	
-	auto device = devicePtr->Get();
+	//auto device = devicePtr->Get();
 	void* data;
 	
-	vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+	//vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
 	memcpy(data, vertices.data(), (size_t)bufferSize);
-	vkUnmapMemory(device, stagingBufferMemory);
+//	vkUnmapMemory(device, stagingBufferMemory);
 
-	renderUnitPtr->CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
+//	renderUnitPtr->CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
 
-	renderUnitPtr->CopyBuffer(stagingBuffer, vertexBuffer, bufferSize);
+//	renderUnitPtr->CopyBuffer(stagingBuffer, vertexBuffer, bufferSize);
 }
 inline void Vulkan::Mesh::BuildIndiceBuffer()
 {
 	VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
 
-	VulkanObjectContainer<VkBuffer> stagingBuffer{ devicePtr, vkDestroyBuffer };
-	VulkanObjectContainer<VkDeviceMemory> stagingBufferMemory{ devicePtr, vkFreeMemory };
-	renderUnitPtr->CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+//	VulkanObjectContainer<VkBuffer> stagingBuffer{ devicePtr, vkDestroyBuffer };
+//	VulkanObjectContainer<VkDeviceMemory> stagingBufferMemory{ devicePtr, vkFreeMemory };
+//	renderUnitPtr->CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
 
-	auto device = devicePtr->Get();
+//	auto device = devicePtr->Get();
 	void* data;
-	vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+//	vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
 	memcpy(data, indices.data(), (size_t)bufferSize);
-	vkUnmapMemory(device, stagingBufferMemory);
-	renderUnitPtr->CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indiceBuffer, indiceBufferMemory);
+//	vkUnmapMemory(device, stagingBufferMemory);
+//	renderUnitPtr->CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indiceBuffer, indiceBufferMemory);
 
-	renderUnitPtr->CopyBuffer(stagingBuffer, indiceBuffer, bufferSize);
+//	renderUnitPtr->CopyBuffer(stagingBuffer, indiceBuffer, bufferSize);
 }
 void Vulkan::Mesh::CleanUp()
 {
@@ -149,5 +149,5 @@ void Vulkan::Mesh::CleanUp()
 		}
 	}
 
-	devicePtr = nullptr;
+//	devicePtr = nullptr;
 }

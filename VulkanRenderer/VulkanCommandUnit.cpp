@@ -1,8 +1,8 @@
 #include "VulkanCommandUnit.h"
-
+#include "VulkanSystem.h"
 void Vulkan::VulkanCommandUnit::Initialize(VulkanSystem * system)
 {
-	m_device = system->GetCurrentLogicalHandle();
+	m_device = system->LogicalDevice();
 //	auto pDevice = system->GetCurrentPhysical(); // need?
 	m_commandPool = VulkanObjectContainer<VkCommandPool>{ m_device,vkDestroyCommandPool };
 
@@ -10,7 +10,7 @@ void Vulkan::VulkanCommandUnit::Initialize(VulkanSystem * system)
 	poolCI.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	poolCI.queueFamilyIndex = system->GetQueueFamilies().graphicsFamily;
 
-	if (vkCreateCommandPool(system->GetCurrentLogicalHandle(), &poolCI, nullptr, ++m_commandPool) != VK_SUCCESS) {
+	if (vkCreateCommandPool(system->LogicalDevice(), &poolCI, nullptr, ++m_commandPool) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create graphics command pool!");
 	}
 

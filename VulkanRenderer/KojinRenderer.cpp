@@ -1,6 +1,13 @@
 #include "KojinRenderer.h"
 #include "SPIRVShader.h"
-
+#include "VulkanSystem.h"
+#include "VulkanCommandUnit.h"
+#include "VulkanImageUnit.h"
+#include "VulkanSwapChainUnit.h"
+#include "VulkanRenderUnit.h"
+#include "KojinCamera.h"
+//#include "vulkan\vulkan.h"
+#include "SDL2\SDL_syswm.h"
 Vulkan::KojinRenderer::KojinRenderer(SDL_Window * window, const char * appName, int appVer[3])
 {
 	int engineVer[3] = { RENDER_ENGINE_MAJOR_VERSION,RENDER_ENGINE_PATCH_VERSION,RENDER_ENGINE_MINOR_VERSION };
@@ -101,7 +108,7 @@ void Vulkan::KojinRenderer::Present()
 
 void Vulkan::KojinRenderer::WaitForIdle()
 {
-	vkDeviceWaitIdle(this->m_system->GetCurrentLogicalHandle());
+	vkDeviceWaitIdle(this->m_system->LogicalDevice());
 }
 
 Vulkan::KojinCamera * Vulkan::KojinRenderer::GetDefaultCamera()

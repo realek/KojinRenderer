@@ -36,7 +36,7 @@ namespace Vulkan
 		void Initialize(int physicalDeviceId, VkPhysicalDeviceRequiredQueues * queues, const int screenWidth, const int screenHeight);
 		//Vsync is on by default
 		void GetScreenSizes(int & width, int & height);
-		VkDevice GetCurrentLogicalHandle();
+		VkDevice LogicalDevice();
 		VulkanObjectContainer<VkDevice>* GetCurrentLogicalContainer();
 		const VkPhysicalDevice GetCurrentPhysical();
 		const VkPhysicalDeviceProperties GetCurrentPhysicalProperties();

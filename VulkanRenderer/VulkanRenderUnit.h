@@ -1,16 +1,24 @@
 #pragma once
 #include <memory>
-#include "VulkanImageUnit.h"
+#include "VulkanSystemStructs.h"
 
 namespace Vulkan 
 {
 	class SPIRVShader;
 	class Texture2D;
 	class Mesh;
+	class VulkanSystem;
+	class VulkanSwapchainUnit;
+	class VulkanImageUnit;
+	class VulkanCommandUnit;
 	class VulkanRenderUnit
 	{
 	
 	public:
+		//temporary
+		VkExtent2D swapChainExt;
+		//!temporary
+
 		void Initialize(VulkanSystem * system, SPIRVShader * shader);
 		void CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, Vulkan::VulkanObjectContainer<VkImageView>& imageView);
 		void CreateImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, Vulkan::VulkanObjectContainer<VkImage>& image, Vulkan::VulkanObjectContainer<VkDeviceMemory>& imageMemory);
@@ -25,11 +33,9 @@ namespace Vulkan
 		bool AddCamera(int id, VkViewport * viewport, VkRect2D * scissor);
 		void SetAsMainCamera(int id, VkViewport * viewport, VkRect2D * scissor);
 		void RemoveCamera(int id);
-		VkExtent2D swapChainExt;
 		~VulkanRenderUnit();
 	private:
 		VulkanSystem * m_system;
-		VulkanObjectContainer<VkDevice> * m_devicePtr;
 
 		bool m_initialized = false;
 		SPIRVShader * m_defaultShader;
@@ -37,9 +43,6 @@ namespace Vulkan
 		std::shared_ptr<Vulkan::VulkanCommandUnit> m_commandUnit;
 		std::shared_ptr<Vulkan::VulkanSwapchainUnit> m_swapChainUnit;
 		std::shared_ptr<Vulkan::VulkanImageUnit> m_imageUnit;
-
-		VkFormat m_currentImageFormat;
-		VulkanObjectContainer<VkRenderPass> m_renderPass;
 		VulkanObjectContainer<VkDescriptorSetLayout> m_descSetLayout;
 		VulkanObjectContainer<VkPipelineLayout> m_pipelineLayout;
 		VulkanObjectContainer<VkPipeline> m_pipeline;
@@ -78,12 +81,11 @@ namespace Vulkan
 		
 	private:
 
-		static VkFormat m_depthFormat;
 		static VkCamera m_mainCamera;
 		static std::map<int, VkCamera> m_cameras;
 		void CreateMainRenderPass();
 		void CreateDescriptorSetLayout();
-		void CreateGraphicsPipeline(VkExtent2D & swapChainExtent);
+		void CreateGraphicsPipeline();
 		void CreateShaderModule(std::vector<char>& code, VulkanObjectContainer<VkShaderModule>& shader);
 
 		uint32_t GetMemoryType(uint32_t desiredType, VkMemoryPropertyFlags memFlags);

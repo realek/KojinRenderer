@@ -3,43 +3,43 @@
 
 namespace Vulkan
 {
-	struct VulkanSwapchainBuffer
-	{
-		VkImage image;
-		VulkanObjectContainer<VkImageView> imageView;
-		VulkanSwapchainBuffer(VkDevice device)
-		{
-			image = VK_NULL_HANDLE;
-			imageView = VulkanObjectContainer<VkImageView>{ device, vkDestroyImageView };
-		}
-	};
+
 	class VulkanImageUnit;
 	class VulkanSwapchainUnit
 	{
+
 	public:
+
+		VulkanSwapchainUnit();
 		void Initialize(VulkanSystem * system, VulkanImageUnit * imageUnit);
-		void CreateSwapChainFrameBuffers(Vulkan::VulkanObjectContainer<VkDevice> * device, Vulkan::VulkanObjectContainer<VkImageView> * depthImageView, Vulkan::VulkanObjectContainer<VkRenderPass> * renderPass);
 		VkFormat swapChainImageFormat;
 		VkExtent2D swapChainExtent2D;
 		std::vector<VulkanObjectContainer<VkFramebuffer>>& FrameBuffers();
 		std::vector<VulkanSwapchainBuffer>& SwapchainBuffers();
+		VkRenderPass RenderPass();
+
 	private:
 
 		VkDevice m_device;
 		VulkanImageUnit * m_imageUnit;
 		VulkanObjectContainer<VkSwapchainKHR> m_swapChain;
+		VkFormat m_depthFormat;
 		std::vector<VulkanSwapchainBuffer> m_swapChainBuffers;
-		// swap chain frame buffers
-		std::vector<VulkanObjectContainer<VkFramebuffer>> m_swapChainFB;
+		std::vector<VulkanObjectContainer<VkFramebuffer>> m_swapchainFrameBuffers;
+		VulkanImage m_depthImage;
+		VulkanObjectContainer<VkRenderPass> m_renderPass;
+
 	private:
+
 		VkSurfaceFormatKHR GetSupportedSurfaceFormat(const std::vector<VkSurfaceFormatKHR>* surfaceFormats);
-
 		VkPresentModeKHR GetSupportedPresentMode(const std::vector<VkPresentModeKHR>* presentModes);
-
 		VkExtent2D GetExtent2D(const VkSurfaceCapabilitiesKHR * capabilities, int width, int height);
-
 		void CreateSwapChain(VkSurfaceKHR surface, uint32_t minImageCount, uint32_t maxImageCount, VkSurfaceTransformFlagBitsKHR transformFlags, VkSurfaceFormatKHR & format, VkPresentModeKHR presentMode, VkExtent2D & extent2D, VkQueueFamilyIDs queueIds);
 		void CreateSwapChainImageViews();
+		void CreateSwapChainFrameBuffers();
+		void CreateDepthImage();
+		void CreateRenderPass(VulkanObjectContainer<VkRenderPass>& renderPass);
+
 		friend class VulkanRenderUnit;
 	};
 }

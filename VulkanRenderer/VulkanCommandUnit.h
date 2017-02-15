@@ -1,9 +1,9 @@
 #pragma once
-#include "VulkanSwapChainUnit.h"
-#include <map>
+#include "VulkanSystemStructs.h"
 
 namespace Vulkan
 {
+	class VulkanSystem;
 	class VulkanCommandUnit
 	{
 	public:

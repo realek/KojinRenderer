@@ -1,10 +1,8 @@
 #pragma once
-#include "VulkanObject.h"
-#include <map>
+#include "VulkanSystemStructs.h"
 
 namespace Vulkan
 {
-	class VulkanRenderUnit;
 	class Texture2D
 	{
 	public:
@@ -17,15 +15,14 @@ namespace Vulkan
 		int width, height;
 		bool m_isEmpty = true;
 		static Texture2D * m_whiteTexture;
-		static VulkanRenderUnit * renderUnitPtr;
-		static VulkanObjectContainer<VkDevice> * devicePtr;
+		//static VulkanRenderUnit * renderUnitPtr;
+		//static VulkanObjectContainer<VkDevice> * devicePtr;
 		static const int defaultTexturesHeight = 1280;
 		static const int defaultTexturesWidth = 1280;
 		static void CleanUp();
 		VulkanObjectContainer<VkImage> m_textureImage;
 		VulkanObjectContainer<VkDeviceMemory> m_textureImageMemory;
 		VulkanObjectContainer<VkImageView> m_textureImageView;
-		friend class VulkanRenderUnit;
 		static const char * WhiteTextureNoAlphaPath;
 	private:
 		static void CreateWhiteTextureNoAlpha(Texture2D * tex);

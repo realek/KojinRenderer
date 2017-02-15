@@ -1,6 +1,6 @@
 #pragma once
-#include "VulkanRenderUnit.h"
-#include "KojinCamera.h"
+#include <memory>
+//#include "KojinCamera.h"
 
 #ifndef RENDER_ENGINE_NAME
 #define RENDER_ENGINE_NAME "KojinRenderer"
@@ -18,8 +18,18 @@
 #define RENDER_ENGINE_MINOR_VERSION 1
 #endif // !RENDER_ENGINE_MAJOR_VERSION
 
+struct SDL_Window;
 namespace Vulkan
 {
+	class VulkanSystem;
+	class VulkanCommandUnit;
+	class VulkanImageUnit;
+	class VulkanSwapchainUnit;
+	class VulkanRenderUnit;
+	class KojinCamera;
+	class Mesh;
+	class Texture2D;
+
 	class KojinRenderer
 	{
 	public:

@@ -1,15 +1,11 @@
 #pragma once
-#include "VulkanObject.h"
 #include "VulkanSystemStructs.h"
 #include <assimp\postprocess.h>
-#include <vector>
 
 
 struct aiScene;
 namespace Vulkan
 {
-
-	class VulkanRenderUnit;
 	class Mesh
 	{
 
@@ -29,8 +25,7 @@ namespace Vulkan
 		uint32_t vertCount;
 		std::vector<VkVertex> vertices;
 		std::vector<uint32_t> indices;
-		static VulkanObjectContainer<VkDevice> * devicePtr;
-		static VulkanRenderUnit * renderUnitPtr;
+
 
 		VulkanObjectContainer<VkBuffer> vertexBuffer;
 		VulkanObjectContainer<VkDeviceMemory> vertexBufferMemory;
@@ -38,7 +33,6 @@ namespace Vulkan
 		VulkanObjectContainer<VkDeviceMemory> indiceBufferMemory;
 		uint32_t materialIndex;
 		static void CleanUp();
-		friend class VulkanRenderUnit;
 
 	};
 }
