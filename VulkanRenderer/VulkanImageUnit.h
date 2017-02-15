@@ -3,6 +3,7 @@
 
 namespace Vulkan
 {
+
 	class VulkanImageUnit
 	{
 	public:
@@ -12,9 +13,12 @@ namespace Vulkan
 		void CreateImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, Vulkan::VulkanObjectContainer<VkImage>& image, Vulkan::VulkanObjectContainer<VkDeviceMemory>& imageMemory);
 		void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
 		void CopyImage(VkImage source, VkImage destination, uint32_t width, uint32_t height);
+		void BlitImage();
+	
 	private:
 		VulkanCommandUnit * m_commandUnitPtr;
 		VkDevice m_deviceHandle;
 		VkPhysicalDevice m_pDeviceHandle;
+		std::map<int, std::vector<VulkanImage>> m_aditionalImages;
 	};
 }

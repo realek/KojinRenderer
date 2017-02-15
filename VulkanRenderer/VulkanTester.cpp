@@ -171,7 +171,6 @@ int main()
 	//getchar();
 	delete(renderer);
 	std::cout <<std::endl<< "Finished Vulkan resource cleanup, press any key to end application." << std::endl;
-	getchar();
 	IMG_Quit();
 	SDL_Quit();
 	return 0;

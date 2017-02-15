@@ -1,7 +1,5 @@
 #pragma once
 #include <memory>
-#include <map>
-#include "VulkanCommandUnit.h"
 #include "VulkanImageUnit.h"
 
 namespace Vulkan 
@@ -24,17 +22,22 @@ namespace Vulkan
 		void PresentFrame();
 		//Dummy uniform update function
 		void UpdateStaticUniformBuffer(float time);
-		static void AddCamera(int id, VkViewport * viewport, VkRect2D * scissor);
-		static void RemoveCamera(int id);
+		bool AddCamera(int id, VkViewport * viewport, VkRect2D * scissor);
+		void SetAsMainCamera(int id, VkViewport * viewport, VkRect2D * scissor);
+		void RemoveCamera(int id);
+		VkExtent2D swapChainExt;
 		~VulkanRenderUnit();
 	private:
+		VulkanSystem * m_system;
+		VulkanObjectContainer<VkDevice> * m_devicePtr;
+
 		bool m_initialized = false;
 		SPIRVShader * m_defaultShader;
 		VkPhysicalDevice m_currentPhysicalDevice;
 		std::shared_ptr<Vulkan::VulkanCommandUnit> m_commandUnit;
-		std::shared_ptr<Vulkan::VulkanSwapChainUnit> m_swapChainUnit;
+		std::shared_ptr<Vulkan::VulkanSwapchainUnit> m_swapChainUnit;
 		std::shared_ptr<Vulkan::VulkanImageUnit> m_imageUnit;
-		VulkanObjectContainer<VkDevice> * m_devicePtr;
+
 		VkFormat m_currentImageFormat;
 		VulkanObjectContainer<VkRenderPass> m_renderPass;
 		VulkanObjectContainer<VkDescriptorSetLayout> m_descSetLayout;
@@ -75,19 +78,19 @@ namespace Vulkan
 		
 	private:
 
-		static std::vector<VkViewport*> m_viewports;
-		static std::vector<VkRect2D*> m_scrissors;
-		static std::map<size_t, VkCamera> m_cameras;
-		void CreateRenderPass(VkFormat & desiredFormat);
+		static VkFormat m_depthFormat;
+		static VkCamera m_mainCamera;
+		static std::map<int, VkCamera> m_cameras;
+		void CreateMainRenderPass();
 		void CreateDescriptorSetLayout();
 		void CreateGraphicsPipeline(VkExtent2D & swapChainExtent);
 		void CreateShaderModule(std::vector<char>& code, VulkanObjectContainer<VkShaderModule>& shader);
 
 		uint32_t GetMemoryType(uint32_t desiredType, VkMemoryPropertyFlags memFlags);
 
-		void CreateDepthResources(VkFormat depthFormat, VkExtent2D swapChainExtent);
+		void CreateDepthResources(VkExtent2D swapChainExtent);
 		void CreateTextureSampler(VulkanObjectContainer<VkSampler> & textureSampler);
-
+		void RecordRenderPass(VkRenderPass renderPass, VkCamera& passCamera, std::vector<VkCommandBuffer> recordBuffers, VkBuffer vertexBuffer, VkBuffer indiceBuffer, uint32_t indiceCount);
 		//temp functions
 		void CreateUniformBuffer();
 		void CreateDescriptorPool();

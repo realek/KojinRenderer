@@ -19,7 +19,7 @@ namespace Vulkan
 		static Mesh* LoadMesh(const char * filename, int flags=defaultFlags);
 		~Mesh();
 		void BuildVertexBuffer();
-		void BuildIndexBuffer();
+		void BuildIndiceBuffer();
 	private:
 		Mesh();
 		//hold references to all created meshes
@@ -34,8 +34,8 @@ namespace Vulkan
 
 		VulkanObjectContainer<VkBuffer> vertexBuffer;
 		VulkanObjectContainer<VkDeviceMemory> vertexBufferMemory;
-		VulkanObjectContainer<VkBuffer> indexBuffer;
-		VulkanObjectContainer<VkDeviceMemory> indexBufferMemory;
+		VulkanObjectContainer<VkBuffer> indiceBuffer;
+		VulkanObjectContainer<VkDeviceMemory> indiceBufferMemory;
 		uint32_t materialIndex;
 		static void CleanUp();
 		friend class VulkanRenderUnit;

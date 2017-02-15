@@ -3,7 +3,7 @@
 #ifdef _WIN32
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
-#include <vulkan\vulkan.h>
+#include "VulkanUtils.h"
 
 namespace Vulkan
 {
@@ -38,6 +38,16 @@ namespace Vulkan
 		VulkanObjectContainer(const VulkanObjectContainer<VkDevice> * vkDevice, std::function<void(VkDevice, T, VkAllocationCallbacks*)> deleteFunction)
 		{
 			this->deleter = [vkDevice, deleteFunction](T object) { deleteFunction(vkDevice->Get(), object, nullptr); };
+		}
+
+		VulkanObjectContainer(VkInstance vkInstance, std::function<void(VkInstance, T, VkAllocationCallbacks*)> deleteFunction)
+		{
+			this->deleter = [vkInstance, deleteFunction](T object) {  deleteFunction(vkInstance, object, nullptr);	};
+		}
+
+		VulkanObjectContainer(VkDevice vkDevice, std::function<void(VkDevice, T, VkAllocationCallbacks*)> deleteFunction)
+		{
+			this->deleter = [vkDevice, deleteFunction](T object) { deleteFunction(vkDevice, object, nullptr); };
 		}
 
 

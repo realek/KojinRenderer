@@ -79,13 +79,13 @@ Vulkan::Mesh* Vulkan::Mesh::LoadMesh(const char * filename,int flags)
 
 	iMesh->vertexBuffer = VulkanObjectContainer<VkBuffer>{ devicePtr,vkDestroyBuffer };
 	iMesh->vertexBufferMemory = VulkanObjectContainer<VkDeviceMemory>{ devicePtr,vkFreeMemory };
-	iMesh->indexBuffer = VulkanObjectContainer<VkBuffer>{ devicePtr,vkDestroyBuffer };
-	iMesh->indexBufferMemory = VulkanObjectContainer<VkDeviceMemory>{ devicePtr,vkFreeMemory };
+	iMesh->indiceBuffer = VulkanObjectContainer<VkBuffer>{ devicePtr,vkDestroyBuffer };
+	iMesh->indiceBufferMemory = VulkanObjectContainer<VkDeviceMemory>{ devicePtr,vkFreeMemory };
 
 	try
 	{
 		iMesh->BuildVertexBuffer();
-		iMesh->BuildIndexBuffer();
+		iMesh->BuildIndiceBuffer();
 	}
 	catch (std::runtime_error e)
 	{
@@ -121,7 +121,7 @@ inline void Vulkan::Mesh::BuildVertexBuffer() {
 
 	renderUnitPtr->CopyBuffer(stagingBuffer, vertexBuffer, bufferSize);
 }
-inline void Vulkan::Mesh::BuildIndexBuffer()
+inline void Vulkan::Mesh::BuildIndiceBuffer()
 {
 	VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
 
@@ -134,9 +134,9 @@ inline void Vulkan::Mesh::BuildIndexBuffer()
 	vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
 	memcpy(data, indices.data(), (size_t)bufferSize);
 	vkUnmapMemory(device, stagingBufferMemory);
-	renderUnitPtr->CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
+	renderUnitPtr->CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indiceBuffer, indiceBufferMemory);
 
-	renderUnitPtr->CopyBuffer(stagingBuffer, indexBuffer, bufferSize);
+	renderUnitPtr->CopyBuffer(stagingBuffer, indiceBuffer, bufferSize);
 }
 void Vulkan::Mesh::CleanUp()
 {

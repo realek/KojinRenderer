@@ -1,36 +1,35 @@
 #define NOMINMAX
 #include "VulkanSwapChainUnit.h"
+#include "VulkanImageUnit.h"
 
-VkFormat Vulkan::VulkanSwapChainUnit::swapChainImageFormat;
-VkExtent2D Vulkan::VulkanSwapChainUnit::swapChainExtent2D;
-
-void Vulkan::VulkanSwapChainUnit::Initialize(VulkanSystem * system, bool vSync)
+void Vulkan::VulkanSwapchainUnit::Initialize(VulkanSystem * system,VulkanImageUnit * imageUnit)
 {
-	m_vSync = vSync;
-	auto device = system->GetCurrentLogical();
+	
 	auto swapChainSupport = system->GetSwapChainSupportData();
-	m_swapChain = VulkanObjectContainer<VkSwapchainKHR> { device,vkDestroySwapchainKHR };
+	m_device = system->GetCurrentLogicalHandle();
+	int width, height;
+	system->GetScreenSizes(width, height);
+	m_imageUnit = imageUnit;
 	CreateSwapChain(
 		system->GetSurface(),
-		device->Get(),
 		swapChainSupport->capabilities.minImageCount,
 		swapChainSupport->capabilities.maxImageCount,
 		swapChainSupport->capabilities.currentTransform,
 		GetSupportedSurfaceFormat(&swapChainSupport->formats),
 		GetSupportedPresentMode(&swapChainSupport->presentModes),
-		GetExtent2D(&swapChainSupport->capabilities,1024,768),
+		GetExtent2D(&swapChainSupport->capabilities,width,height),
 		system->GetQueueFamilies()
 		);
-	CreateSwapChainImageViews(device);
+	CreateSwapChainImageViews();
 }
 
-void Vulkan::VulkanSwapChainUnit::CreateSwapChainFrameBuffers(Vulkan::VulkanObjectContainer<VkDevice> * device,Vulkan::VulkanObjectContainer<VkImageView> * depthImageView, Vulkan::VulkanObjectContainer<VkRenderPass> * renderPass)
+void Vulkan::VulkanSwapchainUnit::CreateSwapChainFrameBuffers(Vulkan::VulkanObjectContainer<VkDevice> * device,Vulkan::VulkanObjectContainer<VkImageView> * depthImageView, Vulkan::VulkanObjectContainer<VkRenderPass> * renderPass)
 {
-	m_swapChainFB.resize(m_swapChainIV.size(), Vulkan::VulkanObjectContainer<VkFramebuffer>{device, vkDestroyFramebuffer});
+	m_swapChainFB.resize(m_swapChainBuffers.size(), Vulkan::VulkanObjectContainer<VkFramebuffer>{m_device, vkDestroyFramebuffer});
 
-	for (size_t i = 0; i < m_swapChainIV.size(); i++) {
+	for (size_t i = 0; i < m_swapChainBuffers.size(); i++) {
 		std::array<VkImageView, 2> attachments = {
-			m_swapChainIV[i],
+			m_swapChainBuffers[i].imageView,
 			depthImageView->Get()
 		};
 
@@ -43,13 +42,23 @@ void Vulkan::VulkanSwapChainUnit::CreateSwapChainFrameBuffers(Vulkan::VulkanObje
 		framebufferInfo.height = swapChainExtent2D.height;
 		framebufferInfo.layers = 1;
 
-		if (vkCreateFramebuffer(device->Get(), &framebufferInfo, nullptr, ++(m_swapChainFB[i])) != VK_SUCCESS) {
+		if (vkCreateFramebuffer(m_device, &framebufferInfo, nullptr, ++(m_swapChainFB[i])) != VK_SUCCESS) {
 			throw std::runtime_error("Unable to create frame buffers");
 		}
 	}
 }
 
-inline VkSurfaceFormatKHR Vulkan::VulkanSwapChainUnit::GetSupportedSurfaceFormat(const std::vector<VkSurfaceFormatKHR>* surfaceFormats)
+std::vector<Vulkan::VulkanObjectContainer<VkFramebuffer>>& Vulkan::VulkanSwapchainUnit::FrameBuffers()
+{
+	return m_swapChainFB;
+}
+
+std::vector<Vulkan::VulkanSwapchainBuffer>& Vulkan::VulkanSwapchainUnit::SwapchainBuffers()
+{
+	return m_swapChainBuffers;
+}
+
+inline VkSurfaceFormatKHR Vulkan::VulkanSwapchainUnit::GetSupportedSurfaceFormat(const std::vector<VkSurfaceFormatKHR>* surfaceFormats)
 {
 	if (surfaceFormats->size() == 1 && surfaceFormats->at(0).format == VK_FORMAT_UNDEFINED)
 		return{ VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
@@ -61,20 +70,16 @@ inline VkSurfaceFormatKHR Vulkan::VulkanSwapChainUnit::GetSupportedSurfaceFormat
 	return surfaceFormats->at(0);
 }
 
-inline VkPresentModeKHR Vulkan::VulkanSwapChainUnit::GetSupportedPresentMode(const std::vector<VkPresentModeKHR>* presentModes)
+inline VkPresentModeKHR Vulkan::VulkanSwapchainUnit::GetSupportedPresentMode(const std::vector<VkPresentModeKHR>* presentModes)
 {
-	if (!m_vSync)
-	{
-		for (auto it = presentModes->begin(); it != presentModes->end(); ++it)
-			if (*it == VK_PRESENT_MODE_MAILBOX_KHR)
-				return VK_PRESENT_MODE_MAILBOX_KHR;
-	}
-
+	for (auto it = presentModes->begin(); it != presentModes->end(); ++it)
+		if (*it == VK_PRESENT_MODE_MAILBOX_KHR)
+			return VK_PRESENT_MODE_MAILBOX_KHR;
 
 	return VK_PRESENT_MODE_FIFO_KHR;
 }
 
-inline VkExtent2D Vulkan::VulkanSwapChainUnit::GetExtent2D(const VkSurfaceCapabilitiesKHR * capabilities, int width, int height)
+inline VkExtent2D Vulkan::VulkanSwapchainUnit::GetExtent2D(const VkSurfaceCapabilitiesKHR * capabilities, int width, int height)
 {
 
 	if (capabilities->currentExtent.width != std::numeric_limits<uint32_t>::max())
@@ -88,7 +93,7 @@ inline VkExtent2D Vulkan::VulkanSwapChainUnit::GetExtent2D(const VkSurfaceCapabi
 	}
 }
 
-void Vulkan::VulkanSwapChainUnit::CreateSwapChain(VkSurfaceKHR surface, VkDevice device, uint32_t minImageCount, uint32_t maxImageCount, VkSurfaceTransformFlagBitsKHR transformFlags,VkSurfaceFormatKHR & format, VkPresentModeKHR presentMode, VkExtent2D & extent2D, Vulkan::VkQueueFamilyIDs queueIds)
+void Vulkan::VulkanSwapchainUnit::CreateSwapChain(VkSurfaceKHR surface, uint32_t minImageCount, uint32_t maxImageCount, VkSurfaceTransformFlagBitsKHR transformFlags,VkSurfaceFormatKHR & format, VkPresentModeKHR presentMode, VkExtent2D & extent2D, Vulkan::VkQueueFamilyIDs queueIds)
 {
 
 	minImageCount++;
@@ -126,44 +131,45 @@ void Vulkan::VulkanSwapChainUnit::CreateSwapChain(VkSurfaceKHR surface, VkDevice
 
 	VkSwapchainKHR oldSwapChain = m_swapChain;
 	swapChainCI.oldSwapchain = oldSwapChain;
-
-	if (vkCreateSwapchainKHR(device, &swapChainCI, nullptr, ++m_swapChain) != VK_SUCCESS)
+	m_swapChain = VulkanObjectContainer<VkSwapchainKHR>{ m_device,vkDestroySwapchainKHR };
+	if (vkCreateSwapchainKHR(m_device, &swapChainCI, nullptr, ++m_swapChain) != VK_SUCCESS)
 		throw std::runtime_error("Unable to create Vulkan swap chain!");
 
-	vkGetSwapchainImagesKHR(device, m_swapChain, &minImageCount, nullptr);
-	m_swapChainI.resize(minImageCount);
-	vkGetSwapchainImagesKHR(device, m_swapChain, &minImageCount, m_swapChainI.data());
 
-	VulkanSwapChainUnit::swapChainImageFormat = format.format;
-	VulkanSwapChainUnit::swapChainExtent2D = extent2D;
+	m_swapChainBuffers.resize(minImageCount, VulkanSwapchainBuffer{m_device});
+	std::vector<VkImage> images;
+	images.resize(minImageCount);
+	vkGetSwapchainImagesKHR(m_device, m_swapChain, &minImageCount, images.data());
+	for(auto i = 0; i < minImageCount; ++i)
+	{
+		m_swapChainBuffers[i].image = images[i];
+	}
+
+	swapChainImageFormat = format.format;
+	swapChainExtent2D = extent2D;
 
 
 
 }
 
-void Vulkan::VulkanSwapChainUnit::CreateSwapChainImageViews(Vulkan::VulkanObjectContainer<VkDevice> * device)
+void Vulkan::VulkanSwapchainUnit::CreateSwapChainImageViews()
 {
-	m_swapChainIV.resize(m_swapChainI.size(), VulkanObjectContainer<VkImageView>{device, vkDestroyImageView});
-	for (uint32_t i = 0; i < m_swapChainI.size(); i++) {
+	for (uint32_t i = 0; i < m_swapChainBuffers.size(); i++) {
 
-		VkImageViewCreateInfo imageViewCI = {};
-		imageViewCI.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		imageViewCI.image = m_swapChainI[i];
-		imageViewCI.viewType = VK_IMAGE_VIEW_TYPE_2D;
-		imageViewCI.format = swapChainImageFormat;
-		imageViewCI.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-		imageViewCI.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-		imageViewCI.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-		imageViewCI.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-		imageViewCI.subresourceRange.aspectMask = VK_IMAGE_VIEW_TYPE_2D;
-		imageViewCI.subresourceRange.baseMipLevel = 0;
-		imageViewCI.subresourceRange.levelCount = 1;
-		imageViewCI.subresourceRange.baseArrayLayer = 0;
-		imageViewCI.subresourceRange.layerCount = 1;
-
-		if (vkCreateImageView(device->Get(), &imageViewCI, nullptr, ++m_swapChainIV[i]) != VK_SUCCESS)
-			throw std::runtime_error("Unable to create image views for swapChain.");
-
+		try
+		{
+			m_imageUnit->CreateImageView
+			(
+				m_swapChainBuffers[i].image,
+				swapChainImageFormat,
+				VK_IMAGE_VIEW_TYPE_2D,
+				m_swapChainBuffers[i].imageView
+			);
+		}
+		catch (std::runtime_error e)
+		{
+			throw std::runtime_error(std::string(e.what()) + "Unable to create image views for swapChain.");
+		}
 	}
 }
 

@@ -43,7 +43,13 @@ void Vulkan::VulkanSystem::GetScreenSizes(int & width, int & height)
 	width = this->m_width;
 	height = this->m_height;
 }
-Vulkan::VulkanObjectContainer<VkDevice> * Vulkan::VulkanSystem::GetCurrentLogical()
+
+VkDevice Vulkan::VulkanSystem::GetCurrentLogicalHandle()
+{
+	return m_currentLogicalDevice;
+}
+
+Vulkan::VulkanObjectContainer<VkDevice>* Vulkan::VulkanSystem::GetCurrentLogicalContainer()
 {
 	return &m_currentLogicalDevice;
 }

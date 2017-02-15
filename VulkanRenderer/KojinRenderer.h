@@ -24,8 +24,10 @@ namespace Vulkan
 	{
 	public:
 		KojinRenderer(SDL_Window * window, const char * appName, int appVer[3]);
-
+		~KojinRenderer();
 		void Load(Vulkan::Mesh * mesh);
+		void BindCamera(KojinCamera * camera, bool isMainCamera = false);
+		void UnbindCamera(KojinCamera * camera);
 		void DrawSingleObject(Vulkan::Texture2D * texture, Vulkan::Mesh * mesh);
 		void Update(float deltaTime);
 		void Present();
@@ -33,8 +35,11 @@ namespace Vulkan
 		KojinCamera * GetDefaultCamera();
 	private:
 		//static KojinRenderer * m_instance;
-		std::unique_ptr<VulkanSystem> system;
-		std::unique_ptr<VulkanRenderUnit> renderUnit;
+		std::unique_ptr<VulkanSystem> m_system;
+		std::unique_ptr<VulkanCommandUnit> m_commandUnit;
+		std::unique_ptr<VulkanImageUnit> m_imageUnit;
+		std::unique_ptr<VulkanSwapchainUnit> m_swapChainUnit;
+		std::unique_ptr<VulkanRenderUnit> m_renderUnit;
 		KojinCamera * defaultCamera;
 	};
 }

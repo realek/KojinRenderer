@@ -2,9 +2,9 @@
 #include "VulkanRenderUnit.h"
 
 std::atomic<int> Vulkan::KojinCamera::globalID = 0;
-Vulkan::KojinCamera::KojinCamera() : m_cameraID(++globalID)
+Vulkan::KojinCamera::KojinCamera(VkExtent2D swapChainExtent) : m_cameraID(++globalID)
 {
-	auto swapChainExtent = VulkanSwapChainUnit::swapChainExtent2D;
+	m_swapChainExtent = swapChainExtent;
 	m_cameraViewport = {};
 	m_cameraViewport.width = (float)swapChainExtent.width;
 	m_cameraViewport.height = (float)swapChainExtent.height;
@@ -20,15 +20,11 @@ Vulkan::KojinCamera::KojinCamera() : m_cameraID(++globalID)
 	position = { 0,0,0 };
 	rotation = { 0,0,0 };
 
-	m_cameraUniformData = {};
-	m_cameraUniformData.view = glm::mat4(1);
-
-
 }
 
 Vulkan::KojinCamera::~KojinCamera()
 {
-	UnBind();
+
 }
 
 void Vulkan::KojinCamera::SetPosition(glm::vec3 position)
@@ -41,28 +37,32 @@ void Vulkan::KojinCamera::SetRotation(glm::vec3 rotation)
 
 
 
-void Vulkan::KojinCamera::SetCameraOrigin(glm::vec2 screenCoords)
+void Vulkan::KojinCamera::SetViewport(glm::vec2 screenCoords, glm::vec2 scale)
 {
+
+	m_cameraViewport.width = m_swapChainExtent.width * scale.x;
+	m_cameraViewport.height = m_swapChainExtent.height * scale.y;
+	m_cameraScissor.extent.width = (uint32_t)m_cameraViewport.width;
+	m_cameraScissor.extent.height = (uint32_t)m_cameraViewport.height;
 	screenCoords = glm::clamp(screenCoords, glm::vec2(0.0, 0.0), glm::vec2(1.0, 1.0));
-	m_cameraViewport.x = screenCoords.x;
-	m_cameraViewport.y = screenCoords.y;
+	m_cameraViewport.x = (float)m_swapChainExtent.width*screenCoords.x;
+	m_cameraViewport.y = (float)m_swapChainExtent.height*screenCoords.y;
+	m_cameraScissor.offset.x = (int32_t)m_cameraViewport.x;
+	m_cameraScissor.offset.y = (int32_t)m_cameraViewport.y;
+
 }
 
-void Vulkan::KojinCamera::SetViewPortScale(glm::vec2 scale)
+int Vulkan::KojinCamera::GetID()
 {
-	auto swapChainExtent = VulkanSwapChainUnit::swapChainExtent2D;
-	m_cameraViewport.width = swapChainExtent.width * scale.x;
-	m_cameraViewport.height = swapChainExtent.height * scale.y;
-	m_cameraScissor.extent.width = m_cameraViewport.width;
-	m_cameraScissor.extent.height = m_cameraViewport.height;
+	return m_cameraID;
 }
 
-void Vulkan::KojinCamera::Bind()
+VkViewport * Vulkan::KojinCamera::GetViewport()
 {
-	VulkanRenderUnit::AddCamera(m_cameraID,&m_cameraViewport, &m_cameraScissor);
+	return &m_cameraViewport;
 }
 
-void Vulkan::KojinCamera::UnBind()
+VkRect2D * Vulkan::KojinCamera::GetScissor()
 {
-	VulkanRenderUnit::RemoveCamera(m_cameraID);
+	return &m_cameraScissor;
 }

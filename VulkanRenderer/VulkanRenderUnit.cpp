@@ -1,3 +1,4 @@
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include "VulkanRenderUnit.h"
 #include "SPIRVShader.h"
 #include <array>
@@ -6,10 +7,9 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-
-std::vector<VkViewport*> Vulkan::VulkanRenderUnit::m_viewports;
-std::vector<VkRect2D*> Vulkan::VulkanRenderUnit::m_scrissors;
-std::map<size_t, Vulkan::VkCamera> Vulkan::VulkanRenderUnit::m_cameras;
+VkFormat Vulkan::VulkanRenderUnit::m_depthFormat;
+Vulkan::VkCamera Vulkan::VulkanRenderUnit::m_mainCamera;
+std::map<int, Vulkan::VkCamera> Vulkan::VulkanRenderUnit::m_cameras;
 
 Vulkan::VulkanRenderUnit::~VulkanRenderUnit()
 {
@@ -17,37 +17,42 @@ Vulkan::VulkanRenderUnit::~VulkanRenderUnit()
 	Mesh::CleanUp();
 }
 
-void Vulkan::VulkanRenderUnit::Initialize(Vulkan::VulkanSystem * system, Vulkan::SPIRVShader * shader)
+void Vulkan::VulkanRenderUnit::Initialize(Vulkan::VulkanSystem * systemPtr, Vulkan::SPIRVShader * shader)
 {
 	if (shader == nullptr)
 		throw std::runtime_error("shader parameter cannot be null");
 	//must make shader class implementation ASAP!
 	m_defaultShader = shader;
 
-	if (system == nullptr)
+	if (systemPtr == nullptr)
 		throw std::runtime_error("system parameter cannot be null.");
 
-	this->m_devicePtr = system->GetCurrentLogical();
-	this->m_currentPhysicalDevice = system->GetCurrentPhysical();
-	this->m_deviceQueues = system->GetQueues();
-
+	this->m_devicePtr = systemPtr->GetCurrentLogicalContainer();
+	this->m_system = systemPtr;
+	this->m_currentPhysicalDevice = systemPtr->GetCurrentPhysical();
+	this->m_deviceQueues = systemPtr->GetQueues();
 	auto cmd = new Vulkan::VulkanCommandUnit();
 	m_commandUnit = std::shared_ptr<VulkanCommandUnit>(cmd);
 	try
 	{
-		m_commandUnit->Initialize(system);
+		m_commandUnit->Initialize(systemPtr);
 	}
 	catch (std::runtime_error e)
 	{
 		throw e;
 	}
 
-	auto swp = new Vulkan::VulkanSwapChainUnit();
-	m_swapChainUnit = std::shared_ptr<VulkanSwapChainUnit>(swp);
+	auto img = new Vulkan::VulkanImageUnit();
+	m_imageUnit = std::shared_ptr<VulkanImageUnit>(img);
+	m_imageUnit->Initialize(systemPtr->GetCurrentPhysical(), systemPtr->GetCurrentLogicalHandle(),m_commandUnit.get());
+
+	auto swp = new Vulkan::VulkanSwapchainUnit();
+
+	m_swapChainUnit = std::shared_ptr<VulkanSwapchainUnit>(swp);
 	try
 	{
 		//need to implement vsync switch
-		m_swapChainUnit->Initialize(system, false);
+		m_swapChainUnit->Initialize(systemPtr,m_imageUnit.get());
 	}
 	catch (std::runtime_error e)
 	{
@@ -58,15 +63,15 @@ void Vulkan::VulkanRenderUnit::Initialize(Vulkan::VulkanSystem * system, Vulkan:
 	m_currentImageFormat = m_swapChainUnit->swapChainImageFormat;
 
 
-	auto depthFormat = system->GetDepthFormat();
-	auto swapChainExt = m_swapChainUnit->swapChainExtent2D;
+	VulkanRenderUnit::m_depthFormat = systemPtr->GetDepthFormat();
+	swapChainExt = m_swapChainUnit->swapChainExtent2D;
 
 	try
 	{
-		this->CreateRenderPass(depthFormat);
+		this->CreateMainRenderPass();
 		this->CreateDescriptorSetLayout();
 		this->CreateGraphicsPipeline(swapChainExt);
-		this->CreateDepthResources(depthFormat, swapChainExt);
+		this->CreateDepthResources(swapChainExt);
 		this->CreateTextureSampler(m_defaultSampler);
 		this->m_swapChainUnit->CreateSwapChainFrameBuffers(m_devicePtr, &m_depthImageView, &m_renderPass);
 		this->m_commandUnit->CreateSwapChainCommandBuffers(m_swapChainUnit->m_swapChainFB.size());
@@ -158,7 +163,7 @@ void Vulkan::VulkanRenderUnit::CreateImage(uint32_t width, uint32_t height, VkFo
 		throw std::runtime_error("Unable to bind image memory. Reason: " + Vulkan::VkResultToString(result));
 }
 
-void Vulkan::VulkanRenderUnit::CreateRenderPass(VkFormat & desiredFormat)
+void Vulkan::VulkanRenderUnit::CreateMainRenderPass()
 {
 	VkResult result;
 
@@ -173,14 +178,15 @@ void Vulkan::VulkanRenderUnit::CreateRenderPass(VkFormat & desiredFormat)
 	colorAttachmentDesc.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 	VkAttachmentDescription depthAttachmentDesc = {};
-	depthAttachmentDesc.format = desiredFormat;
+	depthAttachmentDesc.format = k_depthFormats[0];
 	depthAttachmentDesc.samples = VK_SAMPLE_COUNT_1_BIT;
 	depthAttachmentDesc.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	depthAttachmentDesc.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	depthAttachmentDesc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	depthAttachmentDesc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depthAttachmentDesc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
 	depthAttachmentDesc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	depthAttachmentDesc.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
 
 	VkAttachmentReference colorAttachmentRef = {};
 	colorAttachmentRef.attachment = 0;
@@ -196,25 +202,36 @@ void Vulkan::VulkanRenderUnit::CreateRenderPass(VkFormat & desiredFormat)
 	subPassDesc.pColorAttachments = &colorAttachmentRef;
 	subPassDesc.pDepthStencilAttachment = &depthAttachmentRef;
 
-	VkSubpassDependency subPassDep = {};
-	subPassDep.srcSubpass = VK_SUBPASS_EXTERNAL;
-	subPassDep.dstSubpass = 0;
-	subPassDep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	subPassDep.srcAccessMask = 0;
-	subPassDep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	subPassDep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	std::array<VkSubpassDependency, 2> subPassDeps;
+
+	subPassDeps[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+	subPassDeps[0].dstSubpass = 0;
+	subPassDeps[0].srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+	subPassDeps[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	subPassDeps[0].srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+	subPassDeps[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	subPassDeps[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+	subPassDeps[1].srcSubpass = 0;
+	subPassDeps[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+	subPassDeps[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	subPassDeps[1].dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+	subPassDeps[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	subPassDeps[1].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+	subPassDeps[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
 	std::array<VkAttachmentDescription, 2> attachments{ colorAttachmentDesc, depthAttachmentDesc };
+
 	VkRenderPassCreateInfo renderPassCI = {};
 	renderPassCI.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	renderPassCI.attachmentCount = attachments.size();
 	renderPassCI.pAttachments = attachments.data();
 	renderPassCI.subpassCount = 1;
 	renderPassCI.pSubpasses = &subPassDesc;
-	renderPassCI.dependencyCount = 1;
-	renderPassCI.pDependencies = &subPassDep;
+	renderPassCI.dependencyCount = subPassDeps.size();
+	renderPassCI.pDependencies = subPassDeps.data();
 
-	m_renderPass = VulkanObjectContainer<VkRenderPass>{ m_devicePtr,vkDestroyRenderPass };
+	m_renderPass = VulkanObjectContainer<VkRenderPass>{m_devicePtr ,vkDestroyRenderPass };
 	
 	result = vkCreateRenderPass(m_devicePtr->Get(), &renderPassCI, nullptr, ++m_renderPass);
 	if (result != VK_SUCCESS)
@@ -295,11 +312,18 @@ void Vulkan::VulkanRenderUnit::CreateGraphicsPipeline(VkExtent2D & swapChainExte
 	depthStencilStateCI.depthWriteEnable = VK_TRUE;
 	depthStencilStateCI.depthCompareOp = VK_COMPARE_OP_LESS;
 	depthStencilStateCI.depthBoundsTestEnable = VK_FALSE;
-	depthStencilStateCI.stencilTestEnable = VK_FALSE;
 
 	VkPipelineColorBlendAttachmentState colorBlendAttachmentState = {};
 	colorBlendAttachmentState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 	colorBlendAttachmentState.blendEnable = VK_FALSE;
+	/*colorBlendAttachmentState.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+	colorBlendAttachmentState.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
+	colorBlendAttachmentState.colorBlendOp = VK_BLEND_OP_SUBTRACT;
+	colorBlendAttachmentState.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	colorBlendAttachmentState.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	colorBlendAttachmentState.alphaBlendOp = VK_BLEND_OP_ADD;
+	colorBlendAttachmentState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;*/
+
 
 	VkPipelineColorBlendStateCreateInfo colorBlendingStateCI = {};
 	colorBlendingStateCI.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -307,10 +331,10 @@ void Vulkan::VulkanRenderUnit::CreateGraphicsPipeline(VkExtent2D & swapChainExte
 	colorBlendingStateCI.logicOp = VK_LOGIC_OP_COPY;
 	colorBlendingStateCI.attachmentCount = 1;
 	colorBlendingStateCI.pAttachments = &colorBlendAttachmentState;
-	colorBlendingStateCI.blendConstants[0] = 0.0f;
-	colorBlendingStateCI.blendConstants[1] = 0.0f;
-	colorBlendingStateCI.blendConstants[2] = 0.0f;
-	colorBlendingStateCI.blendConstants[3] = 0.0f;
+	//colorBlendingStateCI.blendConstants[0] = 0.0f;
+	//colorBlendingStateCI.blendConstants[1] = 0.0f;
+	//colorBlendingStateCI.blendConstants[2] = 0.0f;
+	//colorBlendingStateCI.blendConstants[3] = 0.0f;
 
 	VkDescriptorSetLayout setLayouts[] = { m_descSetLayout };
 	VkPipelineLayoutCreateInfo pipelineLayoutCI = {};
@@ -544,64 +568,18 @@ void Vulkan::VulkanRenderUnit::Render(Vulkan::Texture2D * texture,Vulkan::Mesh *
 	try
 	{
 		WriteDescriptorSets(texture->m_textureImageView);
+		//record main render pass
+		RecordRenderPass(m_renderPass, m_mainCamera, m_commandUnit->m_swapChainCommandBuffers, mesh->vertexBuffer, mesh->indiceBuffer, mesh->indices.size());
+		//record secondary camera sub passes
+		for (auto it = m_cameras.begin(); it != m_cameras.end(); ++it)
+		{
+			RecordRenderPass(m_renderPass, it->second, m_commandUnit->GetBufferSet(it->first), mesh->vertexBuffer, mesh->indiceBuffer, mesh->indices.size());
+		}
 	}
 	catch(std::runtime_error e)
 	{
 		throw e;
 	}
-
-	VkCommandBufferBeginInfo beginInfo = {};
-	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-	
-	VkRenderPassBeginInfo renderPassInfo = {};
-	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassInfo.renderPass = m_renderPass;
-	std::array<VkClearValue, 2> clearValues = {};
-	clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
-	clearValues[1].depthStencil = { 1.0f, 0 };
-	renderPassInfo.clearValueCount = clearValues.size();
-	renderPassInfo.pClearValues = clearValues.data();
-	// must replace view port & scrissor with camera abstraction that also contains view+proj matrix
-
-	for(size_t i = 0 ; i < m_commandUnit->m_swapChainCommandBuffers.size();i++)
-	{
-
-		
-		renderPassInfo.framebuffer = m_swapChainUnit->m_swapChainFB[i];
-		renderPassInfo.renderArea.offset = { 0, 0 };
-		renderPassInfo.renderArea.extent = m_swapChainUnit->swapChainExtent2D;
-
-		vkBeginCommandBuffer(m_commandUnit->m_swapChainCommandBuffers[i], &beginInfo);
-		vkCmdBeginRenderPass(m_commandUnit->m_swapChainCommandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-		vkCmdBindDescriptorSets(m_commandUnit->m_swapChainCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
-		VkBuffer vertexBuffers[] = { mesh->vertexBuffer };
-		VkDeviceSize offsets[] = { 0 };
-		vkCmdBindVertexBuffers(m_commandUnit->m_swapChainCommandBuffers[i], 0, 1, vertexBuffers, offsets);
-		vkCmdBindIndexBuffer(m_commandUnit->m_swapChainCommandBuffers[i], mesh->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-
-		
-		for (auto it = m_cameras.begin(); it != m_cameras.end(); ++it)
-		{
-			vkCmdSetScissor(m_commandUnit->m_swapChainCommandBuffers[i], 0, 1, it->second.scissor);
-			vkCmdSetViewport(m_commandUnit->m_swapChainCommandBuffers[i], 0, 1, it->second.viewport);
-			vkCmdBindPipeline(m_commandUnit->m_swapChainCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
-			vkCmdDrawIndexed(m_commandUnit->m_swapChainCommandBuffers[i], mesh->indices.size(), 1, 0, 0, 0);
-
-		}
-
-
-
-		vkCmdEndRenderPass(m_commandUnit->m_swapChainCommandBuffers[i]);
-
-		VkResult result = vkEndCommandBuffer(m_commandUnit->m_swapChainCommandBuffers[i]);
-		if (result != VK_SUCCESS) {
-			throw std::runtime_error("Command buffer recording failed. Reason: " + VkResultToString(result));
-		}		
-	}
-
-	
 }
 
 void Vulkan::VulkanRenderUnit::PresentFrame() {
@@ -616,26 +594,59 @@ void Vulkan::VulkanRenderUnit::PresentFrame() {
 	else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
 		throw std::runtime_error("Failed to acquire next swapchain image. Reason: " + Vulkan::VkResultToString(result));
 
+
+
+	//submit each camera render here
+	for (auto it = m_cameras.begin(); it != m_cameras.end(); ++it)
+	{
+		VkSubmitInfo camSubmitInfo = {};
+		camSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		camSubmitInfo.commandBufferCount = 1;
+		//camSubmitInfo.pCommandBuffers = &m_commandUnit->GetBufferSet(it->first)[imageIndex];
+		camSubmitInfo.pCommandBuffers = &m_commandUnit->m_swapChainCommandBuffers[imageIndex];
+		result = vkQueueSubmit(m_deviceQueues.graphicsQueue, 1, &camSubmitInfo, VK_NULL_HANDLE);
+
+		if (result != VK_SUCCESS)
+			throw std::runtime_error("Unable to submit draw command buffer. Reason: " + Vulkan::VkResultToString(result));
+		result = vkQueueWaitIdle(m_deviceQueues.graphicsQueue);
+		if (result != VK_SUCCESS)
+			throw std::runtime_error("wait error");
+	}
+
+
+	VkSemaphore waitSemaphores[] = { m_frameAvailableSemaphore };
+	VkSemaphore signalSemaphores[] = { m_framePresentedSemaphore };
+	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+
 	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-	VkSemaphore waitSemaphores[] = { m_frameAvailableSemaphore };
-	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+
 	submitInfo.waitSemaphoreCount = 1;
 	submitInfo.pWaitSemaphores = waitSemaphores;
 	submitInfo.pWaitDstStageMask = waitStages;
+	
 
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &m_commandUnit->m_swapChainCommandBuffers[imageIndex];
-
-	VkSemaphore signalSemaphores[] = { m_framePresentedSemaphore };
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = signalSemaphores;
+
+	submitInfo.commandBufferCount = 1;
+	for (auto it = m_cameras.begin(); it != m_cameras.end(); ++it)
+	{
+		submitInfo.pCommandBuffers = &m_commandUnit->GetBufferSet(it->first)[imageIndex];
+	}
+
+
+
 
 	result = vkQueueSubmit(m_deviceQueues.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
 
 	if (result != VK_SUCCESS)
 		throw std::runtime_error("Unable to submit draw command buffer. Reason: " + Vulkan::VkResultToString(result));
+	vkQueueWaitIdle(m_deviceQueues.graphicsQueue);
+
+	
+
 
 	VkPresentInfoKHR presentInfo = {};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -659,7 +670,7 @@ void Vulkan::VulkanRenderUnit::PresentFrame() {
 
 }
 
-void Vulkan::VulkanRenderUnit::CreateDepthResources(VkFormat depthFormat,VkExtent2D swapChainExtent) {
+void Vulkan::VulkanRenderUnit::CreateDepthResources(VkExtent2D swapChainExtent) {
 
 	m_depthImage = VulkanObjectContainer<VkImage>{ m_devicePtr,vkDestroyImage };
 	m_depthImageMemory = VulkanObjectContainer<VkDeviceMemory>{ m_devicePtr, vkFreeMemory };
@@ -667,9 +678,9 @@ void Vulkan::VulkanRenderUnit::CreateDepthResources(VkFormat depthFormat,VkExten
 
 	try
 	{
-		CreateImage(swapChainExtent.width, swapChainExtent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_depthImage, m_depthImageMemory);
-		CreateImageView(m_depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, m_depthImageView);
-		TransitionImageLayout(m_depthImage, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+		CreateImage(swapChainExtent.width, swapChainExtent.height, m_depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_depthImage, m_depthImageMemory);
+		CreateImageView(m_depthImage, m_depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, m_depthImageView);
+		TransitionImageLayout(m_depthImage, m_depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 	}
 	catch (std::runtime_error e)
 	{
@@ -699,6 +710,59 @@ void Vulkan::VulkanRenderUnit::CreateTextureSampler(VulkanObjectContainer<VkSamp
 	VkResult result = vkCreateSampler(m_devicePtr->Get(), &samplerInfo, nullptr, ++textureSampler);
 	if (result != VK_SUCCESS)
 		throw std::runtime_error("Unable to create texture sampler. Reason: "+ Vulkan::VkResultToString(result));
+}
+
+void Vulkan::VulkanRenderUnit::RecordRenderPass(VkRenderPass renderPass, VkCamera& passCamera, std::vector<VkCommandBuffer> recordBuffers,VkBuffer vertexBuffer,VkBuffer indiceBuffer,uint32_t indiceCount)
+{
+
+	VkCommandBufferBeginInfo beginInfo = {};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+
+	VkRenderPassBeginInfo renderPassInfo = {};
+	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	renderPassInfo.renderPass = m_renderPass;
+	std::array<VkClearValue, 2> clearValues = {};
+	clearValues[0].color = { 0.0f, 0.0f, 1.0f, 0.25f };
+	clearValues[1].depthStencil = { (uint32_t)1.0f, (uint32_t)0.0f };
+	renderPassInfo.clearValueCount = clearValues.size();
+	renderPassInfo.pClearValues = clearValues.data();
+	renderPassInfo.renderArea.offset = { 0, 0 };
+	renderPassInfo.renderArea.extent = m_swapChainUnit->swapChainExtent2D;
+
+	for (size_t i = 0; i < m_swapChainUnit->m_swapChainFB.size(); i++)
+	{
+
+
+		renderPassInfo.framebuffer = m_swapChainUnit->m_swapChainFB[i];
+
+
+		vkBeginCommandBuffer(recordBuffers[i], &beginInfo);
+
+		vkCmdBeginRenderPass(recordBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+		vkCmdBindDescriptorSets(recordBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
+		VkBuffer vertexBuffers[] = { vertexBuffer };
+		VkDeviceSize offsets[] = { 0 };
+		vkCmdBindVertexBuffers(recordBuffers[i], 0, 1, vertexBuffers, offsets);
+		vkCmdBindIndexBuffer(recordBuffers[i], indiceBuffer, 0, VK_INDEX_TYPE_UINT32);
+
+
+		vkCmdSetScissor(recordBuffers[i], 0, 1, passCamera.scissor);
+		vkCmdSetViewport(recordBuffers[i], 0, 1, passCamera.viewport);
+		vkCmdBindPipeline(recordBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
+		vkCmdDrawIndexed(recordBuffers[i], indiceCount, 1, 0, 0, 0);
+
+
+
+		vkCmdEndRenderPass(recordBuffers[i]);
+
+		VkResult result = vkEndCommandBuffer(recordBuffers[i]);
+		if (result != VK_SUCCESS) {
+			throw std::runtime_error("Command buffer recording failed. Reason: " + VkResultToString(result));
+		}
+	
+	}
 }
 
 void Vulkan::VulkanRenderUnit::CreateUniformBuffer() {
@@ -950,12 +1014,26 @@ void Vulkan::VulkanRenderUnit::UpdateStaticUniformBuffer(float time) {
 
 }
 
-void Vulkan::VulkanRenderUnit::AddCamera(int id, VkViewport * viewport, VkRect2D * scissor)
+bool Vulkan::VulkanRenderUnit::AddCamera(int id, VkViewport * viewport, VkRect2D * scissor)
 {
+
+	auto it = m_cameras.find(id);
+	if (it != m_cameras.end())
+		return false;
+
 	VkCamera cam = {};
 	cam.viewport = viewport;
 	cam.scissor = scissor;
 	m_cameras.insert(std::make_pair(id, cam));
+	m_commandUnit->CreateCommandBufferSet(id, m_swapChainUnit->m_swapChainFB.size(), VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+	return true;
+}
+
+void Vulkan::VulkanRenderUnit::SetAsMainCamera(int id, VkViewport * viewport, VkRect2D * scissor)
+{
+	VulkanRenderUnit::m_mainCamera.viewport = viewport;
+	VulkanRenderUnit::m_mainCamera.scissor = scissor;
+	this->RemoveCamera(id);
 }
 
 void Vulkan::VulkanRenderUnit::RemoveCamera(int id)
@@ -963,6 +1041,9 @@ void Vulkan::VulkanRenderUnit::RemoveCamera(int id)
 
 	auto it = m_cameras.find(id);
 	if (it != m_cameras.end())
+	{
+		m_commandUnit->FreeCommandBufferSet(id);
 		m_cameras.erase(it);
+	}
 }
 

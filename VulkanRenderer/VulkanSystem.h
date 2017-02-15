@@ -1,5 +1,4 @@
 #pragma once
-
 #include "VulkanSystemStructs.h"
 #include <SDL2\SDL_video.h>
 #ifdef NDEBUG
@@ -37,7 +36,8 @@ namespace Vulkan
 		void Initialize(int physicalDeviceId, VkPhysicalDeviceRequiredQueues * queues, const int screenWidth, const int screenHeight);
 		//Vsync is on by default
 		void GetScreenSizes(int & width, int & height);
-		VulkanObjectContainer<VkDevice> * GetCurrentLogical();
+		VkDevice GetCurrentLogicalHandle();
+		VulkanObjectContainer<VkDevice>* GetCurrentLogicalContainer();
 		const VkPhysicalDevice GetCurrentPhysical();
 		const VkPhysicalDeviceProperties GetCurrentPhysicalProperties();
 		const VulkanObjectContainer<VkInstance> * GetInstance();
