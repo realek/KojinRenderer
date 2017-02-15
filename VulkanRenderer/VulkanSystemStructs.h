@@ -85,6 +85,81 @@ namespace Vulkan
 		}
 	};
 
+	struct VulkanSwapchainBuffer
+	{
+		VulkanSwapchainBuffer()
+		{
+			image = VK_NULL_HANDLE;
+			imageView = VK_NULL_HANDLE;
+		}
+		VulkanSwapchainBuffer(VkDevice device)
+		{
+			image = VK_NULL_HANDLE;
+			imageView = VulkanObjectContainer<VkImageView>{ device, vkDestroyImageView };
+		}
+
+		VkImage image;
+		VulkanObjectContainer<VkImageView> imageView;
+
+	};
+
+	struct VulkanImage
+	{
+		VulkanImage()
+		{
+			imageMemory = VK_NULL_HANDLE;
+			imageView = VK_NULL_HANDLE;
+			image = VK_NULL_HANDLE;
+		}
+		VulkanImage(VkDevice device)
+		{
+			image = VulkanObjectContainer<VkImage>{ device,vkDestroyImage };
+			imageView = VulkanObjectContainer<VkImageView>{ device,vkDestroyImageView };
+			imageMemory = VulkanObjectContainer<VkDeviceMemory>{ device,vkFreeMemory };
+		};
+
+		VulkanObjectContainer<VkImage> image;
+		VulkanObjectContainer<VkImageView> imageView;
+		VulkanObjectContainer<VkDeviceMemory> imageMemory;
+	};
+
+	struct VulkanBuffer
+	{
+		VulkanObjectContainer<VkBuffer> buffer;
+		VulkanObjectContainer<VkDeviceMemory> memory;
+		VkDeviceSize memorySize;
+		VkDevice device;
+
+		void* mappedMemory = nullptr;
+		VulkanBuffer()
+		{
+			device = VK_NULL_HANDLE;
+			buffer = VK_NULL_HANDLE;
+			memory = VK_NULL_HANDLE;
+			memorySize = 0;
+		}
+
+		VulkanBuffer(VkDevice device, VkDeviceSize bufferSize)
+		{
+			this->device = device;
+			memorySize = bufferSize;
+			buffer = VulkanObjectContainer<VkBuffer>{ device,vkDestroyBuffer };
+			memory = VulkanObjectContainer<VkDeviceMemory>{ device, vkFreeMemory };
+		}
+
+		void* Map(VkDeviceSize offset = 0, VkMemoryMapFlags flags = 0)
+		{
+			vkMapMemory(device, memory, offset, memorySize, flags, &mappedMemory);
+
+			return mappedMemory;
+		};
+		void UnMap()
+		{
+			vkUnmapMemory(device, memory);
+			mappedMemory = nullptr;
+		};
+	};
+
 	struct VkQueueContainer
 	{
 		VkQueue graphicsQueue{ VK_NULL_HANDLE };
@@ -174,70 +249,8 @@ namespace Vulkan
 		float specularity;
 	};
 
-	struct VulkanSwapchainBuffer
-	{
-		VulkanSwapchainBuffer()
-		{
-			image = VK_NULL_HANDLE;
-			imageView = VK_NULL_HANDLE;
-		}
-		VulkanSwapchainBuffer(VkDevice device)
-		{
-			image = VK_NULL_HANDLE;
-			imageView = VulkanObjectContainer<VkImageView>{ device, vkDestroyImageView };
-		}
 
-		VkImage image;
-		VulkanObjectContainer<VkImageView> imageView;
 
-	};
-
-	struct VulkanImage
-	{
-		VulkanImage()
-		{
-			imageMemory = VK_NULL_HANDLE;
-			imageView = VK_NULL_HANDLE;
-			image = VK_NULL_HANDLE;
-		}
-		VulkanImage(VkDevice device)
-		{
-			image = VulkanObjectContainer<VkImage>{ device,vkDestroyImage };
-			imageView = VulkanObjectContainer<VkImageView>{device,vkDestroyImageView};
-			imageMemory = VulkanObjectContainer<VkDeviceMemory>{ device,vkFreeMemory };
-		};
-
-		VulkanObjectContainer<VkImage> image;
-		VulkanObjectContainer<VkImageView> imageView;
-		VulkanObjectContainer<VkDeviceMemory> imageMemory;
-	};
-
-	struct VulkanBuffer
-	{
-		VulkanObjectContainer<VkBuffer> buffer;
-		VulkanObjectContainer<VkDeviceMemory> memory;
-
-		VulkanBuffer()
-		{
-			buffer = VK_NULL_HANDLE;
-			memory = VK_NULL_HANDLE;
-		}
-
-		VulkanBuffer(VkDevice device)
-		{
-			buffer = VulkanObjectContainer<VkBuffer>{ device,vkDestroyBuffer };
-			memory = VulkanObjectContainer<VkDeviceMemory>{ device, vkFreeMemory };
-		}
-
-		void Map() 
-		{
-			
-		};
-		void UnMap() 
-		{
-
-		};
-	};
 	//dynamic uniform buffers - unused
 	struct DynamicUniformBuffer
 	{
