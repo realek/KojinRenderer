@@ -79,7 +79,7 @@ namespace Vulkan
 		template <typename C>
 		bool operator ==(C other)
 		{
-			return this->object == (T)other
+			return this->object == (T)other;
 		}
 
 		inline T Get() const
