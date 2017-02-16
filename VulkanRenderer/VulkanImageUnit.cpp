@@ -1,8 +1,16 @@
 #include "VulkanImageUnit.h"
 #include "VulkanCommandUnit.h"
+#include "Texture2D.h"
 
 Vulkan::VulkanImageUnit::VulkanImageUnit()
 {
+	Texture2D::imageUnit = this;
+}
+
+Vulkan::VulkanImageUnit::~VulkanImageUnit()
+{
+	Texture2D::CleanUp();
+	Texture2D::imageUnit = nullptr;
 }
 
 void Vulkan::VulkanImageUnit::Initialize(VkPhysicalDevice pDevice, VkDevice device,Vulkan::VulkanCommandUnit * commandUnit)
@@ -177,4 +185,13 @@ void Vulkan::VulkanImageUnit::CopyImage(VkImage source, VkImage destination, uin
 	{
 		throw e;
 	}
+}
+
+void Vulkan::VulkanImageUnit::CreateVulkanImage(uint32_t width, uint32_t height, void * pixels, Vulkan::VulkanImage & image)
+{
+	if (image.image == VK_NULL_HANDLE || image.imageMemory == VK_NULL_HANDLE || image.imageView == VK_NULL_HANDLE)
+		image = { m_deviceHandle };
+	VkDeviceSize imageMemorySize = width * height * 4;
+
+	//Image creation here
 }

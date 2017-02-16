@@ -69,8 +69,6 @@ void Vulkan::VulkanRenderUnit::Initialize(Vulkan::VulkanSystem * systemPtr, Vulk
 		this->CreateDescriptorSetLayout();
 		this->CreateGraphicsPipeline();
 		this->CreateTextureSampler(m_defaultSampler);
-		this->m_commandUnit->CreateSwapChainCommandBuffers(m_swapChainUnit->m_swapchainFrameBuffers.size());
-		this->CreateUniformBuffer();
 		this->CreateDescriptorPool();
 		this->CreateDescriptorSets();
 		this->CreateSemaphores();
@@ -351,7 +349,9 @@ void Vulkan::VulkanRenderUnit::Render(Vulkan::Texture2D * texture,Vulkan::Mesh *
 
 void Vulkan::VulkanRenderUnit::PresentFrame() {
 	uint32_t imageIndex;
-	VkResult result = vkAcquireNextImageKHR(m_system->LogicalDevice(), m_swapChainUnit->m_swapChain, std::numeric_limits<uint64_t>::max(), m_frameAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+	auto device = m_system->LogicalDevice();
+
+	VkResult result = vkAcquireNextImageKHR(device, m_swapChainUnit->m_swapChain, std::numeric_limits<uint64_t>::max(), m_frameAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
 		//recreate swap chain
@@ -360,59 +360,26 @@ void Vulkan::VulkanRenderUnit::PresentFrame() {
 	else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
 		throw std::runtime_error("Failed to acquire next swapchain image. Reason: " + Vulkan::VkResultToString(result));
 
-
-
-	//submit each camera render here
-	for (auto it = m_cameras.begin(); it != m_cameras.end(); ++it)
-	{
-		VkSubmitInfo camSubmitInfo = {};
-		camSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		camSubmitInfo.commandBufferCount = 1;
-		//camSubmitInfo.pCommandBuffers = &m_commandUnit->GetBufferSet(it->first)[imageIndex];
-		camSubmitInfo.pCommandBuffers = &m_commandUnit->m_swapChainCommandBuffers[imageIndex];
-		result = vkQueueSubmit(m_deviceQueues.graphicsQueue, 1, &camSubmitInfo, VK_NULL_HANDLE);
-
-		if (result != VK_SUCCESS)
-			throw std::runtime_error("Unable to submit draw command buffer. Reason: " + Vulkan::VkResultToString(result));
-		result = vkQueueWaitIdle(m_deviceQueues.graphicsQueue);
-		if (result != VK_SUCCESS)
-			throw std::runtime_error("wait error");
-	}
-
-
-	VkSemaphore waitSemaphores[] = { m_frameAvailableSemaphore };
-	VkSemaphore signalSemaphores[] = { m_framePresentedSemaphore };
-	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-
 	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-
+	VkSemaphore waitSemaphores[] = { m_frameAvailableSemaphore };
+	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 	submitInfo.waitSemaphoreCount = 1;
 	submitInfo.pWaitSemaphores = waitSemaphores;
 	submitInfo.pWaitDstStageMask = waitStages;
-	
-
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = signalSemaphores;
 
 	submitInfo.commandBufferCount = 1;
-	for (auto it = m_cameras.begin(); it != m_cameras.end(); ++it)
-	{
-		submitInfo.pCommandBuffers = &m_commandUnit->GetBufferSet(it->first)[imageIndex];
-	}
+	submitInfo.pCommandBuffers = &m_commandUnit->SwapchainCommandBuffers()[imageIndex];
 
-
-
+	VkSemaphore signalSemaphores[] = { m_framePresentedSemaphore };
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = signalSemaphores;
 
 	result = vkQueueSubmit(m_deviceQueues.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
 
 	if (result != VK_SUCCESS)
 		throw std::runtime_error("Unable to submit draw command buffer. Reason: " + Vulkan::VkResultToString(result));
-	vkQueueWaitIdle(m_deviceQueues.graphicsQueue);
-
-	
-
 
 	VkPresentInfoKHR presentInfo = {};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;

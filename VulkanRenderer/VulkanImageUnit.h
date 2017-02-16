@@ -9,11 +9,13 @@ namespace Vulkan
 	{
 	public:
 		VulkanImageUnit();
+		~VulkanImageUnit();
 		void Initialize(VkPhysicalDevice pDevice, VkDevice device, Vulkan::VulkanCommandUnit * commandUnit);
 		void CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, Vulkan::VulkanObjectContainer<VkImageView>& imageView);
 		void CreateImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, Vulkan::VulkanObjectContainer<VkImage>& image, Vulkan::VulkanObjectContainer<VkDeviceMemory>& imageMemory);
 		void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
 		void CopyImage(VkImage source, VkImage destination, uint32_t width, uint32_t height);
+		void CreateVulkanImage(uint32_t width, uint32_t height,void* pixels, Vulkan::VulkanImage& image);
 		//void BlitImage();
 	
 	private:

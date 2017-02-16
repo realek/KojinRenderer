@@ -1,5 +1,6 @@
 #include "Mesh.h"
-#include "VulkanRenderUnit.h"
+#include "Material.h"
+#include "VulkanSystemStructs.h"
 #include <assimp/Importer.hpp> 
 #include <assimp/scene.h>     
 #include <assimp/postprocess.h>
@@ -41,7 +42,6 @@ Vulkan::Mesh* Vulkan::Mesh::LoadMesh(const char * filename,int flags)
 			for (uint32_t j = 0; j < mesh->mNumVertices; j++)
 			{
 
-
 				aiVector3D pos = mesh->mVertices[j];
 				aiVector3D normal = mesh->mNormals[j];
 				aiVector3D texCoord = mesh->HasTextureCoords(0) ? mesh->mTextureCoords[0][j] : zeroVec;
@@ -82,19 +82,34 @@ Vulkan::Mesh* Vulkan::Mesh::LoadMesh(const char * filename,int flags)
 	//iMesh->indiceBuffer = VulkanObjectContainer<VkBuffer>{ devicePtr,vkDestroyBuffer };
 	//iMesh->indiceBufferMemory = VulkanObjectContainer<VkDeviceMemory>{ devicePtr,vkFreeMemory };
 
-	try
-	{
-		iMesh->BuildVertexBuffer();
-		iMesh->BuildIndiceBuffer();
-	}
-	catch (std::runtime_error e)
-	{
-		throw e;
-	}
+	//try
+	//{
+	//	iMesh->BuildVertexBuffer();
+	//	iMesh->BuildIndiceBuffer();
+	//}
+	//catch (std::runtime_error e)
+	//{
+	//	throw e;
+	//}
 
 	meshes.push_back(iMesh);
 	return iMesh;
 
+}
+
+Vulkan::Mesh * Vulkan::Mesh::GetCube()
+{
+	return nullptr;
+}
+
+Vulkan::Mesh * Vulkan::Mesh::GetSphere()
+{
+	return nullptr;
+}
+
+Vulkan::Mesh * Vulkan::Mesh::GetPlane()
+{
+	return nullptr;
 }
 
 Vulkan::Mesh::~Mesh()
@@ -102,6 +117,7 @@ Vulkan::Mesh::~Mesh()
 
 }
 
+/*
 inline void Vulkan::Mesh::BuildVertexBuffer() {
 	VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
 
@@ -138,6 +154,8 @@ inline void Vulkan::Mesh::BuildIndiceBuffer()
 
 //	renderUnitPtr->CopyBuffer(stagingBuffer, indiceBuffer, bufferSize);
 }
+*/
+
 void Vulkan::Mesh::CleanUp()
 {
 	if (meshes.size() > 0)
@@ -148,6 +166,4 @@ void Vulkan::Mesh::CleanUp()
 				delete(*it);
 		}
 	}
-
-//	devicePtr = nullptr;
 }

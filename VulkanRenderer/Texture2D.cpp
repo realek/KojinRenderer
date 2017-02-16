@@ -1,18 +1,16 @@
 #include "Texture2D.h"
-#include "VulkanRenderUnit.h"
+#include "VulkanSystemStructs.h"
+#include "VulkanImageUnit.h"
 #include <SDL2\SDL.h>
 #include <SDL_image.h>
 
 Vulkan::Texture2D * Vulkan::Texture2D::m_whiteTexture = nullptr;
-//Vulkan::VulkanRenderUnit * Vulkan::Texture2D::renderUnitPtr = nullptr;
-//Vulkan::VulkanObjectContainer<VkDevice> * Vulkan::Texture2D::devicePtr = nullptr;
+Vulkan::VulkanImageUnit * Vulkan::Texture2D::imageUnit = nullptr;
 std::map<const char *,Vulkan::Texture2D*> Vulkan::Texture2D::textures;
-const char * Vulkan::Texture2D::WhiteTextureNoAlphaPath = "WhiteTextureNoAlpha";
+const std::string Vulkan::Texture2D::k_WhiteTextureNoAlphaPath = "WhiteTextureNoAlpha";
 
 Vulkan::Texture2D* Vulkan::Texture2D::CreateFromFile(const char * filepath)
 {
-	//if (devicePtr == nullptr || renderUnitPtr == nullptr)
-	//	throw std::runtime_error("Unable to create textures, please initialize the renderer first");
 
 	if (textures.find(filepath) != textures.end())
 		return textures[filepath];
@@ -22,17 +20,17 @@ Vulkan::Texture2D* Vulkan::Texture2D::CreateFromFile(const char * filepath)
 
 	 if(surf==nullptr)
 		 throw std::runtime_error("Unable to load texture image.");
-
-	 VkDeviceSize imageSize = surf->w * surf->h * 4;
+	 Texture2D::imageUnit->CreateVulkanImage(surf->w, surf->h, surf->pixels, tex->m_image);
+	// VkDeviceSize imageSize = surf->w * surf->h * 4;
 	 
 	// Vulkan::VulkanObjectContainer<VkImage> stagingImage{ devicePtr, vkDestroyImage };
 	// Vulkan::VulkanObjectContainer<VkDeviceMemory> stagingImageMemory{ devicePtr, vkFreeMemory };
 
 	// renderUnitPtr->CreateImage(surf->w, surf->h, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_LINEAR, VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingImage, stagingImageMemory);
 
-	 void* data = nullptr;
+//	 void* data = nullptr;
 	// vkMapMemory(devicePtr->Get(), stagingImageMemory, 0, imageSize, 0, &data);
-	 memcpy(data, surf->pixels, (size_t)imageSize);
+//	 memcpy(data, surf->pixels, (size_t)imageSize);
 	// vkUnmapMemory(devicePtr->Get(), stagingImageMemory);
 
 	// tex->m_textureImage = Vulkan::VulkanObjectContainer<VkImage>{ devicePtr,vkDestroyImage };
@@ -47,7 +45,7 @@ Vulkan::Texture2D* Vulkan::Texture2D::CreateFromFile(const char * filepath)
 
 	 //create image view
 	// renderUnitPtr->CreateImageView(tex->m_textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT, tex->m_textureImageView);
-	 tex->m_isEmpty = false;
+
 	 
 	 textures.insert(std::make_pair(filepath,tex));
 	 //cleanup
@@ -61,14 +59,17 @@ Vulkan::Texture2D * Vulkan::Texture2D::GetWhiteTexture()
 	//if (renderUnitPtr == nullptr)
 	//	throw std::runtime_error("Unable to create textures, please initialize the renderer first");
 
-	if(m_whiteTexture!=nullptr && !m_whiteTexture->m_isEmpty)
+	if(m_whiteTexture!=nullptr)
 		return m_whiteTexture;
 
 	m_whiteTexture = new Texture2D();
 	
 	try
 	{
-		CreateWhiteTextureNoAlpha(m_whiteTexture);
+		char one = (char)0xff;
+		std::vector<unsigned char> pixels(k_defaultTexturesWidth * k_defaultTexturesHeight * 4, one);
+		Texture2D::imageUnit->CreateVulkanImage(k_defaultTexturesWidth, k_defaultTexturesHeight, pixels.data(), m_whiteTexture->m_image);
+		textures.insert(std::make_pair(Texture2D::k_WhiteTextureNoAlphaPath.c_str(), m_whiteTexture));
 	}
 	catch(std::runtime_error e)
 	{
@@ -78,20 +79,14 @@ Vulkan::Texture2D * Vulkan::Texture2D::GetWhiteTexture()
 	return m_whiteTexture;
 }
 
-void Vulkan::Texture2D::CreateWhiteTextureNoAlpha(Texture2D * tex)
-{
-	char one = (char)0xff;
-	std::vector<unsigned char> pixels(defaultTexturesWidth * defaultTexturesHeight * 4,one);
-	VkDeviceSize imageSize = defaultTexturesWidth * defaultTexturesHeight * 4;
-
 //	Vulkan::VulkanObjectContainer<VkImage> stagingImage{ devicePtr, vkDestroyImage };
 //	Vulkan::VulkanObjectContainer<VkDeviceMemory> stagingImageMemory{ devicePtr, vkFreeMemory };
 
 //	renderUnitPtr->CreateImage(defaultTexturesWidth, defaultTexturesWidth, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_LINEAR, VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingImage, stagingImageMemory);
 	
-	void* data;
+//	void* data;
 //	vkMapMemory(devicePtr->Get(), stagingImageMemory, 0, imageSize, 0, &data);
-	memcpy(data, pixels.data(), (size_t)imageSize);
+//	memcpy(data, pixels.data(), (size_t)imageSize);
 //	vkUnmapMemory(devicePtr->Get(), stagingImageMemory);
 
 	//init texture members
@@ -108,17 +103,17 @@ void Vulkan::Texture2D::CreateWhiteTextureNoAlpha(Texture2D * tex)
 
 	//create image view
 //	renderUnitPtr->CreateImageView(tex->m_textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT, tex->m_textureImageView);
-	tex->m_isEmpty = false;
-	textures.insert(std::make_pair(Texture2D::WhiteTextureNoAlphaPath,tex));
-}
 
 void Vulkan::Texture2D::CleanUp()
 {
 	m_whiteTexture = nullptr;
 
 	if (textures.size() > 0)
+	{
 		for (auto it = textures.begin(); it != textures.end(); ++it)
-				delete(it->second);
+			delete(it->second);
+		textures.clear();
+	}
 
 	//devicePtr = nullptr;
 }

@@ -3,18 +3,20 @@
 void Vulkan::VulkanCommandUnit::Initialize(VulkanSystem * system)
 {
 	m_device = system->LogicalDevice();
-//	auto pDevice = system->GetCurrentPhysical(); // need?
 	m_commandPool = VulkanObjectContainer<VkCommandPool>{ m_device,vkDestroyCommandPool };
-
 	VkCommandPoolCreateInfo poolCI = {};
 	poolCI.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	poolCI.queueFamilyIndex = system->GetQueueFamilies().graphicsFamily;
 
-	if (vkCreateCommandPool(system->LogicalDevice(), &poolCI, nullptr, ++m_commandPool) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create graphics command pool!");
+	VkResult result = vkCreateCommandPool(system->LogicalDevice(), &poolCI, nullptr, ++m_commandPool);
+	if (result != VK_SUCCESS) {
+		throw std::runtime_error("Unable to create command pool. Reason: "+VkResultToString(result));
 	}
 
 	this->m_graphicsQueue = system->GetQueues().graphicsQueue;
+	auto swpChainData = system->GetSwapChainSupportData();
+	int swapChainCmdBufferCount = swpChainData->capabilities.minImageCount+1 > swpChainData->capabilities.maxImageCount? swpChainData->capabilities.maxImageCount : swpChainData->capabilities.minImageCount + 1;
+	CreateSwapChainCommandBuffers(swapChainCmdBufferCount);
 }
 
 void Vulkan::VulkanCommandUnit::CreateSwapChainCommandBuffers(uint32_t count)
@@ -63,6 +65,11 @@ void Vulkan::VulkanCommandUnit::CreateCommandBufferSet(int setID, uint32_t count
 std::vector<VkCommandBuffer>& Vulkan::VulkanCommandUnit::GetBufferSet(int setID)
 {
 	return m_cmdUnitBufferSets[setID];
+}
+
+std::vector<VkCommandBuffer>& Vulkan::VulkanCommandUnit::SwapchainCommandBuffers()
+{
+	return m_swapChainCommandBuffers;
 }
 
 void Vulkan::VulkanCommandUnit::FreeCommandBufferSet(int setID)

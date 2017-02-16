@@ -3,6 +3,8 @@
 
 namespace Vulkan
 {
+	struct VulkanImage;
+	class VulkanImageUnit;
 	class Texture2D
 	{
 	public:
@@ -10,22 +12,20 @@ namespace Vulkan
 		static Texture2D* GetWhiteTexture();
 
 	private:
+
+		VulkanImage m_image;
 		Texture2D() {};
 		static std::map<const char*,Texture2D*> textures;
 		int width, height;
-		bool m_isEmpty = true;
 		static Texture2D * m_whiteTexture;
-		//static VulkanRenderUnit * renderUnitPtr;
-		//static VulkanObjectContainer<VkDevice> * devicePtr;
-		static const int defaultTexturesHeight = 1280;
-		static const int defaultTexturesWidth = 1280;
+		static const int k_defaultTexturesHeight = 512;
+		static const int k_defaultTexturesWidth = 512;
 		static void CleanUp();
-		VulkanObjectContainer<VkImage> m_textureImage;
-		VulkanObjectContainer<VkDeviceMemory> m_textureImageMemory;
-		VulkanObjectContainer<VkImageView> m_textureImageView;
-		static const char * WhiteTextureNoAlphaPath;
+
+		static const std::string k_WhiteTextureNoAlphaPath;
 	private:
-		static void CreateWhiteTextureNoAlpha(Texture2D * tex);
+		static VulkanImageUnit * imageUnit;
+		friend class VulkanImageUnit;
 
 
 	};

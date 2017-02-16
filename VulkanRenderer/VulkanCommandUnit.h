@@ -8,18 +8,20 @@ namespace Vulkan
 	{
 	public:
 		void Initialize(VulkanSystem * system);
-		void CreateSwapChainCommandBuffers(uint32_t count);
+
 		void CreateCommandBufferSet(int setID, uint32_t count, VkCommandBufferLevel bufferLevel);
-		std::vector<VkCommandBuffer> & GetBufferSet(int setID);
+		std::vector<VkCommandBuffer>& GetBufferSet(int setID);
+		std::vector<VkCommandBuffer>& SwapchainCommandBuffers();
 		void FreeCommandBufferSet(int setID);
 		VkCommandBuffer BeginOneTimeCommand();
 		void EndOneTimeCommand(VkCommandBuffer & commandBuffer);
+	private:
+		void CreateSwapChainCommandBuffers(uint32_t count);
 	private:
 		VkQueue m_graphicsQueue;
 		VkDevice m_device;
 		VulkanObjectContainer<VkCommandPool> m_commandPool;
 		std::vector<VkCommandBuffer> m_swapChainCommandBuffers;
 		std::map<int, std::vector<VkCommandBuffer>> m_cmdUnitBufferSets;
-		friend class VulkanRenderUnit;
 	};
 }
