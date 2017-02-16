@@ -167,7 +167,7 @@
     <ClCompile Include="VulkanRenderUnit.cpp" />
     <ClCompile Include="VulkanSwapChainUnit.cpp" />
     <ClCompile Include="VulkanSystem.cpp" />
-    <ClCompile Include="VulkanTester.cpp" />
+    <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Allocation.h" />
@@ -175,11 +175,8 @@
     <ClInclude Include="KojinRenderer.h" />
     <ClInclude Include="Debug.h" />
     <ClInclude Include="Filesystem.h" />
-    <ClInclude Include="Gamepad.h" />
-    <ClInclude Include="Keyboard.h" />
     <ClInclude Include="Material.h" />
     <ClInclude Include="Mesh.h" />
-    <ClInclude Include="Mouse.h" />
     <ClInclude Include="SPIRVShader.h" />
     <ClInclude Include="Texture2D.h" />
     <ClInclude Include="VulkanImageUnit.h" />

@@ -7,7 +7,7 @@ namespace Vulkan
 	class VulkanCommandUnit
 	{
 	public:
-		void Initialize(VulkanSystem * system);
+		void Initialize(std::weak_ptr<VulkanSystem> system);
 
 		void CreateCommandBufferSet(int setID, uint32_t count, VkCommandBufferLevel bufferLevel);
 		std::vector<VkCommandBuffer>& GetBufferSet(int setID);

@@ -11,22 +11,23 @@ namespace Vulkan
 	public:
 
 		VulkanSwapchainUnit();
-		void Initialize(VulkanSystem * system, VulkanImageUnit * imageUnit);
+		void Initialize(std::weak_ptr<VulkanSystem> sys, std::shared_ptr<VulkanImageUnit> imageUnit);
 		VkFormat swapChainImageFormat;
 		VkExtent2D swapChainExtent2D;
-		std::vector<VulkanObjectContainer<VkFramebuffer>>& FrameBuffers();
-		std::vector<VulkanSwapchainBuffer>& SwapchainBuffers();
+		VkFramebuffer FrameBuffer(int index);
+		std::vector<VkSwapchainBuffer>& SwapchainBuffers();
 		VkRenderPass RenderPass();
+		VkSwapchainKHR SwapChain();
 
 	private:
 
 		VkDevice m_device;
-		VulkanImageUnit * m_imageUnit;
+		std::weak_ptr<VulkanImageUnit> m_imageUnit;
 		VulkanObjectContainer<VkSwapchainKHR> m_swapChain;
 		VkFormat m_depthFormat;
-		std::vector<VulkanSwapchainBuffer> m_swapChainBuffers;
+		std::vector<VkSwapchainBuffer> m_swapChainBuffers;
 		std::vector<VulkanObjectContainer<VkFramebuffer>> m_swapchainFrameBuffers;
-		VulkanImage m_depthImage;
+		VkManagedImage m_depthImage;
 		VulkanObjectContainer<VkRenderPass> m_renderPass;
 
 	private:
@@ -39,7 +40,5 @@ namespace Vulkan
 		void CreateSwapChainFrameBuffers();
 		void CreateDepthImage();
 		void CreateRenderPass(VulkanObjectContainer<VkRenderPass>& renderPass);
-
-		friend class VulkanRenderUnit;
 	};
 }

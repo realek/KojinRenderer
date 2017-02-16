@@ -2,6 +2,7 @@
 #include "VulkanRenderUnit.h"
 
 std::atomic<int> Vulkan::KojinCamera::globalID = 0;
+
 Vulkan::KojinCamera::KojinCamera(VkExtent2D swapChainExtent) : m_cameraID(++globalID)
 {
 	m_swapChainExtent = swapChainExtent;
@@ -50,19 +51,4 @@ void Vulkan::KojinCamera::SetViewport(glm::vec2 screenCoords, glm::vec2 scale)
 	m_cameraScissor.offset.x = (int32_t)m_cameraViewport.x;
 	m_cameraScissor.offset.y = (int32_t)m_cameraViewport.y;
 
-}
-
-int Vulkan::KojinCamera::GetID()
-{
-	return m_cameraID;
-}
-
-VkViewport * Vulkan::KojinCamera::GetViewport()
-{
-	return &m_cameraViewport;
-}
-
-VkRect2D * Vulkan::KojinCamera::GetScissor()
-{
-	return &m_cameraScissor;
 }

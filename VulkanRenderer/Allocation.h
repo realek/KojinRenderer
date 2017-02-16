@@ -1,6 +1,12 @@
 #pragma once
 #include <stdlib.h>
 
+/*====================================================
+
+Aligned memory allocators for general use.
+
+====================================================*/
+
 namespace MemoryAllocation
 {
 	void* AllocateAligned(size_t size, size_t alignment)

@@ -6,29 +6,33 @@ Vulkan::VulkanSwapchainUnit::VulkanSwapchainUnit()
 {
 }
 
-void Vulkan::VulkanSwapchainUnit::Initialize(VulkanSystem * systemPtr,VulkanImageUnit * imageUnitPtr)
+void Vulkan::VulkanSwapchainUnit::Initialize(std::weak_ptr<VulkanSystem> vkSystem, std::shared_ptr<VulkanImageUnit> vkImageUnit)
 {
-	
-	auto swapChainSupport = systemPtr->GetSwapChainSupportData();
-	m_device = systemPtr->LogicalDevice();
+	if (vkSystem.expired())
+		throw std::runtime_error("Vulkan system object expired at Swapchain.");
+	auto sys = vkSystem.lock();
+
+	auto swapChainSupport = sys->GetSwapChainSupportData();
+	m_device = sys->GetLogicalDevice();
 	int width, height;
-	systemPtr->GetScreenSizes(width, height);
-	m_imageUnit = imageUnitPtr;
+	sys->GetScreenSizes(width, height);
+	m_imageUnit = vkImageUnit;
 	CreateSwapChain(
-		systemPtr->GetSurface(),
+		sys->GetSurface(),
 		swapChainSupport->capabilities.minImageCount,
 		swapChainSupport->capabilities.maxImageCount,
 		swapChainSupport->capabilities.currentTransform,
 		GetSupportedSurfaceFormat(&swapChainSupport->formats),
 		GetSupportedPresentMode(&swapChainSupport->presentModes),
 		GetExtent2D(&swapChainSupport->capabilities,width,height),
-		systemPtr->GetQueueFamilies()
+		sys->GetQueueFamilies()
 		);
-	m_depthFormat = systemPtr->GetDepthFormat();
+	m_depthFormat = sys->GetDepthFormat();
 	CreateSwapChainImageViews();
 	CreateDepthImage();
 	m_renderPass = VulkanObjectContainer <VkRenderPass>{ m_device, vkDestroyRenderPass };
 	CreateRenderPass(m_renderPass);
+	CreateSwapChainFrameBuffers();
 
 }
 
@@ -59,11 +63,16 @@ void Vulkan::VulkanSwapchainUnit::CreateSwapChainFrameBuffers()
 
 void Vulkan::VulkanSwapchainUnit::CreateDepthImage()
 {
+	if (m_imageUnit.expired())
+		throw std::runtime_error("Image unit object expired at Swapchain.");
+	auto imageUnit = m_imageUnit.lock();
+
 	m_depthImage = { m_device };
+	
 
 	try
 	{
-		m_imageUnit->CreateImage(
+		imageUnit->CreateImage(
 			swapChainExtent2D.width, 
 			swapChainExtent2D.height, 
 			m_depthFormat, 
@@ -73,20 +82,20 @@ void Vulkan::VulkanSwapchainUnit::CreateDepthImage()
 			m_depthImage.image, 
 			m_depthImage.imageMemory);
 
-		m_imageUnit->CreateImageView(
+		imageUnit->CreateImageView(
 			m_depthImage.image, m_depthFormat,
 			VK_IMAGE_ASPECT_DEPTH_BIT, 
 			m_depthImage.imageView);
 
-		m_imageUnit->TransitionImageLayout(
+		imageUnit->TransitionImageLayout(
 			m_depthImage.image, 
 			m_depthFormat, 
 			VK_IMAGE_LAYOUT_UNDEFINED, 
 			VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 	}
-	catch (std::runtime_error e)
+	catch (...)
 	{
-		throw e;
+		throw;
 	}
 }
 
@@ -164,12 +173,13 @@ void Vulkan::VulkanSwapchainUnit::CreateRenderPass(VulkanObjectContainer<VkRende
 		throw std::runtime_error("Unable to create render pass. Reason: " + Vulkan::VkResultToString(result));
 }
 
-inline std::vector<Vulkan::VulkanObjectContainer<VkFramebuffer>>& Vulkan::VulkanSwapchainUnit::FrameBuffers()
+
+VkFramebuffer Vulkan::VulkanSwapchainUnit::FrameBuffer(int index)
 {
-	return m_swapchainFrameBuffers;
+	return m_swapchainFrameBuffers[index];
 }
 
-inline std::vector<Vulkan::VulkanSwapchainBuffer>& Vulkan::VulkanSwapchainUnit::SwapchainBuffers()
+inline std::vector<Vulkan::VkSwapchainBuffer>& Vulkan::VulkanSwapchainUnit::SwapchainBuffers()
 {
 	return m_swapChainBuffers;
 }
@@ -177,6 +187,11 @@ inline std::vector<Vulkan::VulkanSwapchainBuffer>& Vulkan::VulkanSwapchainUnit::
 VkRenderPass Vulkan::VulkanSwapchainUnit::RenderPass()
 {
 	return m_renderPass;
+}
+
+VkSwapchainKHR Vulkan::VulkanSwapchainUnit::SwapChain()
+{
+	return m_swapChain;
 }
 
 inline VkSurfaceFormatKHR Vulkan::VulkanSwapchainUnit::GetSupportedSurfaceFormat(const std::vector<VkSurfaceFormatKHR>* surfaceFormats)
@@ -257,7 +272,7 @@ void Vulkan::VulkanSwapchainUnit::CreateSwapChain(VkSurfaceKHR surface, uint32_t
 		throw std::runtime_error("Unable to create Vulkan swap chain!");
 
 
-	m_swapChainBuffers.resize(minImageCount, VulkanSwapchainBuffer{m_device});
+	m_swapChainBuffers.resize(minImageCount, VkSwapchainBuffer{m_device});
 	std::vector<VkImage> images;
 	images.resize(minImageCount);
 	vkGetSwapchainImagesKHR(m_device, m_swapChain, &minImageCount, images.data());
@@ -275,11 +290,15 @@ void Vulkan::VulkanSwapchainUnit::CreateSwapChain(VkSurfaceKHR surface, uint32_t
 
 void Vulkan::VulkanSwapchainUnit::CreateSwapChainImageViews()
 {
+	if (m_imageUnit.expired())
+		throw std::runtime_error("Image unit object expired at Swapchain.");
+	auto imageUnit = m_imageUnit.lock();
+
 	for (uint32_t i = 0; i < m_swapChainBuffers.size(); i++) {
 
 		try
 		{
-			m_imageUnit->CreateImageView
+			imageUnit->CreateImageView
 			(
 				m_swapChainBuffers[i].image,
 				swapChainImageFormat,

@@ -15,17 +15,8 @@ namespace Vulkan
 	{
 	
 	public:
-		//temporary
-		VkExtent2D swapChainExt;
-		//!temporary
 
-		void Initialize(VulkanSystem * system, SPIRVShader * shader);
-		void CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, Vulkan::VulkanObjectContainer<VkImageView>& imageView);
-		void CreateImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, Vulkan::VulkanObjectContainer<VkImage>& image, Vulkan::VulkanObjectContainer<VkDeviceMemory>& imageMemory);
-		void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
-		void CopyImage(VkImage source, VkImage destination, uint32_t width, uint32_t height);
-		void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, Vulkan::VulkanObjectContainer<VkBuffer>& buffer, Vulkan::VulkanObjectContainer<VkDeviceMemory>& bufferMemory);
-		void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+		void Initialize(std::weak_ptr<Vulkan::VulkanSystem> vkSystem, std::shared_ptr<Vulkan::VulkanCommandUnit> vkCmdUnit, std::shared_ptr<Vulkan::VulkanImageUnit> vkImageUnit, std::shared_ptr<Vulkan::VulkanSwapchainUnit> vkSCUnit);
 		void Render(Vulkan::Texture2D * texture, Vulkan::Mesh * mesh);
 		void PresentFrame();
 		//Dummy uniform update function
@@ -34,15 +25,17 @@ namespace Vulkan
 		void SetAsMainCamera(int id, VkViewport * viewport, VkRect2D * scissor);
 		void RemoveCamera(int id);
 		~VulkanRenderUnit();
+	
 	private:
-		VulkanSystem * m_system;
 
-		bool m_initialized = false;
+	//	VulkanSystem * m_system;
 		SPIRVShader * m_defaultShader;
+		VkDevice m_deviceHandle;
 		VkPhysicalDevice m_currentPhysicalDevice;
-		std::shared_ptr<Vulkan::VulkanCommandUnit> m_commandUnit;
-		std::shared_ptr<Vulkan::VulkanSwapchainUnit> m_swapChainUnit;
-		std::shared_ptr<Vulkan::VulkanImageUnit> m_imageUnit;
+		std::weak_ptr<Vulkan::VulkanCommandUnit> m_commandUnit;
+		std::weak_ptr<Vulkan::VulkanImageUnit> m_imageUnit;
+		std::weak_ptr<Vulkan::VulkanSwapchainUnit> m_swapChainUnit;
+
 		VulkanObjectContainer<VkDescriptorSetLayout> m_descSetLayout;
 		VulkanObjectContainer<VkPipelineLayout> m_pipelineLayout;
 		VulkanObjectContainer<VkPipeline> m_pipeline;
@@ -80,17 +73,16 @@ namespace Vulkan
 		float rotationAngle = 0;
 		
 	private:
-
+		VkConsumedMesh m_consumedMesh;
 		static VkCamera m_mainCamera;
 		static std::map<int, VkCamera> m_cameras;
-		void CreateMainRenderPass();
+
+		void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, Vulkan::VulkanObjectContainer<VkBuffer>& buffer, Vulkan::VulkanObjectContainer<VkDeviceMemory>& bufferMemory);
+		void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+
 		void CreateDescriptorSetLayout();
 		void CreateGraphicsPipeline();
 		void CreateShaderModule(std::vector<char>& code, VulkanObjectContainer<VkShaderModule>& shader);
-
-		uint32_t GetMemoryType(uint32_t desiredType, VkMemoryPropertyFlags memFlags);
-
-		void CreateDepthResources(VkExtent2D swapChainExtent);
 		void CreateTextureSampler(VulkanObjectContainer<VkSampler> & textureSampler);
 		void RecordRenderPass(VkRenderPass renderPass, VkCamera& passCamera, std::vector<VkCommandBuffer> recordBuffers, VkBuffer vertexBuffer, VkBuffer indiceBuffer, uint32_t indiceCount);
 		//temp functions

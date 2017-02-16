@@ -1,4 +1,5 @@
 #pragma once
+#include <string>
 #include "VulkanSystemStructs.h"
 #include <SDL2\SDL_video.h>
 #ifdef NDEBUG
@@ -32,20 +33,21 @@ namespace Vulkan
 		std::vector<VkPhysicalDevice> systemDevices;
 
 	public:
+	//	VulkanSystem() {};
 		VulkanSystem(SDL_Window * window, const char * appName, int appVer[3], const char * engineName, int engineVer[3]);
 		void Initialize(int physicalDeviceId, VkPhysicalDeviceRequiredQueues * queues, const int screenWidth, const int screenHeight);
 		//Vsync is on by default
 		void GetScreenSizes(int & width, int & height);
-		VkDevice LogicalDevice();
+		VkDevice GetLogicalDevice();
 		VulkanObjectContainer<VkDevice>* GetCurrentLogicalContainer();
-		const VkPhysicalDevice GetCurrentPhysical();
-		const VkPhysicalDeviceProperties GetCurrentPhysicalProperties();
-		const VulkanObjectContainer<VkInstance> * GetInstance();
-		const VkSurfaceKHR GetSurface() const;
-		const VkQueueFamilyIDs GetQueueFamilies() const;
-		const VkQueueContainer GetQueues() const;
-		const VkSwapChainSupportData * GetSwapChainSupportData();
-		const VkFormat GetDepthFormat() const;
+		VkPhysicalDevice GetCurrentPhysical();
+		VkPhysicalDeviceProperties GetCurrentPhysicalProperties();
+		VulkanObjectContainer<VkInstance> * GetInstance();
+		VkSurfaceKHR GetSurface();
+		VkQueueFamilyIDs GetQueueFamilies();
+		VkQueueContainer GetQueues();
+		VkSwapChainSupportData * GetSwapChainSupportData();
+		VkFormat GetDepthFormat();
 	private:
 		int m_width = 0;
 		int m_height = 0;
@@ -66,7 +68,7 @@ namespace Vulkan
 		const std::vector<const char*> GetExtensions();
 		void CreateVulkanSurface(SDL_Window* window);
 		void GetPhysicalDevices();
-		VkQueueFamilyIDs GetPhysicalDeviceQueueFamilies(const VkPhysicalDevice device, VkPhysicalDeviceRequiredQueues * reqs);
+		VkQueueFamilyIDs GetPhysicalDeviceQueueFamilies(VkPhysicalDevice device, VkPhysicalDeviceRequiredQueues * reqs);
 		bool CheckPhysicalDeviceExtensions(const VkPhysicalDevice device);
 		VkSwapChainSupportData GetPhysicalDeviceSwapChainSupport(const VkPhysicalDevice device);
 		void CreateLogicalDeviceFromSelectedPhysicalDevice(int physicalDeviceId, VkPhysicalDeviceRequiredQueues * queues);

@@ -1,4 +1,5 @@
 #pragma once
+#include <memory>
 #include <vector>
 #include <array>
 #include <map>
@@ -85,14 +86,14 @@ namespace Vulkan
 		}
 	};
 
-	struct VulkanSwapchainBuffer
+	struct VkSwapchainBuffer
 	{
-		VulkanSwapchainBuffer()
+		VkSwapchainBuffer()
 		{
 			image = VK_NULL_HANDLE;
 			imageView = VK_NULL_HANDLE;
 		}
-		VulkanSwapchainBuffer(VkDevice device)
+		VkSwapchainBuffer(VkDevice device)
 		{
 			image = VK_NULL_HANDLE;
 			imageView = VulkanObjectContainer<VkImageView>{ device, vkDestroyImageView };
@@ -103,15 +104,15 @@ namespace Vulkan
 
 	};
 
-	struct VulkanImage
+	struct VkManagedImage
 	{
-		VulkanImage()
+		VkManagedImage()
 		{
 			imageMemory = VK_NULL_HANDLE;
 			imageView = VK_NULL_HANDLE;
 			image = VK_NULL_HANDLE;
 		}
-		VulkanImage(VkDevice device)
+		VkManagedImage(VkDevice device)
 		{
 			image = VulkanObjectContainer<VkImage>{ device,vkDestroyImage };
 			imageView = VulkanObjectContainer<VkImageView>{ device,vkDestroyImageView };
@@ -123,7 +124,7 @@ namespace Vulkan
 		VulkanObjectContainer<VkDeviceMemory> imageMemory;
 	};
 
-	struct VulkanBuffer
+	struct VkManagedBuffer
 	{
 		VulkanObjectContainer<VkBuffer> buffer;
 		VulkanObjectContainer<VkDeviceMemory> memory;
@@ -131,7 +132,7 @@ namespace Vulkan
 		VkDevice device;
 
 		void* mappedMemory = nullptr;
-		VulkanBuffer()
+		VkManagedBuffer()
 		{
 			device = VK_NULL_HANDLE;
 			buffer = VK_NULL_HANDLE;
@@ -139,7 +140,7 @@ namespace Vulkan
 			memorySize = 0;
 		}
 
-		VulkanBuffer(VkDevice device, VkDeviceSize bufferSize)
+		VkManagedBuffer(VkDevice device, VkDeviceSize bufferSize)
 		{
 			this->device = device;
 			memorySize = bufferSize;
@@ -222,6 +223,20 @@ namespace Vulkan
 
 	};
 
+	struct VkConsumedMesh
+	{
+
+		VkConsumedMesh() {}
+
+		VkConsumedMesh(VkDevice device, VkDeviceSize vertexSize, VkDeviceSize indiceSize)
+		{
+			vertexBuffer = VkManagedBuffer{ device, vertexSize };
+			indiceBuffer = VkManagedBuffer{ device, indiceSize };
+		}
+
+		VkManagedBuffer vertexBuffer;
+		VkManagedBuffer indiceBuffer;
+	};
 
 	struct UniformBufferObject
 	{

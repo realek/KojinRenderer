@@ -1,28 +1,19 @@
 #include "Mesh.h"
-#include "Material.h"
 #include "VulkanSystemStructs.h"
 #include <assimp/Importer.hpp> 
 #include <assimp/scene.h>     
 #include <assimp/postprocess.h>
 #include <assimp/cimport.h>
 
-//Vulkan::VulkanObjectContainer<VkDevice>* Vulkan::Mesh::devicePtr = nullptr;
-//Vulkan::VulkanRenderUnit* Vulkan::Mesh::renderUnitPtr = nullptr;
-std::vector<Vulkan::Mesh*> Vulkan::Mesh::meshes;
-
-
-
-
 Vulkan::Mesh::Mesh() : vertCount(0)
 {
 }
 
-Vulkan::Mesh* Vulkan::Mesh::LoadMesh(const char * filename,int flags)
+///asumes the file has one mesh within its scene
+std::shared_ptr<Vulkan::Mesh> Vulkan::Mesh::LoadMesh(const char * filename,int flags)
 {
-	//if (devicePtr == nullptr || renderUnitPtr == nullptr)
-	//	throw std::runtime_error("Render unit was not initialized.");
 
-	auto iMesh = new Vulkan::Mesh();
+	auto iMesh = std::make_shared<Vulkan::Mesh>(Mesh());
 
 	{
 		Assimp::Importer Importer;
@@ -91,8 +82,6 @@ Vulkan::Mesh* Vulkan::Mesh::LoadMesh(const char * filename,int flags)
 	//{
 	//	throw e;
 	//}
-
-	meshes.push_back(iMesh);
 	return iMesh;
 
 }
@@ -155,15 +144,3 @@ inline void Vulkan::Mesh::BuildIndiceBuffer()
 //	renderUnitPtr->CopyBuffer(stagingBuffer, indiceBuffer, bufferSize);
 }
 */
-
-void Vulkan::Mesh::CleanUp()
-{
-	if (meshes.size() > 0)
-	{
-		for(auto it = meshes.begin(); it!=meshes.end();++it)
-		{
-			if(*it)
-				delete(*it);
-		}
-	}
-}

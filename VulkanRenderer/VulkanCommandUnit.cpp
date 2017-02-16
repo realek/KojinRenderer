@@ -1,20 +1,23 @@
 #include "VulkanCommandUnit.h"
 #include "VulkanSystem.h"
-void Vulkan::VulkanCommandUnit::Initialize(VulkanSystem * system)
+void Vulkan::VulkanCommandUnit::Initialize(std::weak_ptr<VulkanSystem> sys)
 {
-	m_device = system->LogicalDevice();
+	if (sys.expired())
+		throw std::runtime_error("Vulkan system object no longer exists.");
+	auto vkSystem = sys.lock();
+	m_device = vkSystem->GetLogicalDevice();
 	m_commandPool = VulkanObjectContainer<VkCommandPool>{ m_device,vkDestroyCommandPool };
 	VkCommandPoolCreateInfo poolCI = {};
 	poolCI.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	poolCI.queueFamilyIndex = system->GetQueueFamilies().graphicsFamily;
-
-	VkResult result = vkCreateCommandPool(system->LogicalDevice(), &poolCI, nullptr, ++m_commandPool);
+	poolCI.queueFamilyIndex = vkSystem->GetQueueFamilies().graphicsFamily;
+	poolCI.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+	VkResult result = vkCreateCommandPool(vkSystem->GetLogicalDevice(), &poolCI, nullptr, ++m_commandPool);
 	if (result != VK_SUCCESS) {
 		throw std::runtime_error("Unable to create command pool. Reason: "+VkResultToString(result));
 	}
 
-	this->m_graphicsQueue = system->GetQueues().graphicsQueue;
-	auto swpChainData = system->GetSwapChainSupportData();
+	this->m_graphicsQueue = vkSystem->GetQueues().graphicsQueue;
+	auto swpChainData = vkSystem->GetSwapChainSupportData();
 	int swapChainCmdBufferCount = swpChainData->capabilities.minImageCount+1 > swpChainData->capabilities.maxImageCount? swpChainData->capabilities.maxImageCount : swpChainData->capabilities.minImageCount + 1;
 	CreateSwapChainCommandBuffers(swapChainCmdBufferCount);
 }

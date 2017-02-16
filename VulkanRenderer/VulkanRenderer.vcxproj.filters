@@ -13,14 +13,11 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Header Files\ToBeMovedOut">
+    <Filter Include="Header Files\Temporary Usage">
       <UniqueIdentifier>{fb8d400a-b679-4707-8d41-140150ed3d20}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="VulkanTester.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="VulkanSystem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -54,6 +51,9 @@
     <ClCompile Include="KojinCamera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Debug.h">
@@ -66,16 +66,7 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Filesystem.h">
-      <Filter>Header Files\ToBeMovedOut</Filter>
-    </ClInclude>
-    <ClInclude Include="Gamepad.h">
-      <Filter>Header Files\ToBeMovedOut</Filter>
-    </ClInclude>
-    <ClInclude Include="Keyboard.h">
-      <Filter>Header Files\ToBeMovedOut</Filter>
-    </ClInclude>
-    <ClInclude Include="Mouse.h">
-      <Filter>Header Files\ToBeMovedOut</Filter>
+      <Filter>Header Files\Temporary Usage</Filter>
     </ClInclude>
     <ClInclude Include="VulkanShaderAssembly.h">
       <Filter>Header Files</Filter>

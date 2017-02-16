@@ -1,5 +1,6 @@
 #include "VulkanImageUnit.h"
 #include "VulkanCommandUnit.h"
+#include "VulkanSystem.h"
 #include "Texture2D.h"
 
 Vulkan::VulkanImageUnit::VulkanImageUnit()
@@ -13,18 +14,15 @@ Vulkan::VulkanImageUnit::~VulkanImageUnit()
 	Texture2D::imageUnit = nullptr;
 }
 
-void Vulkan::VulkanImageUnit::Initialize(VkPhysicalDevice pDevice, VkDevice device,Vulkan::VulkanCommandUnit * commandUnit)
+void Vulkan::VulkanImageUnit::Initialize(std::weak_ptr<Vulkan::VulkanSystem> sys,std::shared_ptr<Vulkan::VulkanCommandUnit> cmd)
 {
-	if (pDevice == VK_NULL_HANDLE)
-		throw std::runtime_error("VkPhysicalDevice is VK_NULL_HANDLE at Vulkan image unit initialization.");
-	if (device == VK_NULL_HANDLE)
-		throw std::runtime_error("VkDevice is VK_NULL_HANDLE at Vulkan image unit initialization.");
-	if (commandUnit == nullptr)
-		throw std::runtime_error("Command unit ptr can not be null.");
+	if (sys.expired())
+		throw std::runtime_error("Vulkan system object expired");
+	auto vkSystem = sys.lock();
 
-	this->m_commandUnitPtr = commandUnit;
-	this->m_deviceHandle = device;
-	this->m_pDeviceHandle = pDevice;
+	this->m_commandUnit = cmd;
+	this->m_deviceHandle = vkSystem->GetLogicalDevice();
+	this->m_pDeviceHandle = vkSystem->GetCurrentPhysical();
 }
 
 void Vulkan::VulkanImageUnit::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, Vulkan::VulkanObjectContainer<VkImageView>& imageView)
@@ -64,27 +62,26 @@ void Vulkan::VulkanImageUnit::CreateImage(uint32_t width, uint32_t height, VkFor
 	imageCI.usage = usage;
 	imageCI.samples = VK_SAMPLE_COUNT_1_BIT;
 	imageCI.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	auto device = m_deviceHandle;
 
-	result = vkCreateImage(device, &imageCI, nullptr, ++image);
+	result = vkCreateImage(m_deviceHandle, &imageCI, nullptr, ++image);
 
 	if (result != VK_SUCCESS)
 		throw std::runtime_error("Unable to create image. Reason: " + Vulkan::VkResultToString(result));
 
 	VkMemoryRequirements memRequirements;
-	vkGetImageMemoryRequirements(device, image, &memRequirements);
+	vkGetImageMemoryRequirements(m_deviceHandle, image, &memRequirements);
 
 	VkMemoryAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	allocInfo.allocationSize = memRequirements.size;
 	allocInfo.memoryTypeIndex = VkGetMemoryType(memRequirements.memoryTypeBits, properties, m_pDeviceHandle);
 
-	result = vkAllocateMemory(device, &allocInfo, nullptr, ++imageMemory);
+	result = vkAllocateMemory(m_deviceHandle, &allocInfo, nullptr, ++imageMemory);
 
 	if (result != VK_SUCCESS)
 		throw std::runtime_error("Unable to allocate memory. Reason: " + Vulkan::VkResultToString(result));
 
-	result = vkBindImageMemory(device, image, imageMemory, 0);
+	result = vkBindImageMemory(m_deviceHandle, image, imageMemory, 0);
 
 	if (result != VK_SUCCESS)
 		throw std::runtime_error("Unable to bind image memory. Reason: " + Vulkan::VkResultToString(result));
@@ -92,7 +89,10 @@ void Vulkan::VulkanImageUnit::CreateImage(uint32_t width, uint32_t height, VkFor
 
 void Vulkan::VulkanImageUnit::TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout)
 {
-	VkCommandBuffer commandBuffer = m_commandUnitPtr->BeginOneTimeCommand();
+	if (m_commandUnit.expired())
+		throw std::runtime_error("Command unit object expired.");
+	auto cmd = m_commandUnit.lock();
+	VkCommandBuffer commandBuffer = cmd->BeginOneTimeCommand();
 	VkImageMemoryBarrier imageMemoryBarrier = {};
 	imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 	imageMemoryBarrier.oldLayout = oldLayout;
@@ -143,7 +143,7 @@ void Vulkan::VulkanImageUnit::TransitionImageLayout(VkImage image, VkFormat form
 
 	try
 	{
-		m_commandUnitPtr->EndOneTimeCommand(commandBuffer);
+		cmd->EndOneTimeCommand(commandBuffer);
 	}
 	catch (std::runtime_error e)
 	{
@@ -153,7 +153,11 @@ void Vulkan::VulkanImageUnit::TransitionImageLayout(VkImage image, VkFormat form
 
 void Vulkan::VulkanImageUnit::CopyImage(VkImage source, VkImage destination, uint32_t width, uint32_t height)
 {
-	VkCommandBuffer cmdBuffer = m_commandUnitPtr->BeginOneTimeCommand();
+	if (m_commandUnit.expired())
+		throw std::runtime_error("Command unit object expired.");
+	auto cmd = m_commandUnit.lock();
+
+	VkCommandBuffer cmdBuffer = cmd->BeginOneTimeCommand();
 
 	VkImageSubresourceLayers imageSrL = {};
 	imageSrL.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -179,7 +183,7 @@ void Vulkan::VulkanImageUnit::CopyImage(VkImage source, VkImage destination, uin
 
 	try
 	{
-		m_commandUnitPtr->EndOneTimeCommand(cmdBuffer);
+		cmd->EndOneTimeCommand(cmdBuffer);
 	}
 	catch (std::runtime_error e)
 	{
@@ -187,11 +191,25 @@ void Vulkan::VulkanImageUnit::CopyImage(VkImage source, VkImage destination, uin
 	}
 }
 
-void Vulkan::VulkanImageUnit::CreateVulkanImage(uint32_t width, uint32_t height, void * pixels, Vulkan::VulkanImage & image)
+void Vulkan::VulkanImageUnit::CreateVulkanImage(uint32_t width, uint32_t height, void * pixels, Vulkan::VkManagedImage & vkManagedImg)
 {
-	if (image.image == VK_NULL_HANDLE || image.imageMemory == VK_NULL_HANDLE || image.imageView == VK_NULL_HANDLE)
-		image = { m_deviceHandle };
+	if (vkManagedImg.image == VK_NULL_HANDLE || vkManagedImg.imageMemory == VK_NULL_HANDLE || vkManagedImg.imageView == VK_NULL_HANDLE)
+		vkManagedImg = { m_deviceHandle };
 	VkDeviceSize imageMemorySize = width * height * 4;
+	Vulkan::VulkanObjectContainer<VkImage> stagingImage{ m_deviceHandle, vkDestroyImage };
+	Vulkan::VulkanObjectContainer<VkDeviceMemory> stagingImageMemory{ m_deviceHandle, vkFreeMemory };
 
-	//Image creation here
+	CreateImage(width, height, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_LINEAR, VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingImage, stagingImageMemory);
+
+		void* data;
+		vkMapMemory(m_deviceHandle, stagingImageMemory, 0, imageMemorySize, 0, &data);
+		memcpy(data, pixels, (size_t)imageMemorySize);
+		vkUnmapMemory(m_deviceHandle, stagingImageMemory);
+
+		CreateImage(width, height, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vkManagedImg.image, vkManagedImg.imageMemory);
+		TransitionImageLayout(stagingImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+		TransitionImageLayout(vkManagedImg.image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		CopyImage(stagingImage, vkManagedImg.image, width, height);
+		TransitionImageLayout(vkManagedImg.image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		CreateImageView(vkManagedImg.image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT, vkManagedImg.imageView);
 }

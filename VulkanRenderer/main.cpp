@@ -1,6 +1,12 @@
+/*=============================================================================
+ENTRY POINT - Used to test current functionality of the renderer.
+=============================================================================*/
+
+
 #pragma once
 #include "KojinRenderer.h"
 #include "Texture2D.h"
+#include "Material.h"
 #include "Mesh.h"
 #include "Filesystem.h"
 #include "SPIRVShader.h"
@@ -15,8 +21,9 @@
 #include <Windows.h>
 #include <atlconv.h>
 #endif
-SDL_Window * window;
 
+
+SDL_Window * window;
 #ifdef _WIN32
 
 HWND GetHwnd(SDL_Window * window) {
@@ -55,7 +62,7 @@ bool SDLExitInput()
 
 }
 
-int main() 
+void InitSDL()
 {
 	int width = 1280;
 	int height = 720;
@@ -64,10 +71,6 @@ int main()
 		std::cout << "Could not initialize SDL." << std::endl;
 	}
 
-	if (IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG | IMG_INIT_TIF) == 0)
-		std::cout << "Unable to initialize SDL image."<<std::endl;
-
-
 	window = SDL_CreateWindow("Vulkan Window", SDL_WINDOWPOS_CENTERED,
 		SDL_WINDOWPOS_CENTERED, width, height, SDL_WINDOW_OPENGL);
 	if (window == NULL) {
@@ -75,21 +78,35 @@ int main()
 		assert(window != nullptr);
 	}
 
-	int appVer[3] = { 1,0,0 };
+	int result = IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG | IMG_INIT_TIF);
+	if (result == 0)
+	{
+		std::cout << "Unable to initialize SDL image." << std::endl;
+		assert(result == 0);
+	}
+}
 
+int main() 
+{
+	
+	InitSDL();
+
+	int appVer[3] = { 0,0,0 };
 	Vulkan::KojinRenderer * renderer = nullptr;
-	Vulkan::Texture2D * tex = nullptr;
-	Vulkan::Mesh * mesh = nullptr;
+	std::shared_ptr<Vulkan::Mesh> mesh;
+	std::shared_ptr<Vulkan::Material> material = std::make_shared<Vulkan::Material>(Vulkan::Material());
 	try
 	{
 		renderer = new Vulkan::KojinRenderer{window,"Vulkan Tester",appVer};
-		tex = Vulkan::Texture2D::CreateFromFile("textures/Stormtrooper_Diffuse.png");
-		//tex = Vk::Texture2D::GetWhiteTexture();
+		material->albedo = Vulkan::Texture2D::CreateFromFile("textures/Stormtrooper_Diffuse.png");
+		//material->albedo = Vk::Texture2D::GetWhiteTexture();
 		mesh = Vulkan::Mesh::LoadMesh("models/Stormtrooper.obj");
+
 	}
 	catch(std::runtime_error e)
 	{
-#ifdef _WIN32
+		//WINDOWS APITEST BLOCK -- EXCEPTION TEST
+#ifdef _WIN32 
 
 		int length = strlen(e.what());
 		wchar_t errorText[4096] = {0};
@@ -115,16 +132,8 @@ int main()
 
 #else
 		throw std::runtime_error(e.what());
-#endif // _WIN32
+#endif // _WIN32 //END WINDOWS API TEST BOCK
 	}
-
-
-	//load stuff into renderer
-
-	renderer->DrawSingleObject(tex, mesh);
-
-	//
-
 
 	bool running = true;
 	auto startTime = std::chrono::high_resolution_clock::now();
@@ -143,7 +152,7 @@ int main()
 		//do updates with delta time here
 		while(currentDelta>=fixedTimeStep)
 		{
-			
+			//update objects here
 			renderer->Update(currentDelta);
 			//if (currentDelta == fixedTimeStep)
 			//{
@@ -154,11 +163,14 @@ int main()
 
 		if(currentDelta>0 && currentDelta < fixedTimeStep)
 			SDL_Delay((uint32_t)currentDelta);
-		//
+		
+		//load up objects to the renderer
+		renderer->Load(mesh, material);
+		//!load up objects -- currently single load
 
 		//present
 
-		renderer->Present();
+		renderer->Render();
 		//
 
 		startTime = currentTime;
@@ -167,11 +179,11 @@ int main()
 	renderer->WaitForIdle();
 
 
-	std::cout << "Vulkan resource cleanup, press any key to start." << std::endl;
-	//getchar();
+	std::cout << "Vulkan resource cleanup." << std::endl;
 	delete(renderer);
-	std::cout <<std::endl<< "Finished Vulkan resource cleanup, press any key to end application." << std::endl;
+	std::cout <<std::endl<< "Finished Vulkan resource cleanup." << std::endl;
 	IMG_Quit();
 	SDL_Quit();
-	return 0;
+
+	return 1;
 }

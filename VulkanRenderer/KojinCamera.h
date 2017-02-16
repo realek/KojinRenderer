@@ -14,9 +14,6 @@ namespace Vulkan
 		void SetPosition(glm::vec3 position);
 		void SetRotation(glm::vec3 rotation);
 		void SetViewport(glm::vec2 screenCoords, glm::vec2 scale);
-		int GetID();
-		VkViewport*  GetViewport();
-		VkRect2D* GetScissor();
 
 	public:
 		glm::vec3 position;
@@ -24,9 +21,11 @@ namespace Vulkan
 		float fov;
 		float zNear;
 		float zFar;
-
 	private:
 		KojinCamera(VkExtent2D swapChainExt);
+
+	private:
+
 		VkExtent2D m_swapChainExtent;
 		VkViewport m_cameraViewport;
 		VkRect2D m_cameraScissor;

@@ -1,23 +1,23 @@
 #pragma once
 #include "VulkanSystemStructs.h"
-
+#include <memory>
 namespace Vulkan
 {
-	struct VulkanImage;
+	struct VkManagedImage;
 	class VulkanImageUnit;
 	class Texture2D
 	{
 	public:
-		static Texture2D* CreateFromFile(const char * filepath);
-		static Texture2D* GetWhiteTexture();
+		static std::weak_ptr<Texture2D> CreateFromFile(const char * filepath);
+		static std::weak_ptr<Texture2D> GetWhiteTexture();
 
 	private:
 
-		VulkanImage m_image;
+		VkManagedImage m_image;
 		Texture2D() {};
-		static std::map<const char*,Texture2D*> textures;
+		static std::map<const char*,std::shared_ptr<Texture2D>> textures;
 		int width, height;
-		static Texture2D * m_whiteTexture;
+		static std::shared_ptr<Texture2D> m_whiteTexture;
 		static const int k_defaultTexturesHeight = 512;
 		static const int k_defaultTexturesWidth = 512;
 		static void CleanUp();

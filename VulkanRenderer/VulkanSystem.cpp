@@ -3,24 +3,20 @@
 #include <SDL2\SDL_syswm.h>
 #include <stdexcept>
 #include <algorithm>
-#include <string>
+
 #include <set>
 
 Vulkan::VulkanSystem::VulkanSystem(SDL_Window * window, const char * appName, int appVer[3], const char * engineName, int engineVer[3])
 {
 
 	if (window == nullptr)
-		throw std::runtime_error("window is null. Is your window initialized?");
-	if (appName == nullptr)
-		throw std::runtime_error("appName is null. Please provide application name.");
-	if (engineName == nullptr)
-		throw std::runtime_error("engineName is null. Please provide engine name.");
+		throw std::runtime_error("SDL_Window is null.");
 
 	VkApplicationInfo appInfo = {};
 	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-	appInfo.pApplicationName = "Hello Triangle";
+	appInfo.pApplicationName = appName;
 	appInfo.applicationVersion = VK_MAKE_VERSION(appVer[0], appVer[1], appVer[2]);
-	appInfo.pEngineName = "No Engine";
+	appInfo.pEngineName = engineName;
 	appInfo.engineVersion = VK_MAKE_VERSION(engineVer[0], engineVer[1], engineVer[2]);
 	appInfo.apiVersion = VK_API_VERSION_1_0;
 
@@ -44,7 +40,7 @@ void Vulkan::VulkanSystem::GetScreenSizes(int & width, int & height)
 	height = this->m_height;
 }
 
-VkDevice Vulkan::VulkanSystem::LogicalDevice()
+VkDevice Vulkan::VulkanSystem::GetLogicalDevice()
 {
 	return m_currentLogicalDevice;
 }
@@ -54,12 +50,12 @@ Vulkan::VulkanObjectContainer<VkDevice>* Vulkan::VulkanSystem::GetCurrentLogical
 	return &m_currentLogicalDevice;
 }
 
-const VkPhysicalDevice Vulkan::VulkanSystem::GetCurrentPhysical()
+VkPhysicalDevice Vulkan::VulkanSystem::GetCurrentPhysical()
 {
 	return m_selectedPhysicalDevice;
 }
 
-const VkPhysicalDeviceProperties Vulkan::VulkanSystem::GetCurrentPhysicalProperties()
+VkPhysicalDeviceProperties Vulkan::VulkanSystem::GetCurrentPhysicalProperties()
 {
 	VkPhysicalDeviceProperties deviceProperties;
 	vkGetPhysicalDeviceProperties(m_selectedPhysicalDevice, &deviceProperties);
@@ -67,32 +63,32 @@ const VkPhysicalDeviceProperties Vulkan::VulkanSystem::GetCurrentPhysicalPropert
 }
 
 
-const Vulkan::VulkanObjectContainer<VkInstance> * Vulkan::VulkanSystem::GetInstance()
+Vulkan::VulkanObjectContainer<VkInstance> * Vulkan::VulkanSystem::GetInstance()
 {
 	return &m_vulkanInstance;
 }
 
-const VkSurfaceKHR Vulkan::VulkanSystem::GetSurface() const
+VkSurfaceKHR Vulkan::VulkanSystem::GetSurface()
 {
 	return m_vulkanSurface;
 }
 
-const Vulkan::VkQueueFamilyIDs Vulkan::VulkanSystem::GetQueueFamilies() const
+Vulkan::VkQueueFamilyIDs Vulkan::VulkanSystem::GetQueueFamilies()
 {
 	return m_selectedPhysicalDeviceQueueIds;
 }
 
-const Vulkan::VkQueueContainer Vulkan::VulkanSystem::GetQueues() const
+Vulkan::VkQueueContainer Vulkan::VulkanSystem::GetQueues()
 {
 	return m_currentLogicalDeviceQueues;
 }
 
-const Vulkan::VkSwapChainSupportData * Vulkan::VulkanSystem::GetSwapChainSupportData()
+Vulkan::VkSwapChainSupportData * Vulkan::VulkanSystem::GetSwapChainSupportData()
 {
 	return &m_selectedPhysicalDeviceSCData;
 }
 
-const VkFormat Vulkan::VulkanSystem::GetDepthFormat() const
+VkFormat Vulkan::VulkanSystem::GetDepthFormat()
 {
 	for (VkFormat format : k_depthFormats) {
 		VkFormatProperties props;
@@ -215,7 +211,7 @@ inline void Vulkan::VulkanSystem::GetPhysicalDevices()
 	vkEnumeratePhysicalDevices(m_vulkanInstance, &count, systemDevices.data());
 }
 
-Vulkan::VkQueueFamilyIDs Vulkan::VulkanSystem::GetPhysicalDeviceQueueFamilies(const VkPhysicalDevice device, VkPhysicalDeviceRequiredQueues * reqs)
+Vulkan::VkQueueFamilyIDs Vulkan::VulkanSystem::GetPhysicalDeviceQueueFamilies(VkPhysicalDevice device, VkPhysicalDeviceRequiredQueues * reqs)
 {
 	VkQueueFamilyIDs indices;
 
