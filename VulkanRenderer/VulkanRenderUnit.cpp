@@ -283,8 +283,6 @@ void Vulkan::VulkanRenderUnit::Render(VkImageView texture,Vulkan::Mesh * mesh)
 	{
 		//write texture to sampler within descriptor set
 		WriteDescriptorSets(texture);
-		VkDeviceSize vertexSize = sizeof(mesh->vertices[0]) * mesh->vertices.size();
-		VkDeviceSize indiceSize = sizeof(mesh->indices[0]) * mesh->indices.size();
 
 		//naive check to create consumed mesh once for testing
 		if(mesh->indices.size() != m_consumedMesh.indiceCount)
