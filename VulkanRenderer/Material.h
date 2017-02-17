@@ -1,6 +1,8 @@
 #pragma once
 #include <glm\vec4.hpp>
 #include <memory>
+#include <atomic>
+
 namespace Vulkan
 {
 	class Texture2D;
@@ -12,6 +14,9 @@ namespace Vulkan
 		float specularity;
 		Material();
 		~Material();
+		int GetID();
 	private:
+		int m_materialID;
+		static std::atomic<int> globalID;
 	};
 }

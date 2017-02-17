@@ -5,10 +5,17 @@
 #include <assimp/postprocess.h>
 #include <assimp/cimport.h>
 
-Vulkan::Mesh::Mesh() : vertCount(0)
+std::atomic<int> Vulkan::Mesh::globalID = 0;
+
+
+Vulkan::Mesh::Mesh() : vertCount(0), m_meshID(++globalID)
 {
 }
 
+int Vulkan::Mesh::GetID()
+{
+	return m_meshID;
+}
 ///asumes the file has one mesh within its scene
 std::shared_ptr<Vulkan::Mesh> Vulkan::Mesh::LoadMesh(const char * filename,int flags)
 {

@@ -10,7 +10,7 @@ namespace Vulkan
 	public:
 		static std::weak_ptr<Texture2D> CreateFromFile(const char * filepath);
 		static std::weak_ptr<Texture2D> GetWhiteTexture();
-
+		VkImageView ImageView();
 	private:
 
 		VkManagedImage m_image;

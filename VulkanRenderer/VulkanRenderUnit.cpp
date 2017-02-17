@@ -277,23 +277,56 @@ void Vulkan::VulkanRenderUnit::CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer
 
 }
 
-void Vulkan::VulkanRenderUnit::Render(Vulkan::Texture2D * texture,Vulkan::Mesh * mesh)
+void Vulkan::VulkanRenderUnit::Render(VkImageView texture,Vulkan::Mesh * mesh)
 {
 	try
 	{
-		//WriteDescriptorSets(texture->m_textureImageView);
+		//write texture to sampler within descriptor set
+		WriteDescriptorSets(texture);
+		VkDeviceSize vertexSize = sizeof(mesh->vertices[0]) * mesh->vertices.size();
+		VkDeviceSize indiceSize = sizeof(mesh->indices[0]) * mesh->indices.size();
+
+		//naive check to create consumed mesh once for testing
+		if(mesh->indices.size() != m_consumedMesh.indiceCount)
+		{
+			VkDeviceSize vertexSize = sizeof(mesh->vertices[0]) * mesh->vertices.size();
+			VkDeviceSize indiceSize = sizeof(mesh->indices[0]) * mesh->indices.size();
+			m_consumedMesh = { m_deviceHandle,vertexSize,indiceSize,mesh->indices.size() };
+
+			//declare staging buffers
+			VkManagedBuffer vertexStagingBuffer{ m_deviceHandle,vertexSize };
+			VkManagedBuffer indiceStagingBuffer{ m_deviceHandle,indiceSize };
+
+			//create staging buffers
+			CreateBuffer(vertexStagingBuffer.bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertexStagingBuffer.buffer, vertexStagingBuffer.memory);
+			CreateBuffer(indiceStagingBuffer.bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, indiceStagingBuffer.buffer, indiceStagingBuffer.memory);
+
+			//copy data into staging buffers
+			memcpy(vertexStagingBuffer.Map(0, 0), mesh->vertices.data(), (size_t)vertexStagingBuffer.bufferSize);
+			vertexStagingBuffer.UnMap();
+			memcpy(indiceStagingBuffer.Map(0, 0), mesh->indices.data(), (size_t)indiceStagingBuffer.bufferSize);
+			indiceStagingBuffer.UnMap();
+
+			//create and load normal buffers
+			CreateBuffer(m_consumedMesh.vertexBuffer.bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_consumedMesh.vertexBuffer.buffer, m_consumedMesh.vertexBuffer.memory);
+			CreateBuffer(m_consumedMesh.indiceBuffer.bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_consumedMesh.indiceBuffer.buffer, m_consumedMesh.indiceBuffer.memory);
+			CopyBuffer(vertexStagingBuffer.buffer, m_consumedMesh.vertexBuffer.buffer, vertexStagingBuffer.bufferSize);
+			CopyBuffer(indiceStagingBuffer.buffer, m_consumedMesh.indiceBuffer.buffer, indiceStagingBuffer.bufferSize);
+		}
+
+		
+
+		//!Consume mesh each render call
+
+
 		if (m_swapChainUnit.expired())
 			throw std::runtime_error("Swapchain unit object expired in Render unit.");
 		if (m_commandUnit.expired())
 			throw std::runtime_error("Command unit object expired in Render unit.");
 		auto renderPass = m_swapChainUnit.lock()->RenderPass();
 		//record main render pass
-		RecordRenderPass(renderPass, m_mainCamera, m_commandUnit.lock()->SwapchainCommandBuffers(), m_consumedMesh.vertexBuffer.buffer, m_consumedMesh.indiceBuffer.buffer, 0);
-		//record secondary camera sub passes
-	//	for (auto it = m_cameras.begin(); it != m_cameras.end(); ++it)
-	//	{
-		//	RecordRenderPass(renderPass, it->second, m_commandUnit->GetBufferSet(it->first), mesh->vertexBuffer, mesh->indiceBuffer, mesh->indices.size());
-	//	}
+		RecordRenderPass(renderPass, m_mainCamera, m_commandUnit.lock()->SwapchainCommandBuffers(), m_consumedMesh.vertexBuffer.buffer, m_consumedMesh.indiceBuffer.buffer, m_consumedMesh.indiceCount);
+
 	}
 	catch(std::runtime_error e)
 	{
@@ -419,16 +452,16 @@ void Vulkan::VulkanRenderUnit::RecordRenderPass(VkRenderPass renderPass, VkCamer
 		vkCmdBeginRenderPass(recordBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		vkCmdBindDescriptorSets(recordBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
-		//VkBuffer vertexBuffers[] = { vertexBuffer };
-		//VkDeviceSize offsets[] = { 0 };
-		//vkCmdBindVertexBuffers(recordBuffers[i], 0, 1, vertexBuffers, offsets);
-		//vkCmdBindIndexBuffer(recordBuffers[i], indiceBuffer, 0, VK_INDEX_TYPE_UINT32);
+		VkBuffer vertexBuffers[] = { vertexBuffer };
+		VkDeviceSize offsets[] = { 0 };
+		vkCmdBindVertexBuffers(recordBuffers[i], 0, 1, vertexBuffers, offsets);
+		vkCmdBindIndexBuffer(recordBuffers[i], indiceBuffer, 0, VK_INDEX_TYPE_UINT32);
 
 
 		vkCmdSetScissor(recordBuffers[i], 0, 1, passCamera.scissor);
 		vkCmdSetViewport(recordBuffers[i], 0, 1, passCamera.viewport);
 		vkCmdBindPipeline(recordBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
-		//vkCmdDrawIndexed(recordBuffers[i], indiceCount, 1, 0, 0, 0);
+		vkCmdDrawIndexed(recordBuffers[i], indiceCount, 1, 0, 0, 0);
 		vkCmdEndRenderPass(recordBuffers[i]);
 
 		VkResult result = vkEndCommandBuffer(recordBuffers[i]);
@@ -437,6 +470,11 @@ void Vulkan::VulkanRenderUnit::RecordRenderPass(VkRenderPass renderPass, VkCamer
 		}
 	
 	}
+}
+
+void Vulkan::VulkanRenderUnit::UpdateConsumedMesh()
+{
+	throw std::exception("Not implemented");
 }
 
 void Vulkan::VulkanRenderUnit::CreateUniformBuffer() {

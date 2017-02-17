@@ -165,7 +165,8 @@ int main()
 			SDL_Delay((uint32_t)currentDelta);
 		
 		//load up objects to the renderer
-		renderer->Load(mesh, material);
+		//renderer->Load(mesh, material);
+		renderer->DrawSingleObject(material->albedo.lock()->ImageView(), mesh.get());
 		//!load up objects -- currently single load
 
 		//present

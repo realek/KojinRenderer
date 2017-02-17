@@ -17,7 +17,7 @@ namespace Vulkan
 	public:
 
 		void Initialize(std::weak_ptr<Vulkan::VulkanSystem> vkSystem, std::shared_ptr<Vulkan::VulkanCommandUnit> vkCmdUnit, std::shared_ptr<Vulkan::VulkanImageUnit> vkImageUnit, std::shared_ptr<Vulkan::VulkanSwapchainUnit> vkSCUnit);
-		void Render(Vulkan::Texture2D * texture, Vulkan::Mesh * mesh);
+		void Render(VkImageView texture, Vulkan::Mesh * mesh);
 		void PresentFrame();
 		//Dummy uniform update function
 		void UpdateStaticUniformBuffer(float time);
@@ -28,7 +28,6 @@ namespace Vulkan
 	
 	private:
 
-	//	VulkanSystem * m_system;
 		SPIRVShader * m_defaultShader;
 		VkDevice m_deviceHandle;
 		VkPhysicalDevice m_currentPhysicalDevice;
@@ -79,12 +78,12 @@ namespace Vulkan
 
 		void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, Vulkan::VulkanObjectContainer<VkBuffer>& buffer, Vulkan::VulkanObjectContainer<VkDeviceMemory>& bufferMemory);
 		void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
-
 		void CreateDescriptorSetLayout();
 		void CreateGraphicsPipeline();
 		void CreateShaderModule(std::vector<char>& code, VulkanObjectContainer<VkShaderModule>& shader);
 		void CreateTextureSampler(VulkanObjectContainer<VkSampler> & textureSampler);
 		void RecordRenderPass(VkRenderPass renderPass, VkCamera& passCamera, std::vector<VkCommandBuffer> recordBuffers, VkBuffer vertexBuffer, VkBuffer indiceBuffer, uint32_t indiceCount);
+		void UpdateConsumedMesh();
 		//temp functions
 		void CreateUniformBuffer();
 		void CreateDescriptorPool();

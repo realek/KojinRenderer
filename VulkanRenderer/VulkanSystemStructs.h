@@ -25,7 +25,7 @@ namespace Vulkan
 		{
 			return hasComputeQueue == rhs.hasComputeQueue && hasGraphicsQueue == rhs.hasGraphicsQueue
 				&& hasPresentQueue == rhs.hasPresentQueue && hasTransferQueue == rhs.hasTransferQueue
-				&& hasTransferQueue == rhs.hasTransferQueue && hasSparseBindingQueue == rhs.hasSparseBindingQueue;
+				&& hasSparseBindingQueue == rhs.hasSparseBindingQueue;
 		}
 
 
@@ -33,14 +33,14 @@ namespace Vulkan
 		{
 			return hasComputeQueue == rhs->hasComputeQueue && hasGraphicsQueue == rhs->hasGraphicsQueue
 				&& hasPresentQueue == rhs->hasPresentQueue && hasTransferQueue == rhs->hasTransferQueue
-				&& hasTransferQueue == rhs->hasTransferQueue && hasSparseBindingQueue == rhs->hasSparseBindingQueue;
+				&& hasSparseBindingQueue == rhs->hasSparseBindingQueue;
 		}
 
 		bool operator ==(const VkPhysicalDeviceRequiredQueues * rhs)
 		{
 			return hasComputeQueue == rhs->hasComputeQueue && hasGraphicsQueue == rhs->hasGraphicsQueue
 				&& hasPresentQueue == rhs->hasPresentQueue && hasTransferQueue == rhs->hasTransferQueue
-				&& hasTransferQueue == rhs->hasTransferQueue && hasSparseBindingQueue == rhs->hasSparseBindingQueue;
+				&& hasSparseBindingQueue == rhs->hasSparseBindingQueue;
 		}
 
 	};
@@ -128,7 +128,7 @@ namespace Vulkan
 	{
 		VulkanObjectContainer<VkBuffer> buffer;
 		VulkanObjectContainer<VkDeviceMemory> memory;
-		VkDeviceSize memorySize;
+		VkDeviceSize bufferSize;
 		VkDevice device;
 
 		void* mappedMemory = nullptr;
@@ -137,20 +137,20 @@ namespace Vulkan
 			device = VK_NULL_HANDLE;
 			buffer = VK_NULL_HANDLE;
 			memory = VK_NULL_HANDLE;
-			memorySize = 0;
+			bufferSize = 0;
 		}
 
 		VkManagedBuffer(VkDevice device, VkDeviceSize bufferSize)
 		{
 			this->device = device;
-			memorySize = bufferSize;
+			this->bufferSize = bufferSize;
 			buffer = VulkanObjectContainer<VkBuffer>{ device,vkDestroyBuffer };
 			memory = VulkanObjectContainer<VkDeviceMemory>{ device, vkFreeMemory };
 		}
 
 		void* Map(VkDeviceSize offset = 0, VkMemoryMapFlags flags = 0)
 		{
-			vkMapMemory(device, memory, offset, memorySize, flags, &mappedMemory);
+			vkMapMemory(device, memory, offset, bufferSize, flags, &mappedMemory);
 
 			return mappedMemory;
 		};
@@ -228,14 +228,16 @@ namespace Vulkan
 
 		VkConsumedMesh() {}
 
-		VkConsumedMesh(VkDevice device, VkDeviceSize vertexSize, VkDeviceSize indiceSize)
+		VkConsumedMesh(VkDevice device, VkDeviceSize vertexSize, VkDeviceSize indiceSize,uint32_t indiceCount)
 		{
 			vertexBuffer = VkManagedBuffer{ device, vertexSize };
 			indiceBuffer = VkManagedBuffer{ device, indiceSize };
+			this->indiceCount = indiceCount;
 		}
 
 		VkManagedBuffer vertexBuffer;
 		VkManagedBuffer indiceBuffer;
+		uint32_t indiceCount;
 	};
 
 	struct UniformBufferObject

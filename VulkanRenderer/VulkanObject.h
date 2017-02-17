@@ -29,17 +29,6 @@ namespace Vulkan
 			this->deleter = [&vkDevice, deleteFunction](T object) { deleteFunction(vkDevice, object, nullptr); };
 		}
 
-
-		VulkanObjectContainer(const VulkanObjectContainer<VkInstance> * vkInstance, std::function<void(VkInstance, T, VkAllocationCallbacks*)> deleteFunction)
-		{
-			this->deleter = [vkInstance, deleteFunction](T object) {  deleteFunction(vkInstance->Get(), object, nullptr);	};
-		}
-
-		VulkanObjectContainer(const VulkanObjectContainer<VkDevice> * vkDevice, std::function<void(VkDevice, T, VkAllocationCallbacks*)> deleteFunction)
-		{
-			this->deleter = [vkDevice, deleteFunction](T object) { deleteFunction(vkDevice->Get(), object, nullptr); };
-		}
-
 		VulkanObjectContainer(VkInstance vkInstance, std::function<void(VkInstance, T, VkAllocationCallbacks*)> deleteFunction)
 		{
 			this->deleter = [vkInstance, deleteFunction](T object) {  deleteFunction(vkInstance, object, nullptr);	};

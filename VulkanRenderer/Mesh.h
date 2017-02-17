@@ -3,6 +3,7 @@
 #include <vector>
 #include <glm\matrix.hpp>
 #include <memory>
+#include <atomic>
 struct aiScene;
 namespace Vulkan
 {
@@ -21,11 +22,13 @@ namespace Vulkan
 		std::vector<VkVertex> vertices;
 		std::vector<uint32_t> indices;
 		glm::mat4 modelMatrix;
+		int GetID();
 	private:
 		Mesh();
+		int m_meshID;
 		uint32_t m_consumedPosition;
 		uint32_t materialIndex;
-
+		static std::atomic<int> globalID;
 		//default assimp import flags
 		static const int defaultFlags = aiProcess_FlipWindingOrder | aiProcess_Triangulate | aiProcess_PreTransformVertices | aiProcess_CalcTangentSpace | aiProcess_GenSmoothNormals;
 

@@ -6,6 +6,8 @@
 #include "VulkanSwapChainUnit.h"
 #include "VulkanRenderUnit.h"
 #include "KojinCamera.h"
+#include "Mesh.h"
+#include "Material.h"
 #include "SDL2\SDL_syswm.h"
 
 Vulkan::KojinRenderer::KojinRenderer(SDL_Window * window, const char * appName, int appVer[3])
@@ -15,13 +17,6 @@ Vulkan::KojinRenderer::KojinRenderer(SDL_Window * window, const char * appName, 
 
 	int w, h;
 	SDL_GetWindowSize(window, &w, &h);
-	//auto sys = new VulkanSystem(
-	//	window,
-	//	appName,
-	//	appVer,
-	//	RENDER_ENGINE_NAME,
-	//	engineVer);
-
 	this->m_system = std::make_shared<Vulkan::VulkanSystem>(window,
 		appName,
 		appVer,
@@ -46,9 +41,12 @@ Vulkan::KojinRenderer::KojinRenderer(SDL_Window * window, const char * appName, 
 		throw;
 	}
 
+	//add default camera 
 	m_defaultCamera = std::make_shared<KojinCamera>(KojinCamera(this->m_swapChainUnit->swapChainExtent2D));
-
 	BindCamera(m_defaultCamera, true);
+	//init staging object
+	m_stagingOld = {};
+	m_stagingCurrent = {};
 
 }
 
@@ -58,7 +56,8 @@ Vulkan::KojinRenderer::~KojinRenderer()
 
 void Vulkan::KojinRenderer::Load(std::shared_ptr<Vulkan::Mesh> mesh, std::shared_ptr<Vulkan::Material> material)
 {
-	
+	m_stagingCurrent.ids.push_back(mesh->GetID());
+	//under construction//
 }
 
 void Vulkan::KojinRenderer::BindCamera(const std::weak_ptr<KojinCamera>& camera,bool isMainCamera)
@@ -84,7 +83,8 @@ void Vulkan::KojinRenderer::UnbindCamera(std::weak_ptr<KojinCamera>& camera)
 	m_renderUnit->RemoveCamera(cam->m_cameraID);
 }
 
-void Vulkan::KojinRenderer::DrawSingleObject(Vulkan::Texture2D * texture, Vulkan::Mesh * mesh)
+
+void Vulkan::KojinRenderer::DrawSingleObject(uint64_t texture, Vulkan::Mesh * mesh)
 {
 	m_renderUnit->Render(texture, mesh);
 }
@@ -99,7 +99,7 @@ void Vulkan::KojinRenderer::Render()
 	//
 	//pass created mesh
 	//
-	m_renderUnit->Render(nullptr, nullptr);
+	//m_renderUnit->Render(nullptr, nullptr);
 	m_renderUnit->PresentFrame();
 }
 
