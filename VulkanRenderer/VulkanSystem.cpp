@@ -3,7 +3,6 @@
 #include <SDL2\SDL_syswm.h>
 #include <stdexcept>
 #include <algorithm>
-
 #include <set>
 
 Vulkan::VulkanSystem::VulkanSystem(SDL_Window * window, const char * appName, int appVer[3], const char * engineName, int engineVer[3])
@@ -45,11 +44,6 @@ VkDevice Vulkan::VulkanSystem::GetLogicalDevice()
 	return m_currentLogicalDevice;
 }
 
-Vulkan::VulkanObjectContainer<VkDevice>* Vulkan::VulkanSystem::GetCurrentLogicalContainer()
-{
-	return &m_currentLogicalDevice;
-}
-
 VkPhysicalDevice Vulkan::VulkanSystem::GetCurrentPhysical()
 {
 	return m_selectedPhysicalDevice;
@@ -63,9 +57,9 @@ VkPhysicalDeviceProperties Vulkan::VulkanSystem::GetCurrentPhysicalProperties()
 }
 
 
-Vulkan::VulkanObjectContainer<VkInstance> * Vulkan::VulkanSystem::GetInstance()
+VkInstance Vulkan::VulkanSystem::GetInstance()
 {
-	return &m_vulkanInstance;
+	return m_vulkanInstance;
 }
 
 VkSurfaceKHR Vulkan::VulkanSystem::GetSurface()

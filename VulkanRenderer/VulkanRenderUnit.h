@@ -1,3 +1,10 @@
+/*=========================================================
+VulkanRenderUnit.h - Wrapper class dealing with the creation
+and mangement of uniform buffers/descriptor sets and graphics
+pipelines. Creates a internal buffer representation of the submited
+mesh data. Contains render&present functionality.
+==========================================================*/
+
 #pragma once
 #include <memory>
 #include "VulkanSystemStructs.h"

@@ -1,11 +1,9 @@
+/*====================================================
+Aligned memory allocators for general use.
+====================================================*/
+
 #pragma once
 #include <stdlib.h>
-
-/*====================================================
-
-Aligned memory allocators for general use.
-
-====================================================*/
 
 namespace MemoryAllocation
 {

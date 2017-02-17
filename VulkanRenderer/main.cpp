@@ -8,7 +8,6 @@ ENTRY POINT - Used to test current functionality of the renderer.
 #include "Texture2D.h"
 #include "Material.h"
 #include "Mesh.h"
-#include "Filesystem.h"
 #include "SPIRVShader.h"
 #define SDL_MAIN_HANDLED
 #include <SDL2\SDL.h>

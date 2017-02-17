@@ -1,3 +1,9 @@
+/*=========================================================
+Texture2D.h - Wrapper class used to store and manage image
+files read with SDL_image library. Stores only vulkan consumed
+versions of the imported images.
+==========================================================*/
+
 #pragma once
 #include "VulkanSystemStructs.h"
 #include <memory>

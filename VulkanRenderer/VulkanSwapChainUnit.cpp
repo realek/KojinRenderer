@@ -1,4 +1,5 @@
 #define NOMINMAX
+#include "VulkanSystem.h"
 #include "VulkanSwapChainUnit.h"
 #include "VulkanImageUnit.h"
 

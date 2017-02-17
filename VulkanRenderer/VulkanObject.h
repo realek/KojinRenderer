@@ -1,3 +1,9 @@
+/*=========================================================
+VulkanObject.h - Container class used to manage Vulkan object
+instances. In vulkan all created objects are the responsability
+of the programmer.
+==========================================================*/
+
 #pragma once
 #include <functional>
 #ifdef _WIN32

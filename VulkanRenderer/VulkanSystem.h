@@ -1,3 +1,8 @@
+/*=============================================================================
+VulkanSystem.h -> Wrapper class for creating and
+managing Vulkan instance and device objects.
+=============================================================================*/
+
 #pragma once
 #include <string>
 #include "VulkanSystemStructs.h"
@@ -39,10 +44,9 @@ namespace Vulkan
 		//Vsync is on by default
 		void GetScreenSizes(int & width, int & height);
 		VkDevice GetLogicalDevice();
-		VulkanObjectContainer<VkDevice>* GetCurrentLogicalContainer();
 		VkPhysicalDevice GetCurrentPhysical();
 		VkPhysicalDeviceProperties GetCurrentPhysicalProperties();
-		VulkanObjectContainer<VkInstance> * GetInstance();
+		VkInstance GetInstance();
 		VkSurfaceKHR GetSurface();
 		VkQueueFamilyIDs GetQueueFamilies();
 		VkQueueContainer GetQueues();

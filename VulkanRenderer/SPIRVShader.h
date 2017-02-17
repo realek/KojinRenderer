@@ -1,3 +1,9 @@
+/*=========================================================
+SPIRVShader.h - Abstraction class for binary compiled SPIRV
+shaders from GLSL code. Requires GLSLlang library to be
+integrated before implementation.
+==========================================================*/
+
 #pragma once
 #include <vector>
 #include <fstream>

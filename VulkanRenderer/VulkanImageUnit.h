@@ -1,3 +1,8 @@
+/*=========================================================
+VulkanImageUnit.h - Abstraction class used for creating and
+setting up VkImage/VkImageView vulkan objects.
+==========================================================*/
+
 #pragma once
 #include "VulkanSystemStructs.h"
 #include <map>

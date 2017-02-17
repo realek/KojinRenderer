@@ -1,3 +1,9 @@
+/*====================================================
+KojinRenderer.h used to provide an aditional layer
+of abstraction over the modular Vulkan
+wrapers.
+====================================================*/
+
 #pragma once
 #include <memory>
 #include <vector>

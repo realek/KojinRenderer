@@ -56,19 +56,10 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Debug.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Texture2D.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="VulkanObject.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Filesystem.h">
-      <Filter>Header Files\Temporary Usage</Filter>
-    </ClInclude>
-    <ClInclude Include="VulkanShaderAssembly.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="VulkanSystem.h">

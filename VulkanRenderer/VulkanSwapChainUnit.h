@@ -1,9 +1,14 @@
+/*=========================================================
+VulkanSwapChainUnit.h - Wrapper class for managing the VkSwapchain
+object and its associated resources (VkImage and VkFrameBuffer)
+==========================================================*/
+
 #pragma once
-#include "VulkanSystem.h"
+#include "VulkanSystemStructs.h"
 
 namespace Vulkan
 {
-
+	class VulkanSystem;
 	class VulkanImageUnit;
 	class VulkanSwapchainUnit
 	{

@@ -1,3 +1,8 @@
+/*=============================================================================
+VulkanUtils.h - Utility header containing functions required for passing vulkan
+errors to the user or retrieving data from Vulkan objects.
+=============================================================================*/
+
 #pragma once
 #include <vulkan\vulkan.h>
 #include <stdexcept>

@@ -173,8 +173,6 @@
     <ClInclude Include="Allocation.h" />
     <ClInclude Include="KojinCamera.h" />
     <ClInclude Include="KojinRenderer.h" />
-    <ClInclude Include="Debug.h" />
-    <ClInclude Include="Filesystem.h" />
     <ClInclude Include="Material.h" />
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="SPIRVShader.h" />
@@ -184,7 +182,6 @@
     <ClInclude Include="VulkanCommandUnit.h" />
     <ClInclude Include="VulkanObject.h" />
     <ClInclude Include="VulkanRenderUnit.h" />
-    <ClInclude Include="VulkanShaderAssembly.h" />
     <ClInclude Include="VulkanSwapChainUnit.h" />
     <ClInclude Include="VulkanSystem.h" />
     <ClInclude Include="VulkanUtils.h" />

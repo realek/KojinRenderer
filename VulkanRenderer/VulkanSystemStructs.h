@@ -1,3 +1,9 @@
+/*=============================================================================
+VulkanSystemStructs.h - Header file containing multiple structure definitions
+that wrap certain Vulkan objects such as VkBuffer, providing an easier way to
+use them.
+=============================================================================*/
+
 #pragma once
 #include <memory>
 #include <vector>

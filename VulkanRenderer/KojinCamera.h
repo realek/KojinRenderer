@@ -1,3 +1,8 @@
+/*====================================================
+KojinCamera.h abstraction class used to add camera 
+functionality to the KojinRenderer class
+====================================================*/
+
 #pragma once
 #include <glm\vec3.hpp>
 #include <vulkan\vulkan.h>

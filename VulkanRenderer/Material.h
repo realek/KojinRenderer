@@ -1,3 +1,8 @@
+/*====================================================
+Material.h - Material abstraction used in passing
+shader uniforms to vulkan uniform buffers
+====================================================*/
+
 #pragma once
 #include <glm\vec4.hpp>
 #include <memory>

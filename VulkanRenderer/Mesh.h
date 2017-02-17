@@ -1,3 +1,8 @@
+/*=========================================================
+Mesh.h - Abstraction class used to store model data such as
+vertices, indices, normals from a file loaded with assimp.
+==========================================================*/
+
 #pragma once
 #include <assimp\postprocess.h>
 #include <vector>

@@ -1,3 +1,8 @@
+/*=========================================================
+VulkanCommandUnit.h - Wrapper class over VkCommandPool struct
+from the Vulkan API. Creates and manages VkCommandBuffer objects.
+==========================================================*/
+
 #pragma once
 #include "VulkanSystemStructs.h"
 
