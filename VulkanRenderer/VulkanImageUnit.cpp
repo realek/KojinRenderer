@@ -16,9 +16,9 @@ Vulkan::VulkanImageUnit::~VulkanImageUnit()
 
 void Vulkan::VulkanImageUnit::Initialize(std::weak_ptr<Vulkan::VulkanSystem> sys,std::shared_ptr<Vulkan::VulkanCommandUnit> cmd)
 {
-	if (sys.expired())
-		throw std::runtime_error("Vulkan system object expired");
 	auto vkSystem = sys.lock();
+	if (!vkSystem)
+		throw std::runtime_error("Unable to lock weak ptr to Vulkan System object");
 
 	this->m_commandUnit = cmd;
 	this->m_deviceHandle = vkSystem->GetLogicalDevice();
@@ -89,9 +89,11 @@ void Vulkan::VulkanImageUnit::CreateImage(uint32_t width, uint32_t height, VkFor
 
 void Vulkan::VulkanImageUnit::TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout)
 {
-	if (m_commandUnit.expired())
-		throw std::runtime_error("Command unit object expired.");
+
 	auto cmd = m_commandUnit.lock();
+	if (!cmd)
+		throw std::runtime_error("Unable to lock weak ptr to Command Unit object.");
+
 	VkCommandBuffer commandBuffer = cmd->BeginOneTimeCommand();
 	VkImageMemoryBarrier imageMemoryBarrier = {};
 	imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -153,9 +155,10 @@ void Vulkan::VulkanImageUnit::TransitionImageLayout(VkImage image, VkFormat form
 
 void Vulkan::VulkanImageUnit::CopyImage(VkImage source, VkImage destination, uint32_t width, uint32_t height)
 {
-	if (m_commandUnit.expired())
-		throw std::runtime_error("Command unit object expired.");
+
 	auto cmd = m_commandUnit.lock();
+	if (!cmd)
+		throw std::runtime_error("Unable to lock weak ptr to Command unit object");
 
 	VkCommandBuffer cmdBuffer = cmd->BeginOneTimeCommand();
 

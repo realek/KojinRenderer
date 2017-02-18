@@ -62,10 +62,11 @@ void Vulkan::KojinRenderer::Load(std::shared_ptr<Vulkan::Mesh> mesh, std::shared
 
 void Vulkan::KojinRenderer::BindCamera(const std::weak_ptr<KojinCamera>& camera,bool isMainCamera)
 {
-	if (camera.expired())
-		return;
 
 	auto cam = camera.lock();
+	if (!cam)
+		return;
+
 	if (isMainCamera)
 	{
 		this->m_renderUnit->SetAsMainCamera(cam->m_cameraID, &cam->m_cameraViewport, &cam->m_cameraScissor);
@@ -76,10 +77,10 @@ void Vulkan::KojinRenderer::BindCamera(const std::weak_ptr<KojinCamera>& camera,
 
 void Vulkan::KojinRenderer::UnbindCamera(std::weak_ptr<KojinCamera>& camera)
 {
-	if (camera.expired())
-		return;
 
 	auto cam = camera.lock();
+	if (!cam)
+		return;
 	m_renderUnit->RemoveCamera(cam->m_cameraID);
 }
 

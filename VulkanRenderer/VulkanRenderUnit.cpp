@@ -22,10 +22,10 @@ Vulkan::VulkanRenderUnit::~VulkanRenderUnit()
 
 void Vulkan::VulkanRenderUnit::Initialize(std::weak_ptr<Vulkan::VulkanSystem> vkSystem, std::shared_ptr<Vulkan::VulkanCommandUnit> vkCmdUnit, std::shared_ptr<Vulkan::VulkanImageUnit> vkImageUnit, std::shared_ptr<Vulkan::VulkanSwapchainUnit> vkSCUnit)
 {
-	if (vkSystem.expired())
-		throw std::runtime_error("Vulkan system object expired at Render unit.");
+	
 	auto sys = vkSystem.lock();
-
+	if (!sys)
+		throw std::runtime_error("Unable to lock weak ptr to Vulkan System.");
 	this->m_deviceHandle = sys->GetLogicalDevice();
 	this->m_currentPhysicalDevice = sys->GetCurrentPhysical();
 	this->m_deviceQueues = sys->GetQueues();
@@ -62,9 +62,9 @@ void Vulkan::VulkanRenderUnit::Initialize(std::weak_ptr<Vulkan::VulkanSystem> vk
 void Vulkan::VulkanRenderUnit::CreateGraphicsPipeline()
 {
 	VkResult result;
-
-	if (m_swapChainUnit.expired())
-		throw std::runtime_error("Swapchain unit object expired in Render unit.");
+	auto scU = m_swapChainUnit.lock();
+	if (!scU)
+		throw std::runtime_error("Unable to lock weak ptr to Swapchain unit.");
 
 	VulkanObjectContainer<VkShaderModule> vertShaderModule{ m_deviceHandle, vkDestroyShaderModule };
 	VulkanObjectContainer<VkShaderModule> fragShaderModule{ m_deviceHandle, vkDestroyShaderModule };
@@ -199,7 +199,7 @@ void Vulkan::VulkanRenderUnit::CreateGraphicsPipeline()
 	graphicsPipelineCI.pColorBlendState = &colorBlendingStateCI;
 	graphicsPipelineCI.pDynamicState = &dynamicStateCI;
 	graphicsPipelineCI.layout = m_pipelineLayout;
-	graphicsPipelineCI.renderPass = m_swapChainUnit.lock()->RenderPass();
+	graphicsPipelineCI.renderPass = scU->RenderPass();
 	graphicsPipelineCI.subpass = 0;
 	graphicsPipelineCI.basePipelineHandle = VK_NULL_HANDLE;
 
@@ -258,9 +258,10 @@ void Vulkan::VulkanRenderUnit::CreateBuffer(VkDeviceSize size, VkBufferUsageFlag
 
 void Vulkan::VulkanRenderUnit::CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
 	
-	if (m_commandUnit.expired())
-		throw std::runtime_error("Command unit object expired in Renderer unit.");
+	
 	auto cmdUnit = m_commandUnit.lock();
+	if (!cmdUnit)
+		throw std::runtime_error("Unable to lock weak ptr to Command unit object.");
 	VkCommandBuffer cmd = cmdUnit->BeginOneTimeCommand();
 	VkBufferCopy copyRegion = {};
 	copyRegion.size = size;
@@ -316,14 +317,16 @@ void Vulkan::VulkanRenderUnit::Render(VkImageView texture,Vulkan::Mesh * mesh)
 
 		//!Consume mesh each render call
 
-
-		if (m_swapChainUnit.expired())
-			throw std::runtime_error("Swapchain unit object expired in Render unit.");
-		if (m_commandUnit.expired())
-			throw std::runtime_error("Command unit object expired in Render unit.");
-		auto renderPass = m_swapChainUnit.lock()->RenderPass();
+		auto swpChain = m_swapChainUnit.lock();
+		if (!swpChain)
+			throw std::runtime_error("Unable to lock weak ptr to Swapchain unit object.");
+		
+		auto cmdUnit = m_commandUnit.lock();
+		if (!cmdUnit)
+			throw std::runtime_error("Unable to lock weak ptr to Command unit object.");
+		
 		//record main render pass
-		RecordRenderPass(renderPass, m_mainCamera, m_commandUnit.lock()->SwapchainCommandBuffers(), m_consumedMesh.vertexBuffer.buffer, m_consumedMesh.indiceBuffer.buffer, m_consumedMesh.indiceCount);
+		RecordRenderPass(swpChain->RenderPass(), m_mainCamera, cmdUnit->SwapchainCommandBuffers(), m_consumedMesh.vertexBuffer.buffer, m_consumedMesh.indiceBuffer.buffer, m_consumedMesh.indiceCount);
 
 	}
 	catch(std::runtime_error e)
@@ -334,14 +337,15 @@ void Vulkan::VulkanRenderUnit::Render(VkImageView texture,Vulkan::Mesh * mesh)
 
 void Vulkan::VulkanRenderUnit::PresentFrame() {
 	uint32_t imageIndex;
-	if (m_swapChainUnit.expired())
-		throw std::runtime_error("Swapchain unit object expired in Render unit.");
-
-	if (m_commandUnit.expired())
-		throw std::runtime_error("Command unit object expired in Render unit.");
 
 	auto cmdUnit = m_commandUnit.lock();
-	auto sc = m_swapChainUnit.lock()->SwapChain();
+	if (!cmdUnit)
+		throw std::runtime_error("Unable to lock weak ptr to Command unit object.");
+	
+	auto scU = m_swapChainUnit.lock();
+	if (!scU)
+		throw std::runtime_error("Unable to lock weak ptr to Swap Chain unit.");
+	auto sc = scU->SwapChain();
 
 	VkResult result = vkAcquireNextImageKHR(m_deviceHandle, sc, std::numeric_limits<uint64_t>::max(), m_frameAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
 
@@ -422,9 +426,12 @@ void Vulkan::VulkanRenderUnit::CreateTextureSampler(VulkanObjectContainer<VkSamp
 
 void Vulkan::VulkanRenderUnit::RecordRenderPass(VkRenderPass renderPass, VkCamera& passCamera, std::vector<VkCommandBuffer> recordBuffers,VkBuffer vertexBuffer,VkBuffer indiceBuffer,uint32_t indiceCount)
 {
-	if (m_swapChainUnit.expired())
-		throw std::runtime_error("Swapchain unit object expired in Render unit.");
+
+		
 	auto scUnit = m_swapChainUnit.lock();
+	if(!scUnit)
+		throw std::runtime_error("Unable to lock weak ptr to Swap Chain unit.");
+
 	VkCommandBufferBeginInfo beginInfo = {};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
@@ -657,11 +664,11 @@ void Vulkan::VulkanRenderUnit::CreateSemaphores()
 
 void Vulkan::VulkanRenderUnit::UpdateStaticUniformBuffer(float time) {
 
+	auto scU = m_swapChainUnit.lock();
+	if (!scU)
+		throw std::runtime_error("Unable to lock Swapchain unit.");
 
-	if (m_swapChainUnit.expired())
-		throw std::runtime_error("Swapchain unit object expired at Render unit.");
-
-	auto swapChainExtent = m_swapChainUnit.lock()->swapChainExtent2D;
+	auto extent = scU->swapChainExtent2D;
 	//just a simple derpy thing
 	rotationAngle+=5*time;
 	if (rotationAngle >= 360)
@@ -672,7 +679,7 @@ void Vulkan::VulkanRenderUnit::UpdateStaticUniformBuffer(float time) {
 	ubo.model = glm::rotate(glm::mat4(), glm::radians(rotationAngle), glm::vec3(0.0f, 1.0f, 0.0f));
 	ubo.model = glm::scale(glm::translate(ubo.model, glm::vec3(0, 0, 0)),glm::vec3(0.25,0.25,0.25));
 	ubo.view = glm::lookAt(glm::vec3(0.0f, 1.0f, -1.0f), glm::vec3(0.0f, 0.5f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
+	ubo.proj = glm::perspective(glm::radians(45.0f), extent.width / (float)extent.height, 0.1f, 10.0f);
 	ubo.proj[1][1] *= -1;
 	ubo.ComputeMatrices();
 	

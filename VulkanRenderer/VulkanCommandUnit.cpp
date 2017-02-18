@@ -2,9 +2,9 @@
 #include "VulkanSystem.h"
 void Vulkan::VulkanCommandUnit::Initialize(std::weak_ptr<VulkanSystem> sys)
 {
-	if (sys.expired())
-		throw std::runtime_error("Vulkan system object no longer exists.");
 	auto vkSystem = sys.lock();
+	if (!vkSystem)
+		throw std::runtime_error("Unable to lock weak ptr to Vulkan system object.");
 	m_device = vkSystem->GetLogicalDevice();
 	m_commandPool = VulkanObjectContainer<VkCommandPool>{ m_device,vkDestroyCommandPool };
 	VkCommandPoolCreateInfo poolCI = {};

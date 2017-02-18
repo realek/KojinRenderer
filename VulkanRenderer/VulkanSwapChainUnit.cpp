@@ -8,11 +8,10 @@ Vulkan::VulkanSwapchainUnit::VulkanSwapchainUnit()
 }
 
 void Vulkan::VulkanSwapchainUnit::Initialize(std::weak_ptr<VulkanSystem> vkSystem, std::shared_ptr<VulkanImageUnit> vkImageUnit)
-{
-	if (vkSystem.expired())
-		throw std::runtime_error("Vulkan system object expired at Swapchain.");
+{		
 	auto sys = vkSystem.lock();
-
+	if(!sys)
+		throw std::runtime_error("Unable to lock weak ptr to Vulkan System object");
 	auto swapChainSupport = sys->GetSwapChainSupportData();
 	m_device = sys->GetLogicalDevice();
 	int width, height;
@@ -64,10 +63,10 @@ void Vulkan::VulkanSwapchainUnit::CreateSwapChainFrameBuffers()
 
 void Vulkan::VulkanSwapchainUnit::CreateDepthImage()
 {
-	if (m_imageUnit.expired())
-		throw std::runtime_error("Image unit object expired at Swapchain.");
-	auto imageUnit = m_imageUnit.lock();
 
+	auto imageUnit = m_imageUnit.lock();
+	if (!imageUnit)
+		throw std::runtime_error("Unable to lock weak ptr to Image unit object");
 	m_depthImage = { m_device };
 	
 
@@ -291,10 +290,9 @@ void Vulkan::VulkanSwapchainUnit::CreateSwapChain(VkSurfaceKHR surface, uint32_t
 
 void Vulkan::VulkanSwapchainUnit::CreateSwapChainImageViews()
 {
-	if (m_imageUnit.expired())
-		throw std::runtime_error("Image unit object expired at Swapchain.");
 	auto imageUnit = m_imageUnit.lock();
-
+	if (!imageUnit)
+		throw std::runtime_error("Unable to lock weak ptr to Image Unit object");
 	for (uint32_t i = 0; i < m_swapChainBuffers.size(); i++) {
 
 		try
