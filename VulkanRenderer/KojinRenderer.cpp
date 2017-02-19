@@ -10,6 +10,22 @@
 #include "Material.h"
 #include "SDL2\SDL_syswm.h"
 
+
+
+void Vulkan::KojinStagingObject::UpdateUniforms(KojinStagingObject& updated)
+{
+	this->modelMatrices = updated.modelMatrices;
+	this->diffuseColors = updated.diffuseColors;
+	this->specularities = updated.specularities;
+	this->diffuseTextures = updated.diffuseTextures;
+}
+
+void Vulkan::KojinStagingObject::ClearTemporary()
+{
+	vertex.clear();
+	indices.clear();
+}
+
 Vulkan::KojinRenderer::KojinRenderer(SDL_Window * window, const char * appName, int appVer[3])
 {
 	int engineVer[3] = { RENDER_ENGINE_MAJOR_VERSION,RENDER_ENGINE_PATCH_VERSION,RENDER_ENGINE_MINOR_VERSION };
@@ -71,7 +87,6 @@ void Vulkan::KojinRenderer::Load(std::weak_ptr<Vulkan::Mesh> mesh, std::weak_ptr
 	m_stagingCurrent.totalIndices += lockedMesh->indices.size();
 	m_stagingCurrent.modelMatrices.push_back(lockedMesh->modelMatrix);
 	m_stagingCurrent.diffuseColors.push_back(lockedMat->diffuseColor);
-	m_stagingCurrent.specularColors.push_back(lockedMat->specularColor);
 	m_stagingCurrent.specularities.push_back(lockedMat->specularity);
 	m_stagingCurrent.diffuseTextures.push_back(lockedMat->diffuseTexture);
 }
@@ -112,12 +127,18 @@ void Vulkan::KojinRenderer::Update(float deltaTime)
 
 void Vulkan::KojinRenderer::Render()
 {
+	bool recreateBuffers = false;
+	if (m_stagingCurrent != m_stagingOld)
+	{
+		m_stagingOld.indiceOffset = m_stagingCurrent.indiceOffset;
+		m_stagingOld.ids = m_stagingCurrent.ids;
+		m_stagingOld.totalIndices = m_stagingCurrent.totalIndices;
+		recreateBuffers = true;
+	}
 
-	m_stagingCurrent = {};
+	m_renderUnit->ConsumeMesh(recreateBuffers);
+	m_stagingCurrent = {}; // clear current staging object
 
-	//
-	//pass created mesh
-	//
 	//m_renderUnit->Render(nullptr, nullptr);
 	m_renderUnit->PresentFrame();
 }
@@ -127,13 +148,7 @@ void Vulkan::KojinRenderer::WaitForIdle()
 	vkDeviceWaitIdle(this->m_system->GetLogicalDevice());
 }
 
-std::shared_ptr<Vulkan::KojinCamera> Vulkan::KojinRenderer::GetDefaultCamera()
+std::weak_ptr<Vulkan::KojinCamera> Vulkan::KojinRenderer::GetDefaultCamera()
 {
 	return m_defaultCamera;
-}
-
-void Vulkan::KojinStagingObject::ClearTemporary()
-{
-	vertex.clear();
-	indices.clear();
 }

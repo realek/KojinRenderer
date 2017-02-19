@@ -31,7 +31,7 @@ namespace Vulkan
 		bool AddCamera(int id, VkViewport * viewport, VkRect2D * scissor);
 		void SetAsMainCamera(int id, VkViewport * viewport, VkRect2D * scissor);
 		void RemoveCamera(int id);
-		void UpdateConsumedMesh();
+		void ConsumeMesh(bool recreateBuffers);
 		~VulkanRenderUnit();
 	
 	private:
@@ -43,7 +43,8 @@ namespace Vulkan
 		std::weak_ptr<Vulkan::VulkanImageUnit> m_imageUnit;
 		std::weak_ptr<Vulkan::VulkanSwapchainUnit> m_swapChainUnit;
 
-		VulkanObjectContainer<VkDescriptorSetLayout> m_descSetLayout;
+		VulkanObjectContainer<VkDescriptorSetLayout> m_descSetLayoutVertex;
+		VulkanObjectContainer<VkDescriptorSetLayout> m_descSetLayoutFragment;
 		VulkanObjectContainer<VkPipelineLayout> m_pipelineLayout;
 		VulkanObjectContainer<VkPipeline> m_pipeline;
 		VulkanObjectContainer<VkImage> m_depthImage;
@@ -70,8 +71,11 @@ namespace Vulkan
 		VulkanObjectContainer<VkBuffer> lightsUniformBuffer;
 		VulkanObjectContainer<VkDeviceMemory> lightsUniformBufferMemory;
 		
-		VulkanObjectContainer<VkDescriptorPool> descriptorPool;
-		VkDescriptorSet descriptorSet;
+		VulkanObjectContainer<VkDescriptorPool> m_descriptorPool;
+
+
+		VkDescriptorSet vertexDescriptorSet;
+		VkDescriptorSet fragmentDescriptorSet;
 		//semaphores
 		VulkanObjectContainer<VkSemaphore> m_frameAvailableSemaphore;
 		VulkanObjectContainer<VkSemaphore> m_framePresentedSemaphore;
@@ -94,7 +98,7 @@ namespace Vulkan
 		//temp functions
 		void CreateUniformBuffer();
 		void CreateDescriptorPool();
-		void CreateDescriptorSets();
+		VkDescriptorSet CreateDescriptorSet(VkDescriptorSetLayout * layouts, uint32_t setCount);
 		void WriteDescriptorSets(VkImageView textureImageView);
 		void CreateSemaphores();
 

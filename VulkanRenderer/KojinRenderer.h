@@ -26,6 +26,7 @@ wrapers.
 #endif // !RENDER_ENGINE_MAJOR_VERSION
 
 struct SDL_Window;
+typedef uint64_t VkImageView;
 namespace Vulkan
 {
 	class VulkanSystem;
@@ -50,11 +51,24 @@ namespace Vulkan
 
 		std::vector<glm::mat4> modelMatrices;
 		std::vector<glm::vec4> diffuseColors;
-		std::vector<glm::vec4> specularColors;
 		std::vector<float> specularities;
-		std::vector<uint64_t> diffuseTextures;
+		std::vector<VkImageView> diffuseTextures;
 
+		KojinStagingObject() {};
+		KojinStagingObject(const KojinStagingObject& other) = delete;
+
+		void UpdateUniforms(KojinStagingObject& updated);
 		void ClearTemporary();
+
+		bool operator == (KojinStagingObject& rhs)
+		{
+			return ids == rhs.ids && indiceOffset == rhs.indiceOffset && totalIndices == rhs.totalIndices;
+		}
+
+		bool operator != (KojinStagingObject& rhs)
+		{
+			return ids != rhs.ids || indiceOffset != rhs.indiceOffset || totalIndices != rhs.totalIndices;
+		}
 	};
 
 
@@ -72,7 +86,7 @@ namespace Vulkan
 		void Update(float deltaTime);
 		void Render();
 		void WaitForIdle();
-		std::shared_ptr<KojinCamera> GetDefaultCamera();
+		std::weak_ptr<KojinCamera> GetDefaultCamera();
 	private:
 		KojinStagingObject m_stagingOld;
 		KojinStagingObject m_stagingCurrent;

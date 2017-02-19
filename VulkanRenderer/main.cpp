@@ -165,6 +165,7 @@ int main()
 		
 		//load up objects to the renderer
 		renderer->Load(mesh, material);
+		renderer->Load(mesh, material);
 		renderer->DrawSingleObject(material->diffuseTexture, mesh.get());
 		//!load up objects -- currently single load
 
