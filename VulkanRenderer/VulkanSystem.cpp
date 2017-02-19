@@ -30,7 +30,6 @@ void Vulkan::VulkanSystem::Initialize(int physicalDeviceId, VkPhysicalDeviceRequ
 	this->CreateLogicalDeviceFromSelectedPhysicalDevice(physicalDeviceId,queues);
 	this->m_width = screenWidth;
 	this->m_height = screenHeight;
-	//this->CreateSwapChain(screenWidth, screenHeight);
 
 }
 void Vulkan::VulkanSystem::GetScreenSizes(int & width, int & height)

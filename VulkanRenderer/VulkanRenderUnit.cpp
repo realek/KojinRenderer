@@ -43,13 +43,20 @@ void Vulkan::VulkanRenderUnit::Initialize(std::weak_ptr<Vulkan::VulkanSystem> vk
 
 	try
 	{
-		this->CreateDescriptorSetLayout();
-		this->CreateGraphicsPipeline();
+		//default combined texture sampler can be created first
 		this->CreateTextureSampler(m_defaultSampler);
-		this->CreateUniformBuffer();
-		this->CreateDescriptorPool();
-		this->CreateDescriptorSets();
+		//make semaphores as they dont require anything to be present
 		this->CreateSemaphores();
+		//size pool acording to loaded objects
+		this->CreateDescriptorPool();
+		this->CreateDescriptorSetLayout();
+		this->CreateDescriptorSets();
+		this->CreateSolidGraphicsPipeline();
+
+		this->CreateUniformBuffer();
+
+
+
 
 	}
 	catch (std::runtime_error e)
@@ -59,7 +66,7 @@ void Vulkan::VulkanRenderUnit::Initialize(std::weak_ptr<Vulkan::VulkanSystem> vk
 }
 
 
-void Vulkan::VulkanRenderUnit::CreateGraphicsPipeline()
+void Vulkan::VulkanRenderUnit::CreateSolidGraphicsPipeline()
 {
 	VkResult result;
 	auto scU = m_swapChainUnit.lock();
@@ -286,7 +293,7 @@ void Vulkan::VulkanRenderUnit::Render(VkImageView texture,Vulkan::Mesh * mesh)
 		WriteDescriptorSets(texture);
 
 		//naive check to create consumed mesh once for testing
-		if(mesh->indices.size() != m_consumedMesh.indiceCount)
+		if(mesh->indices.size() != m_consumedMesh.totalIndiceCount)
 		{
 			VkDeviceSize vertexSize = sizeof(mesh->vertices[0]) * mesh->vertices.size();
 			VkDeviceSize indiceSize = sizeof(mesh->indices[0]) * mesh->indices.size();
@@ -326,7 +333,7 @@ void Vulkan::VulkanRenderUnit::Render(VkImageView texture,Vulkan::Mesh * mesh)
 			throw std::runtime_error("Unable to lock weak ptr to Command unit object.");
 		
 		//record main render pass
-		RecordRenderPass(swpChain->RenderPass(), m_mainCamera, cmdUnit->SwapchainCommandBuffers(), m_consumedMesh.vertexBuffer.buffer, m_consumedMesh.indiceBuffer.buffer, m_consumedMesh.indiceCount);
+		RecordRenderPass(swpChain->RenderPass(), m_mainCamera, cmdUnit->SwapchainCommandBuffers(), m_consumedMesh.vertexBuffer.buffer, m_consumedMesh.indiceBuffer.buffer, m_consumedMesh.totalIndiceCount);
 
 	}
 	catch(std::runtime_error e)

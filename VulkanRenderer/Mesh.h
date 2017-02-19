@@ -31,7 +31,7 @@ namespace Vulkan
 	private:
 		Mesh();
 		int m_meshID;
-		uint32_t m_consumedPosition;
+		bool m_consumeOnSubmit;
 		uint32_t materialIndex;
 		static std::atomic<int> globalID;
 		//default assimp import flags

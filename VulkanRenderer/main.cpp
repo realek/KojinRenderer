@@ -97,7 +97,7 @@ int main()
 	try
 	{
 		renderer = new Vulkan::KojinRenderer{window,"Vulkan Tester",appVer};
-		material->albedo = Vulkan::Texture2D::CreateFromFile("textures/Stormtrooper_Diffuse.png");
+		material->diffuseTexture = Vulkan::Texture2D::CreateFromFile("textures/Stormtrooper_Diffuse.png").lock()->ImageView();
 		//material->albedo = Vk::Texture2D::GetWhiteTexture();
 		mesh = Vulkan::Mesh::LoadMesh("models/Stormtrooper.obj");
 
@@ -164,8 +164,8 @@ int main()
 			SDL_Delay((uint32_t)currentDelta);
 		
 		//load up objects to the renderer
-		//renderer->Load(mesh, material);
-		renderer->DrawSingleObject(material->albedo.lock()->ImageView(), mesh.get());
+		renderer->Load(mesh, material);
+		renderer->DrawSingleObject(material->diffuseTexture, mesh.get());
 		//!load up objects -- currently single load
 
 		//present

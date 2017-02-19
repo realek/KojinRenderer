@@ -54,10 +54,26 @@ Vulkan::KojinRenderer::~KojinRenderer()
 {
 }
 
-void Vulkan::KojinRenderer::Load(std::shared_ptr<Vulkan::Mesh> mesh, std::shared_ptr<Vulkan::Material> material)
+void Vulkan::KojinRenderer::Load(std::weak_ptr<Vulkan::Mesh> mesh, std::weak_ptr<Vulkan::Material> material)
 {
-	m_stagingCurrent.ids.push_back(mesh->GetID());
-	//under construction//
+	auto lockedMesh = mesh.lock();
+	auto lockedMat = material.lock();
+
+	if (!lockedMesh)
+		throw std::runtime_error("Unable to lock weak ptr to provided mesh");
+	if (!lockedMat)
+		throw std::runtime_error("Unable to lock weak ptr to provided material");
+	
+	m_stagingCurrent.ids.push_back(lockedMesh->GetID());
+	m_stagingCurrent.vertex.insert(m_stagingCurrent.vertex.end(),lockedMesh->vertices.begin(),lockedMesh->vertices.end());
+	m_stagingCurrent.indices.insert(m_stagingCurrent.indices.end(), lockedMesh->indices.begin(), lockedMesh->indices.end());
+	m_stagingCurrent.indiceOffset.push_back(m_stagingCurrent.totalIndices);
+	m_stagingCurrent.totalIndices += lockedMesh->indices.size();
+	m_stagingCurrent.modelMatrices.push_back(lockedMesh->modelMatrix);
+	m_stagingCurrent.diffuseColors.push_back(lockedMat->diffuseColor);
+	m_stagingCurrent.specularColors.push_back(lockedMat->specularColor);
+	m_stagingCurrent.specularities.push_back(lockedMat->specularity);
+	m_stagingCurrent.diffuseTextures.push_back(lockedMat->diffuseTexture);
 }
 
 void Vulkan::KojinRenderer::BindCamera(const std::weak_ptr<KojinCamera>& camera,bool isMainCamera)
@@ -84,7 +100,6 @@ void Vulkan::KojinRenderer::UnbindCamera(std::weak_ptr<KojinCamera>& camera)
 	m_renderUnit->RemoveCamera(cam->m_cameraID);
 }
 
-
 void Vulkan::KojinRenderer::DrawSingleObject(uint64_t texture, Vulkan::Mesh * mesh)
 {
 	m_renderUnit->Render(texture, mesh);
@@ -97,6 +112,9 @@ void Vulkan::KojinRenderer::Update(float deltaTime)
 
 void Vulkan::KojinRenderer::Render()
 {
+
+	m_stagingCurrent = {};
+
 	//
 	//pass created mesh
 	//
@@ -114,3 +132,8 @@ std::shared_ptr<Vulkan::KojinCamera> Vulkan::KojinRenderer::GetDefaultCamera()
 	return m_defaultCamera;
 }
 
+void Vulkan::KojinStagingObject::ClearTemporary()
+{
+	vertex.clear();
+	indices.clear();
+}

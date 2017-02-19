@@ -1,5 +1,6 @@
 #include "VulkanCommandUnit.h"
 #include "VulkanSystem.h"
+
 void Vulkan::VulkanCommandUnit::Initialize(std::weak_ptr<VulkanSystem> sys)
 {
 	auto vkSystem = sys.lock();

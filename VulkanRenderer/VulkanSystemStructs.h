@@ -10,6 +10,7 @@ use them.
 #include <array>
 #include <map>
 #include "VulkanObject.h"
+#include <glm/gtx/hash.hpp>
 #include <glm\vec2.hpp>
 #include <glm\vec3.hpp>
 #include <glm\vec4.hpp>
@@ -17,7 +18,6 @@ use them.
 namespace Vulkan
 {
 
-	
 
 	struct VkPhysicalDeviceRequiredQueues
 	{
@@ -220,6 +220,9 @@ namespace Vulkan
 
 			return attributeDescriptions;
 		}
+		bool operator==(const VkVertex& other) const {
+			return pos == other.pos && normal == other.normal && color == other.color && texCoord == other.texCoord;
+		}
 	};
 
 	struct VkCamera
@@ -238,12 +241,14 @@ namespace Vulkan
 		{
 			vertexBuffer = VkManagedBuffer{ device, vertexSize };
 			indiceBuffer = VkManagedBuffer{ device, indiceSize };
-			this->indiceCount = indiceCount;
+			this->totalIndiceCount = indiceCount;
 		}
 
 		VkManagedBuffer vertexBuffer;
 		VkManagedBuffer indiceBuffer;
-		uint32_t indiceCount;
+		std::vector<uint32_t> indiceOffsets;
+		std::vector<uint32_t> indiceCounts;
+		uint32_t totalIndiceCount;
 	};
 
 	struct UniformBufferObject
@@ -272,8 +277,6 @@ namespace Vulkan
 		float specularity;
 	};
 
-
-
 	//dynamic uniform buffers - unused
 	struct DynamicUniformBuffer
 	{
@@ -294,8 +297,17 @@ namespace Vulkan
 		glm::vec4* perFragmentLightColor;
 		glm::vec4* perFragmentLightIntensity;
 	};
+}
 
+namespace std {
 
-
+	template<> struct hash<Vulkan::VkVertex> {
+		size_t operator()(Vulkan::VkVertex const& vertex) const {
+			return (((hash<glm::vec3>()(vertex.pos) ^
+				(hash<glm::vec3>()(vertex.normal) << 1)) >> 1) ^
+				(((hash<glm::vec3>()(vertex.color) << 1) ^ 
+					hash<glm::vec2>()(vertex.texCoord)) >> 1)) << 1;
+		}
+	};
 }
 

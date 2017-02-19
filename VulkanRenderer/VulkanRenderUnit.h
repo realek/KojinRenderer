@@ -31,6 +31,7 @@ namespace Vulkan
 		bool AddCamera(int id, VkViewport * viewport, VkRect2D * scissor);
 		void SetAsMainCamera(int id, VkViewport * viewport, VkRect2D * scissor);
 		void RemoveCamera(int id);
+		void UpdateConsumedMesh();
 		~VulkanRenderUnit();
 	
 	private:
@@ -86,11 +87,10 @@ namespace Vulkan
 		void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, Vulkan::VulkanObjectContainer<VkBuffer>& buffer, Vulkan::VulkanObjectContainer<VkDeviceMemory>& bufferMemory);
 		void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 		void CreateDescriptorSetLayout();
-		void CreateGraphicsPipeline();
+		void CreateSolidGraphicsPipeline();
 		void CreateShaderModule(std::vector<char>& code, VulkanObjectContainer<VkShaderModule>& shader);
 		void CreateTextureSampler(VulkanObjectContainer<VkSampler> & textureSampler);
 		void RecordRenderPass(VkRenderPass renderPass, VkCamera& passCamera, std::vector<VkCommandBuffer> recordBuffers, VkBuffer vertexBuffer, VkBuffer indiceBuffer, uint32_t indiceCount);
-		void UpdateConsumedMesh();
 		//temp functions
 		void CreateUniformBuffer();
 		void CreateDescriptorPool();

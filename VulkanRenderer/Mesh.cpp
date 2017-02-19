@@ -4,7 +4,7 @@
 #include <assimp/scene.h>     
 #include <assimp/postprocess.h>
 #include <assimp/cimport.h>
-
+#include <unordered_map>
 std::atomic<int> Vulkan::Mesh::globalID = 0;
 
 
@@ -20,6 +20,7 @@ int Vulkan::Mesh::GetID()
 std::shared_ptr<Vulkan::Mesh> Vulkan::Mesh::LoadMesh(const char * filename,int flags)
 {
 
+	std::unordered_map<Vulkan::VkVertex, uint32_t> uVertices = {}; // used to apply indexing
 	auto iMesh = std::make_shared<Vulkan::Mesh>(Mesh());
 
 	{
@@ -66,10 +67,17 @@ std::shared_ptr<Vulkan::Mesh> Vulkan::Mesh::LoadMesh(const char * filename,int f
 				};
 
 				vertex.color = { 1.0f, 1.0f, 1.0f };
-				iMesh->vertices.push_back(vertex);
-				iMesh->indices.push_back(iMesh->indices.size());
+
+				if (uVertices.count(vertex) == 0)
+				{
+					uVertices[vertex] = iMesh->vertices.size();
+					iMesh->vertices.push_back(vertex);
+				}
+
+				iMesh->indices.push_back(uVertices[vertex]);
 			}
 
+			uVertices.clear();
 		}
 	}
 

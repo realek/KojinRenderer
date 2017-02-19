@@ -38,24 +38,23 @@ namespace Vulkan
 	class Texture2D;
 	class Material;
 	struct VkVertex;
+
 	struct KojinStagingObject
 	{
 		std::vector<int> ids;
-		std::vector<std::array<uint32_t, 2U>> vertexMarkers;
-		std::vector<std::array<uint32_t, 2U>> indiceMarkers;
-		std::vector<std::weak_ptr<Material>> materials;
+
+		std::vector<uint32_t> indiceOffset;
+		std::vector<VkVertex> vertex;
+		std::vector<uint32_t> indices;
+		uint32_t totalIndices;
+
 		std::vector<glm::mat4> modelMatrices;
-		VkVertex * vertex = nullptr;
-		uint32_t * indices = nullptr;
+		std::vector<glm::vec4> diffuseColors;
+		std::vector<glm::vec4> specularColors;
+		std::vector<float> specularities;
+		std::vector<uint64_t> diffuseTextures;
 
-		bool operator ==(KojinStagingObject rhs)
-		{
-			if (vertexMarkers == rhs.vertexMarkers && indiceMarkers == rhs.indiceMarkers)
-				return true;
-			else
-				return false;
-		}
-
+		void ClearTemporary();
 	};
 
 
@@ -64,7 +63,7 @@ namespace Vulkan
 	public:
 		KojinRenderer(SDL_Window * window, const char * appName, int appVer[3]);
 		~KojinRenderer();
-		void Load(std::shared_ptr<Vulkan::Mesh> mesh,std::shared_ptr<Vulkan::Material> material);
+		void Load(std::weak_ptr<Vulkan::Mesh> mesh, std::weak_ptr<Vulkan::Material> material);
 		void BindCamera(const std::weak_ptr<KojinCamera>& camera, bool isMainCamera);
 		void UnbindCamera(std::weak_ptr<KojinCamera>& camera);
 		//tester function for drawing a single object with a static uniform buffer

@@ -14,8 +14,9 @@ namespace Vulkan
 	class Material
 	{
 	public:
-		glm::vec4 colorTint;
-		std::weak_ptr<Vulkan::Texture2D> albedo;
+		glm::vec4 diffuseColor;
+		glm::vec4 specularColor;
+		uint64_t diffuseTexture;
 		float specularity;
 		Material();
 		~Material();
