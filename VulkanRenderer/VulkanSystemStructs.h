@@ -183,16 +183,6 @@ namespace Vulkan
 		void UpdateUniforms(VkStagingMesh& updated);
 		void ClearTemporary();
 		void ClearAll();
-
-		bool operator == (VkStagingMesh& rhs)
-		{
-			return ids == rhs.ids && indiceBases == rhs.indiceBases && totalIndices == rhs.totalIndices;
-		}
-
-		bool operator != (VkStagingMesh& rhs)
-		{
-			return ids != rhs.ids || indiceBases != rhs.indiceBases || totalIndices != rhs.totalIndices;
-		}
 	};
 
 	struct VkConsumedMaterial

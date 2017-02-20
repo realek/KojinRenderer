@@ -198,9 +198,13 @@ int main()
 			SDL_Delay((uint32_t)currentDelta);
 		
 		//load up objects to the renderer
-		mesh->modelMatrix = TransformMatrix({ 0,-0.5,-1 }, { 0,1,0 },rotmod);
+		mesh->modelMatrix = TransformMatrix({ 0,-0.5,-2 }, { 0,1,0 },rotmod);
 		renderer->Load(mesh, material);
-		mesh->modelMatrix = TransformMatrix({ 1,0, -3 }, { 1,0,0 },rotmod);
+		mesh->modelMatrix = TransformMatrix({ 1,0, -4 }, { 1,0,0 },rotmod);
+		renderer->Load(mesh, material);
+		mesh->modelMatrix = TransformMatrix({ -1,0, -4 }, { 0,0,1 }, rotmod);
+		renderer->Load(mesh, material);
+		mesh->modelMatrix = TransformMatrix({ 0,0.5, -2 }, { 1,1,0 }, rotmod);
 		renderer->Load(mesh, material);
 		//!load up objects -- currently single load
 

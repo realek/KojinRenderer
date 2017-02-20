@@ -469,7 +469,7 @@ void Vulkan::VulkanRenderUnit::Render()
 void Vulkan::VulkanRenderUnit::ConsumeMesh(bool recreate, VkStagingMesh* staged)
 {
 	
-	if (recreate && !m_consumedMesh.loaded) //recreate mesh and descriptors
+	if (recreate) //recreate mesh and descriptors
 	{
 		VkDeviceSize vertexSize = sizeof(staged->vertex[0]) * staged->vertex.size();
 		VkDeviceSize indiceSize = sizeof(staged->indices[0]) * staged->indices.size();

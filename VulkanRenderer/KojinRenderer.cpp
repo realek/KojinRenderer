@@ -115,7 +115,7 @@ void Vulkan::KojinRenderer::UnbindCamera(std::weak_ptr<KojinCamera>& camera)
 void Vulkan::KojinRenderer::Render()
 {
 	bool recreateBuffers = false;
-	if (m_stagingCurrent != m_stagingOld)
+	if (m_stagingCurrent->ids != m_stagingOld->ids)
 	{
 		m_stagingOld->indiceBases = m_stagingCurrent->indiceBases;
 		m_stagingOld->ids = m_stagingCurrent->ids;
