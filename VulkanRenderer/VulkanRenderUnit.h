@@ -28,8 +28,8 @@ namespace Vulkan
 		void PresentFrame();
 		//Dummy uniform update function
 		void UpdateStaticUniformBuffer(float time);
-		bool AddCamera(int id, VkViewport * viewport, VkRect2D * scissor);
-		void SetAsMainCamera(int id, VkViewport * viewport, VkRect2D * scissor);
+		bool AddCamera(int id, VkViewport* viewport, VkRect2D* scissor, glm::mat4* view, glm::mat4* proj);
+		void SetAsMainCamera(int id, VkViewport* viewport, VkRect2D* scissor, glm::mat4* view, glm::mat4* proj);
 		void RemoveCamera(int id);
 		void ConsumeMesh(bool recreateBuffers);
 		~VulkanRenderUnit();
@@ -91,15 +91,15 @@ namespace Vulkan
 		void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, Vulkan::VulkanObjectContainer<VkBuffer>& buffer, Vulkan::VulkanObjectContainer<VkDeviceMemory>& bufferMemory);
 		void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 		void CreateDescriptorSetLayout();
-		void CreateSolidGraphicsPipeline();
+		void CreateSolidGraphicsPipeline(std::vector<VkDescriptorSetLayout> layouts);
 		void CreateShaderModule(std::vector<char>& code, VulkanObjectContainer<VkShaderModule>& shader);
 		void CreateTextureSampler(VulkanObjectContainer<VkSampler> & textureSampler);
 		void RecordRenderPass(VkRenderPass renderPass, VkCamera& passCamera, std::vector<VkCommandBuffer> recordBuffers, VkBuffer vertexBuffer, VkBuffer indiceBuffer, uint32_t indiceCount);
 		//temp functions
 		void CreateUniformBuffer();
-		void CreateDescriptorPool();
-		VkDescriptorSet CreateDescriptorSet(VkDescriptorSetLayout * layouts, uint32_t setCount);
-		void WriteDescriptorSets(VkImageView textureImageView);
+		void CreateDescriptorPool(uint32_t descriptorCount, uint32_t setSize);
+		VkDescriptorSet CreateDescriptorSet(std::vector<VkDescriptorSetLayout> layouts, uint32_t setCount);
+		void UpdateUniformsAndWriteSets(VkImageView textureImageView);
 		void CreateSemaphores();
 
 	};

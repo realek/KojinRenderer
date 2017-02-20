@@ -229,6 +229,8 @@ namespace Vulkan
 	{
 		VkViewport* viewport;
 		VkRect2D* scissor;
+		glm::mat4* view;
+		glm::mat4* proj;
 
 	};
 
@@ -246,7 +248,7 @@ namespace Vulkan
 
 		VkManagedBuffer vertexBuffer;
 		VkManagedBuffer indiceBuffer;
-		std::vector<uint32_t> indiceOffsets;
+		std::vector<uint32_t> indiceBases;
 		std::vector<uint32_t> indiceCounts;
 		uint32_t totalIndiceCount;
 	};

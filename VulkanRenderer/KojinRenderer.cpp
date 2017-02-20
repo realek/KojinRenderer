@@ -59,7 +59,10 @@ Vulkan::KojinRenderer::KojinRenderer(SDL_Window * window, const char * appName, 
 
 	//add default camera 
 	m_defaultCamera = std::make_shared<KojinCamera>(KojinCamera(this->m_swapChainUnit->swapChainExtent2D));
+	m_defaultCamera->SetPerspective();
+	m_defaultCamera->LookAt({ 0, 0.25, 0 });
 	BindCamera(m_defaultCamera, true);
+
 	//init staging object
 	m_stagingOld = {};
 	m_stagingCurrent = {};
@@ -100,10 +103,14 @@ void Vulkan::KojinRenderer::BindCamera(const std::weak_ptr<KojinCamera>& camera,
 
 	if (isMainCamera)
 	{
-		this->m_renderUnit->SetAsMainCamera(cam->m_cameraID, &cam->m_cameraViewport, &cam->m_cameraScissor);
+		this->m_renderUnit->SetAsMainCamera(cam->m_cameraID, 
+			&cam->m_cameraViewport, &cam->m_cameraScissor,
+			&cam->m_viewMatrix, &cam->m_projectionMatrix);
 		return;
 	}
-	this->m_renderUnit->AddCamera(cam->m_cameraID, &cam->m_cameraViewport, &cam->m_cameraScissor);
+	this->m_renderUnit->AddCamera(cam->m_cameraID, 
+		&cam->m_cameraViewport, &cam->m_cameraScissor, 
+		&cam->m_viewMatrix, &cam->m_projectionMatrix);
 }
 
 void Vulkan::KojinRenderer::UnbindCamera(std::weak_ptr<KojinCamera>& camera)

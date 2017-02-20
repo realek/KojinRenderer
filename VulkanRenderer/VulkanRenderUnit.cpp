@@ -1,4 +1,5 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define MIN_DESCRIPTOR_SET_SIZE 2
 #include "VulkanRenderUnit.h"
 #include "VulkanSystem.h"
 #include "VulkanCommandUnit.h"
@@ -54,14 +55,14 @@ void Vulkan::VulkanRenderUnit::Initialize(std::weak_ptr<Vulkan::VulkanSystem> vk
 		this->CreateTextureSampler(m_defaultSampler);
 		//make semaphores as they dont require anything to be present
 		this->CreateSemaphores();
-		//size pool acording to loaded objects
+		//descriptor set layout is the same as the default shaders // needs GLSL lang implementation
 		this->CreateDescriptorSetLayout();
-		this->CreateDescriptorPool();
-		std::array<VkDescriptorSetLayout, 1> layoutA { m_descSetLayoutVertex };
-		vertexDescriptorSet = this->CreateDescriptorSet(layoutA.data(), 1);
-		std::array<VkDescriptorSetLayout, 1> layoutB { m_descSetLayoutFragment };
-		fragmentDescriptorSet = this->CreateDescriptorSet(layoutB.data(), 1);
-		this->CreateSolidGraphicsPipeline();
+		//create solid graphics pipeline
+		this->CreateSolidGraphicsPipeline({ m_descSetLayoutVertex,m_descSetLayoutFragment });
+		this->CreateDescriptorPool(1,MIN_DESCRIPTOR_SET_SIZE);
+		vertexDescriptorSet = this->CreateDescriptorSet({ m_descSetLayoutVertex }, 1);
+		fragmentDescriptorSet = this->CreateDescriptorSet({ m_descSetLayoutFragment }, 1);
+
 
 		this->CreateUniformBuffer();
 
@@ -76,7 +77,7 @@ void Vulkan::VulkanRenderUnit::Initialize(std::weak_ptr<Vulkan::VulkanSystem> vk
 }
 
 
-void Vulkan::VulkanRenderUnit::CreateSolidGraphicsPipeline()
+void Vulkan::VulkanRenderUnit::CreateSolidGraphicsPipeline(std::vector<VkDescriptorSetLayout> layouts)
 {
 	VkResult result;
 	auto scU = m_swapChainUnit.lock();
@@ -177,11 +178,11 @@ void Vulkan::VulkanRenderUnit::CreateSolidGraphicsPipeline()
 	//colorBlendingStateCI.blendConstants[2] = 0.0f;
 	//colorBlendingStateCI.blendConstants[3] = 0.0f;
 
-	std::array<VkDescriptorSetLayout,2> setLayouts = { m_descSetLayoutVertex,m_descSetLayoutFragment };
+	//std::array<VkDescriptorSetLayout,2> setLayouts = { m_descSetLayoutVertex,m_descSetLayoutFragment };
 	VkPipelineLayoutCreateInfo pipelineLayoutCI = {};
 	pipelineLayoutCI.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutCI.setLayoutCount = setLayouts.size();
-	pipelineLayoutCI.pSetLayouts = setLayouts.data();
+	pipelineLayoutCI.setLayoutCount = layouts.size();
+	pipelineLayoutCI.pSetLayouts = layouts.data();
 
 	m_pipelineLayout = VulkanObjectContainer<VkPipelineLayout>{ m_deviceHandle,vkDestroyPipelineLayout };
 	result = vkCreatePipelineLayout(m_deviceHandle, &pipelineLayoutCI, nullptr, ++m_pipelineLayout);
@@ -299,7 +300,7 @@ void Vulkan::VulkanRenderUnit::Render(VkImageView texture,Vulkan::Mesh * mesh)
 	try
 	{
 		//write texture to sampler within descriptor set
-		WriteDescriptorSets(texture);
+		UpdateUniformsAndWriteSets(texture);
 
 		//naive check to create consumed mesh once for testing
 		if(mesh->indices.size() != m_consumedMesh.totalIndiceCount)
@@ -537,21 +538,21 @@ void Vulkan::VulkanRenderUnit::CreateUniformBuffer() {
 
 }
 
-void Vulkan::VulkanRenderUnit::CreateDescriptorPool()
+void Vulkan::VulkanRenderUnit::CreateDescriptorPool(uint32_t descriptorCount, uint32_t setSize)
 {
 	std::array<VkDescriptorPoolSize, 3> poolSizes = {};
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	poolSizes[0].descriptorCount = 1;
+	poolSizes[0].descriptorCount = descriptorCount;
 	poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	poolSizes[1].descriptorCount = 1;
+	poolSizes[1].descriptorCount = descriptorCount;
 	poolSizes[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	poolSizes[2].descriptorCount = 1;
+	poolSizes[2].descriptorCount = descriptorCount;
 
 	VkDescriptorPoolCreateInfo poolCI = {};
 	poolCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	poolCI.poolSizeCount = poolSizes.size();
 	poolCI.pPoolSizes = poolSizes.data();
-	poolCI.maxSets = 2;
+	poolCI.maxSets = descriptorCount*setSize;
 
 	VkResult result = vkCreateDescriptorPool(m_deviceHandle, &poolCI, nullptr, ++m_descriptorPool);
 
@@ -569,6 +570,17 @@ void Vulkan::VulkanRenderUnit::CreateDescriptorSetLayout()
 	vertexUBLB.pImmutableSamplers = nullptr;
 	vertexUBLB.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
+	VkDescriptorSetLayoutCreateInfo descSetLayoutCI = {};
+	descSetLayoutCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	descSetLayoutCI.bindingCount = 1;
+	descSetLayoutCI.pBindings = &vertexUBLB;
+
+
+	VkResult result = vkCreateDescriptorSetLayout(m_deviceHandle, &descSetLayoutCI, nullptr, ++m_descSetLayoutVertex);
+	if (result != VK_SUCCESS)
+		throw std::runtime_error("Unable to create vertex descriptor set layout. Reason: "+ Vulkan::VkResultToString(result));
+
+
 	VkDescriptorSetLayoutBinding fragmentSamplerLB = {};
 	fragmentSamplerLB.binding = 0;
 	fragmentSamplerLB.descriptorCount = 1;
@@ -583,36 +595,23 @@ void Vulkan::VulkanRenderUnit::CreateDescriptorSetLayout()
 	fragmentLightUBLB.pImmutableSamplers = nullptr;
 	fragmentLightUBLB.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-
-	VkDescriptorSetLayoutCreateInfo descSetLayoutCI = {};
-	descSetLayoutCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	descSetLayoutCI.bindingCount = 1;
-	descSetLayoutCI.pBindings = &vertexUBLB;
-
-
-	VkResult result = vkCreateDescriptorSetLayout(m_deviceHandle, &descSetLayoutCI, nullptr, ++m_descSetLayoutVertex);
-	if (result != VK_SUCCESS)
-		throw std::runtime_error("Unable to create vertex descriptor set layout. Reason: "+ Vulkan::VkResultToString(result));
-
 	std::array<VkDescriptorSetLayoutBinding, 2> bindings = { fragmentSamplerLB,fragmentLightUBLB };
 	descSetLayoutCI.bindingCount = bindings.size();
 	descSetLayoutCI.pBindings = bindings.data();
-
-
 
 	result = vkCreateDescriptorSetLayout(m_deviceHandle, &descSetLayoutCI, nullptr, ++m_descSetLayoutFragment);
 	if (result != VK_SUCCESS)
 		throw std::runtime_error("Unable to create fragment descriptor set layout. Reason: " + Vulkan::VkResultToString(result));
 }
 
-VkDescriptorSet Vulkan::VulkanRenderUnit::CreateDescriptorSet(VkDescriptorSetLayout * layouts, uint32_t setCount)
+VkDescriptorSet Vulkan::VulkanRenderUnit::CreateDescriptorSet(std::vector<VkDescriptorSetLayout> layouts, uint32_t setCount)
 {
 	VkDescriptorSet descSet;
 	VkDescriptorSetAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	allocInfo.descriptorPool = m_descriptorPool;
 	allocInfo.descriptorSetCount = setCount;
-	allocInfo.pSetLayouts = layouts;
+	allocInfo.pSetLayouts = layouts.data();
 
 	VkResult result = vkAllocateDescriptorSets(m_deviceHandle, &allocInfo, &descSet);
 	if (result != VK_SUCCESS)
@@ -620,8 +619,8 @@ VkDescriptorSet Vulkan::VulkanRenderUnit::CreateDescriptorSet(VkDescriptorSetLay
 
 	return descSet;
 }
-
-void Vulkan::VulkanRenderUnit::WriteDescriptorSets(VkImageView textureImageView)
+// descriptor sets and mesh pointer
+void Vulkan::VulkanRenderUnit::UpdateUniformsAndWriteSets(VkImageView textureImageView)
 {
 
 	VkDescriptorBufferInfo vertexUniformBufferInfo = {};
@@ -651,28 +650,28 @@ void Vulkan::VulkanRenderUnit::WriteDescriptorSets(VkImageView textureImageView)
 	}
 
 
-	std::array<VkWriteDescriptorSet, 2> descriptorWrites = {};
+	std::array<VkWriteDescriptorSet, 2> fragmentDescriptorWrites = {};
 
 	{
-		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[0].dstSet = fragmentDescriptorSet;
-		descriptorWrites[0].dstBinding = 0;
-		descriptorWrites[0].dstArrayElement = 0;
-		descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		descriptorWrites[0].descriptorCount = 1;
-		descriptorWrites[0].pImageInfo = &imageInfo;
+		fragmentDescriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		fragmentDescriptorWrites[0].dstSet = fragmentDescriptorSet;
+		fragmentDescriptorWrites[0].dstBinding = 0;
+		fragmentDescriptorWrites[0].dstArrayElement = 0;
+		fragmentDescriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		fragmentDescriptorWrites[0].descriptorCount = 1;
+		fragmentDescriptorWrites[0].pImageInfo = &imageInfo;
 
-		descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[1].dstSet = fragmentDescriptorSet;
-		descriptorWrites[1].dstBinding = 1;
-		descriptorWrites[1].dstArrayElement = 0;
-		descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		descriptorWrites[1].descriptorCount = 1;
-		descriptorWrites[1].pBufferInfo = &lightsUniformBufferInfo;
+		fragmentDescriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		fragmentDescriptorWrites[1].dstSet = fragmentDescriptorSet;
+		fragmentDescriptorWrites[1].dstBinding = 1;
+		fragmentDescriptorWrites[1].dstArrayElement = 0;
+		fragmentDescriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		fragmentDescriptorWrites[1].descriptorCount = 1;
+		fragmentDescriptorWrites[1].pBufferInfo = &lightsUniformBufferInfo;
 	}
 	
 	vkUpdateDescriptorSets(m_deviceHandle, 1, &descriptorVertexWrite, 0, nullptr);
-	vkUpdateDescriptorSets(m_deviceHandle, descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
+	vkUpdateDescriptorSets(m_deviceHandle, fragmentDescriptorWrites.size(), fragmentDescriptorWrites.data(), 0, nullptr);
 }
 
 //needs to be modified to create semaphores one by one
@@ -703,11 +702,10 @@ void Vulkan::VulkanRenderUnit::UpdateStaticUniformBuffer(float time) {
 	//nothing to see here X_X 
 
 	Vulkan::UniformBufferObject ubo = {};
-	ubo.model = glm::rotate(glm::mat4(), glm::radians(rotationAngle), glm::vec3(0.0f, 1.0f, 0.0f));
-	ubo.model = glm::scale(glm::translate(ubo.model, glm::vec3(0, 0, 0)),glm::vec3(0.25,0.25,0.25));
-	ubo.view = glm::lookAt(glm::vec3(0.0f, 1.0f, -1.0f), glm::vec3(0.0f, 0.5f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	ubo.proj = glm::perspective(glm::radians(45.0f), extent.width / (float)extent.height, 0.1f, 10.0f);
-	ubo.proj[1][1] *= -1;
+	ubo.model = glm::rotate(glm::translate(glm::mat4(1), glm::vec3(0, 0, -3)), glm::radians(rotationAngle), glm::vec3(0.0f, 1.0f, 0.0f));
+	ubo.model = glm::scale(ubo.model,glm::vec3(0.25,0.25,0.25));
+	ubo.view = *m_mainCamera.view;
+	ubo.proj = *m_mainCamera.proj;
 	ubo.ComputeMatrices();
 	
 	void* data;
@@ -758,7 +756,7 @@ void Vulkan::VulkanRenderUnit::UpdateStaticUniformBuffer(float time) {
 
 }
 
-bool Vulkan::VulkanRenderUnit::AddCamera(int id, VkViewport * viewport, VkRect2D * scissor)
+bool Vulkan::VulkanRenderUnit::AddCamera(int id, VkViewport* viewport, VkRect2D* scissor, glm::mat4* view, glm::mat4* proj)
 {
 
 	auto it = m_cameras.find(id);
@@ -768,16 +766,19 @@ bool Vulkan::VulkanRenderUnit::AddCamera(int id, VkViewport * viewport, VkRect2D
 	VkCamera cam = {};
 	cam.viewport = viewport;
 	cam.scissor = scissor;
+	cam.view = view;
+	cam.proj = proj;
 	m_cameras.insert(std::make_pair(id, cam));
-	
-	//m_commandUnit->CreateCommandBufferSet(id, m_swapChainUnit->m_swapchainFrameBuffers.size(), VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
 	return true;
 }
 
-void Vulkan::VulkanRenderUnit::SetAsMainCamera(int id, VkViewport * viewport, VkRect2D * scissor)
+void Vulkan::VulkanRenderUnit::SetAsMainCamera(int id, VkViewport* viewport, VkRect2D* scissor, glm::mat4* view, glm::mat4* proj)
 {
 	VulkanRenderUnit::m_mainCamera.viewport = viewport;
 	VulkanRenderUnit::m_mainCamera.scissor = scissor;
+	VulkanRenderUnit::m_mainCamera.view = view;
+	VulkanRenderUnit::m_mainCamera.proj = proj;
 	this->RemoveCamera(id);
 }
 

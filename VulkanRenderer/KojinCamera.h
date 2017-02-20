@@ -10,27 +10,29 @@ functionality to the KojinRenderer class
 #include <atomic>
 namespace Vulkan
 {
+
 	class KojinRenderer;
 	class KojinCamera
 	{
 	public:
 
 		~KojinCamera();
+		void SetOrthographic();
+		void SetPerspective();
 		void SetPosition(glm::vec3 position);
 		void SetRotation(glm::vec3 rotation);
 		void SetViewport(glm::vec2 screenCoords, glm::vec2 scale);
+		void LookAt(glm::vec3 target);
 
-	public:
-		glm::vec3 position;
-		glm::vec3 rotation;
-		float fov;
-		float zNear;
-		float zFar;
 	private:
 		KojinCamera(VkExtent2D swapChainExt);
 
 	private:
-
+		glm::vec3 m_position;
+		glm::vec3 m_rotation;
+		float m_fov;
+		float m_zNear;
+		float m_zFar;
 		VkExtent2D m_swapChainExtent;
 		VkViewport m_cameraViewport;
 		VkRect2D m_cameraScissor;
