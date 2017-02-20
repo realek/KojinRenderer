@@ -9,8 +9,9 @@ use them.
 #include <vector>
 #include <array>
 #include <map>
-#include "VulkanObject.h"
-#include <glm/gtx/hash.hpp>
+#include "VkManagedBuffer.h"
+#include "VkSwapChainBuffer.h"
+#include "VkManagedImage.h"
 #include <glm\vec2.hpp>
 #include <glm\vec3.hpp>
 #include <glm\vec4.hpp>
@@ -92,80 +93,6 @@ namespace Vulkan
 		}
 	};
 
-	struct VkSwapchainBuffer
-	{
-		VkSwapchainBuffer()
-		{
-			image = VK_NULL_HANDLE;
-			imageView = VK_NULL_HANDLE;
-		}
-		VkSwapchainBuffer(VkDevice device)
-		{
-			image = VK_NULL_HANDLE;
-			imageView = VulkanObjectContainer<VkImageView>{ device, vkDestroyImageView };
-		}
-
-		VkImage image;
-		VulkanObjectContainer<VkImageView> imageView;
-
-	};
-
-	struct VkManagedImage
-	{
-		VkManagedImage()
-		{
-			imageMemory = VK_NULL_HANDLE;
-			imageView = VK_NULL_HANDLE;
-			image = VK_NULL_HANDLE;
-		}
-		VkManagedImage(VkDevice device)
-		{
-			image = VulkanObjectContainer<VkImage>{ device,vkDestroyImage };
-			imageView = VulkanObjectContainer<VkImageView>{ device,vkDestroyImageView };
-			imageMemory = VulkanObjectContainer<VkDeviceMemory>{ device,vkFreeMemory };
-		};
-
-		VulkanObjectContainer<VkImage> image;
-		VulkanObjectContainer<VkImageView> imageView;
-		VulkanObjectContainer<VkDeviceMemory> imageMemory;
-	};
-
-	struct VkManagedBuffer
-	{
-		VulkanObjectContainer<VkBuffer> buffer;
-		VulkanObjectContainer<VkDeviceMemory> memory;
-		VkDeviceSize bufferSize;
-		VkDevice device;
-
-		void* mappedMemory = nullptr;
-		VkManagedBuffer()
-		{
-			device = VK_NULL_HANDLE;
-			buffer = VK_NULL_HANDLE;
-			memory = VK_NULL_HANDLE;
-			bufferSize = 0;
-		}
-
-		VkManagedBuffer(VkDevice device, VkDeviceSize bufferSize)
-		{
-			this->device = device;
-			this->bufferSize = bufferSize;
-			buffer = VulkanObjectContainer<VkBuffer>{ device,vkDestroyBuffer };
-			memory = VulkanObjectContainer<VkDeviceMemory>{ device, vkFreeMemory };
-		}
-
-		void* Map(VkDeviceSize offset = 0, VkMemoryMapFlags flags = 0)
-		{
-			vkMapMemory(device, memory, offset, bufferSize, flags, &mappedMemory);
-
-			return mappedMemory;
-		};
-		void UnMap()
-		{
-			vkUnmapMemory(device, memory);
-			mappedMemory = nullptr;
-		};
-	};
 
 	struct VkQueueContainer
 	{
@@ -234,23 +161,72 @@ namespace Vulkan
 
 	};
 
+	struct VkStagingMesh
+	{
+		std::vector<int> ids;
+
+		std::vector<uint32_t> indiceBases;
+		std::vector<uint32_t> indiceCounts;
+		std::vector<VkVertex> vertex;
+		std::vector<uint32_t> indices;
+	
+		uint32_t totalIndices;
+
+		std::vector<glm::mat4> modelMatrices;
+		std::vector<glm::vec4> diffuseColors;
+		std::vector<float> specularities;
+		std::vector<VkImageView> diffuseTextures;
+
+		VkStagingMesh();
+		VkStagingMesh(const VkStagingMesh& other) = delete;
+
+		void UpdateUniforms(VkStagingMesh& updated);
+		void ClearTemporary();
+		void ClearAll();
+
+		bool operator == (VkStagingMesh& rhs)
+		{
+			return ids == rhs.ids && indiceBases == rhs.indiceBases && totalIndices == rhs.totalIndices;
+		}
+
+		bool operator != (VkStagingMesh& rhs)
+		{
+			return ids != rhs.ids || indiceBases != rhs.indiceBases || totalIndices != rhs.totalIndices;
+		}
+	};
+
+	struct VkConsumedMaterial
+	{
+		//std::vector<glm::vec4> diffuseColor;
+		std::vector<VkImageView> diffuseTexture;
+		std::vector<VkImageView> normalMap;
+		std::vector<VkImageView> specularMap;
+		std::vector<float> specularity;
+	};
+
 	struct VkConsumedMesh
 	{
 
-		VkConsumedMesh() {}
+		VkConsumedMesh() { this->totalIndiceCount = 0; }
 
 		VkConsumedMesh(VkDevice device, VkDeviceSize vertexSize, VkDeviceSize indiceSize,uint32_t indiceCount)
 		{
 			vertexBuffer = VkManagedBuffer{ device, vertexSize };
 			indiceBuffer = VkManagedBuffer{ device, indiceSize };
+			material = {};
 			this->totalIndiceCount = indiceCount;
 		}
 
+
+		bool loaded = false;
 		VkManagedBuffer vertexBuffer;
 		VkManagedBuffer indiceBuffer;
 		std::vector<uint32_t> indiceBases;
 		std::vector<uint32_t> indiceCounts;
 		uint32_t totalIndiceCount;
+		uint32_t composingObjectCount;
+		VkConsumedMaterial material;
+		std::vector<glm::mat4> modelMatrices;
 	};
 
 	struct UniformBufferObject
@@ -301,15 +277,5 @@ namespace Vulkan
 	};
 }
 
-namespace std {
 
-	template<> struct hash<Vulkan::VkVertex> {
-		size_t operator()(Vulkan::VkVertex const& vertex) const {
-			return (((hash<glm::vec3>()(vertex.pos) ^
-				(hash<glm::vec3>()(vertex.normal) << 1)) >> 1) ^
-				(((hash<glm::vec3>()(vertex.color) << 1) ^ 
-					hash<glm::vec2>()(vertex.texCoord)) >> 1)) << 1;
-		}
-	};
-}
 

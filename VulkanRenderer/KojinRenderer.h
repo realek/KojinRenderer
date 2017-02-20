@@ -38,38 +38,8 @@ namespace Vulkan
 	class Mesh;
 	class Texture2D;
 	class Material;
-	struct VkVertex;
+	struct VkStagingMesh;
 
-	struct KojinStagingObject
-	{
-		std::vector<int> ids;
-
-		std::vector<uint32_t> indiceOffset;
-		std::vector<VkVertex> vertex;
-		std::vector<uint32_t> indices;
-		uint32_t totalIndices;
-
-		std::vector<glm::mat4> modelMatrices;
-		std::vector<glm::vec4> diffuseColors;
-		std::vector<float> specularities;
-		std::vector<VkImageView> diffuseTextures;
-
-		KojinStagingObject() {};
-		KojinStagingObject(const KojinStagingObject& other) = delete;
-
-		void UpdateUniforms(KojinStagingObject& updated);
-		void ClearTemporary();
-
-		bool operator == (KojinStagingObject& rhs)
-		{
-			return ids == rhs.ids && indiceOffset == rhs.indiceOffset && totalIndices == rhs.totalIndices;
-		}
-
-		bool operator != (KojinStagingObject& rhs)
-		{
-			return ids != rhs.ids || indiceOffset != rhs.indiceOffset || totalIndices != rhs.totalIndices;
-		}
-	};
 
 
 	class KojinRenderer
@@ -80,16 +50,12 @@ namespace Vulkan
 		void Load(std::weak_ptr<Vulkan::Mesh> mesh, std::weak_ptr<Vulkan::Material> material);
 		void BindCamera(const std::weak_ptr<KojinCamera>& camera, bool isMainCamera);
 		void UnbindCamera(std::weak_ptr<KojinCamera>& camera);
-		//tester function for drawing a single object with a static uniform buffer
-		void DrawSingleObject(uint64_t texture, Vulkan::Mesh * mesh);
-		//tester function for updating the static uniform buffer
-		void Update(float deltaTime);
 		void Render();
 		void WaitForIdle();
 		std::weak_ptr<KojinCamera> GetDefaultCamera();
 	private:
-		KojinStagingObject m_stagingOld;
-		KojinStagingObject m_stagingCurrent;
+		VkStagingMesh * m_stagingOld;
+		VkStagingMesh * m_stagingCurrent;
 		std::shared_ptr<VulkanSystem> m_system;
 		std::shared_ptr<VulkanCommandUnit> m_commandUnit;
 		std::shared_ptr<VulkanImageUnit> m_imageUnit;

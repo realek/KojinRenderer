@@ -12,19 +12,6 @@
 
 
 
-void Vulkan::KojinStagingObject::UpdateUniforms(KojinStagingObject& updated)
-{
-	this->modelMatrices = updated.modelMatrices;
-	this->diffuseColors = updated.diffuseColors;
-	this->specularities = updated.specularities;
-	this->diffuseTextures = updated.diffuseTextures;
-}
-
-void Vulkan::KojinStagingObject::ClearTemporary()
-{
-	vertex.clear();
-	indices.clear();
-}
 
 Vulkan::KojinRenderer::KojinRenderer(SDL_Window * window, const char * appName, int appVer[3])
 {
@@ -63,14 +50,16 @@ Vulkan::KojinRenderer::KojinRenderer(SDL_Window * window, const char * appName, 
 	m_defaultCamera->LookAt({ 0, 0.25, 0 });
 	BindCamera(m_defaultCamera, true);
 
-	//init staging object
-	m_stagingOld = {};
-	m_stagingCurrent = {};
+	//init staging objects
+	m_stagingOld = new VkStagingMesh{};
+	m_stagingCurrent = new VkStagingMesh{};
 
 }
 
 Vulkan::KojinRenderer::~KojinRenderer()
 {
+	delete(m_stagingOld);
+	delete(m_stagingCurrent);
 }
 
 void Vulkan::KojinRenderer::Load(std::weak_ptr<Vulkan::Mesh> mesh, std::weak_ptr<Vulkan::Material> material)
@@ -82,16 +71,17 @@ void Vulkan::KojinRenderer::Load(std::weak_ptr<Vulkan::Mesh> mesh, std::weak_ptr
 		throw std::runtime_error("Unable to lock weak ptr to provided mesh");
 	if (!lockedMat)
 		throw std::runtime_error("Unable to lock weak ptr to provided material");
-	
-	m_stagingCurrent.ids.push_back(lockedMesh->GetID());
-	m_stagingCurrent.vertex.insert(m_stagingCurrent.vertex.end(),lockedMesh->vertices.begin(),lockedMesh->vertices.end());
-	m_stagingCurrent.indices.insert(m_stagingCurrent.indices.end(), lockedMesh->indices.begin(), lockedMesh->indices.end());
-	m_stagingCurrent.indiceOffset.push_back(m_stagingCurrent.totalIndices);
-	m_stagingCurrent.totalIndices += lockedMesh->indices.size();
-	m_stagingCurrent.modelMatrices.push_back(lockedMesh->modelMatrix);
-	m_stagingCurrent.diffuseColors.push_back(lockedMat->diffuseColor);
-	m_stagingCurrent.specularities.push_back(lockedMat->specularity);
-	m_stagingCurrent.diffuseTextures.push_back(lockedMat->diffuseTexture);
+
+	m_stagingCurrent->ids.push_back(lockedMesh->GetID());
+	m_stagingCurrent->vertex.insert(m_stagingCurrent->vertex.end(),lockedMesh->vertices.begin(),lockedMesh->vertices.end());
+	m_stagingCurrent->indices.insert(m_stagingCurrent->indices.end(), lockedMesh->indices.begin(), lockedMesh->indices.end());
+	m_stagingCurrent->indiceCounts.push_back(lockedMesh->indices.size());
+	m_stagingCurrent->indiceBases.push_back(m_stagingCurrent->totalIndices);
+	m_stagingCurrent->totalIndices += lockedMesh->indices.size();
+	m_stagingCurrent->modelMatrices.push_back(lockedMesh->modelMatrix);
+	m_stagingCurrent->diffuseColors.push_back(lockedMat->diffuseColor);
+	m_stagingCurrent->specularities.push_back(lockedMat->specularity);
+	m_stagingCurrent->diffuseTextures.push_back(lockedMat->diffuseTexture);
 }
 
 void Vulkan::KojinRenderer::BindCamera(const std::weak_ptr<KojinCamera>& camera,bool isMainCamera)
@@ -122,32 +112,21 @@ void Vulkan::KojinRenderer::UnbindCamera(std::weak_ptr<KojinCamera>& camera)
 	m_renderUnit->RemoveCamera(cam->m_cameraID);
 }
 
-void Vulkan::KojinRenderer::DrawSingleObject(uint64_t texture, Vulkan::Mesh * mesh)
-{
-	m_renderUnit->Render(texture, mesh);
-}
-
-void Vulkan::KojinRenderer::Update(float deltaTime)
-{
-	m_renderUnit->UpdateStaticUniformBuffer(deltaTime);
-}
-
 void Vulkan::KojinRenderer::Render()
 {
 	bool recreateBuffers = false;
 	if (m_stagingCurrent != m_stagingOld)
 	{
-		m_stagingOld.indiceOffset = m_stagingCurrent.indiceOffset;
-		m_stagingOld.ids = m_stagingCurrent.ids;
-		m_stagingOld.totalIndices = m_stagingCurrent.totalIndices;
+		m_stagingOld->indiceBases = m_stagingCurrent->indiceBases;
+		m_stagingOld->ids = m_stagingCurrent->ids;
+		m_stagingOld->totalIndices = m_stagingCurrent->totalIndices;
 		recreateBuffers = true;
 	}
 
-	m_renderUnit->ConsumeMesh(recreateBuffers);
-	m_stagingCurrent = {}; // clear current staging object
-
-	//m_renderUnit->Render(nullptr, nullptr);
+	m_renderUnit->ConsumeMesh(recreateBuffers,m_stagingCurrent);
+	m_renderUnit->Render();
 	m_renderUnit->PresentFrame();
+	m_stagingCurrent->ClearAll();
 }
 
 void Vulkan::KojinRenderer::WaitForIdle()

@@ -162,12 +162,16 @@
     <ClCompile Include="SPIRVShader.cpp" />
     <ClCompile Include="Texture2D.cpp" />
     <ClCompile Include="Mesh.cpp" />
+    <ClCompile Include="VkManagedBuffer.cpp" />
+    <ClCompile Include="VkManagedImage.cpp" />
+    <ClCompile Include="VkSwapChainBuffer.cpp" />
     <ClCompile Include="VulkanCommandUnit.cpp" />
     <ClCompile Include="VulkanImageUnit.cpp" />
     <ClCompile Include="VulkanRenderUnit.cpp" />
     <ClCompile Include="VulkanSwapChainUnit.cpp" />
     <ClCompile Include="VulkanSystem.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="VulkanSystemStructs.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Allocation.h" />
@@ -177,6 +181,10 @@
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="SPIRVShader.h" />
     <ClInclude Include="Texture2D.h" />
+    <ClInclude Include="VkManagedBuffer.h" />
+    <ClInclude Include="VkManagedImage.h" />
+    <ClInclude Include="VkSwapChainBuffer.h" />
+    <ClInclude Include="VulkanHash.h" />
     <ClInclude Include="VulkanImageUnit.h" />
     <ClInclude Include="VulkanSystemStructs.h" />
     <ClInclude Include="VulkanCommandUnit.h" />

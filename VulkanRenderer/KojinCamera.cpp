@@ -4,7 +4,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 #define ZFAR_DEFAULT 100;
-#define ZNEAR_DEFAULT 0.0001;
+#define ZNEAR_DEFAULT 0.0001f;
 #define FOV_DEFAULT 60;
 
 std::atomic<int> Vulkan::KojinCamera::globalID = 0;

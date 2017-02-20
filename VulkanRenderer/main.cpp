@@ -4,6 +4,8 @@ ENTRY POINT - Used to test current functionality of the renderer.
 
 
 #pragma once
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include "KojinRenderer.h"
 #include "Texture2D.h"
 #include "Material.h"
@@ -85,6 +87,13 @@ void InitSDL()
 	}
 }
 
+glm::mat4 TransformMatrix(glm::vec3 position,glm::vec3 rotationAxes, float angle)
+{
+	 glm::mat4 model = glm::rotate(glm::translate(glm::mat4(1), position), glm::radians(angle), rotationAxes);
+	 model = glm::scale(model, glm::vec3(0.25, 0.25, 0.25));
+	 return model;
+}
+
 int main() 
 {
 	
@@ -94,6 +103,9 @@ int main()
 	Vulkan::KojinRenderer * renderer = nullptr;
 	std::shared_ptr<Vulkan::Mesh> mesh;
 	std::shared_ptr<Vulkan::Material> material = std::make_shared<Vulkan::Material>(Vulkan::Material());
+	
+	std::string err;
+	bool e = false;
 	try
 	{
 		renderer = new Vulkan::KojinRenderer{window,"Vulkan Tester",appVer};
@@ -102,14 +114,35 @@ int main()
 		mesh = Vulkan::Mesh::LoadMesh("models/Stormtrooper.obj");
 
 	}
-	catch(std::runtime_error e)
+	catch (const std::runtime_error& re)
 	{
-		//WINDOWS APITEST BLOCK -- EXCEPTION TEST
+		e = true;
+		err = "Runtime error: ";
+		err.append(re.what());
+		std::cerr << "Runtime error: " << re.what() << std::endl;
+	}
+	catch (const std::exception& ex)
+	{
+		e = true;
+		err = "Error occurred: ";
+		err.append(ex.what());
+		std::cerr <<"Error occurred : " << ex.what() << std::endl;
+	}
+	catch (...)
+	{
+		e = true;
+		err =  "Unknown failure occurred. Possible memory corruption";
+		std::cerr << "Unknown failure occurred. Possible memory corruption" << std::endl;
+	}
+
+
 #ifdef _WIN32 
 
-		int length = strlen(e.what());
-		wchar_t errorText[4096] = {0};
-		MultiByteToWideChar(0, 0, e.what(), length, errorText, length);
+	if(e)
+	{
+		int length = strlen(err.c_str());
+		wchar_t errorText[4096] = { 0 };
+		MultiByteToWideChar(0, 0, err.c_str(), length, errorText, length);
 
 
 
@@ -119,7 +152,7 @@ int main()
 			(LPCWSTR)L"Runtime Error",
 			MB_ICONERROR | MB_OK
 		);
-		
+
 		switch (msgboxID)
 		{
 		case IDOK:
@@ -128,17 +161,17 @@ int main()
 			SDL_Quit();
 			return 0;
 		}
-
-#else
-		throw std::runtime_error(e.what());
-#endif // _WIN32 //END WINDOWS API TEST BOCK
 	}
+	
+#endif
+
+
 
 	bool running = true;
 	auto startTime = std::chrono::high_resolution_clock::now();
 	float currentDelta = 0.0;
 	float fixedTimeStep = 1/60.0f;
-
+	float rotmod = 0;
 	while(running)
 	{
 		auto currentTime = std::chrono::high_resolution_clock::now();
@@ -152,7 +185,8 @@ int main()
 		while(currentDelta>=fixedTimeStep)
 		{
 			//update objects here
-			renderer->Update(currentDelta);
+			rotmod += 5* currentDelta;
+			//renderer->Update(currentDelta);
 			//if (currentDelta == fixedTimeStep)
 			//{
 			//	//update physics
@@ -164,9 +198,10 @@ int main()
 			SDL_Delay((uint32_t)currentDelta);
 		
 		//load up objects to the renderer
+		mesh->modelMatrix = TransformMatrix({ 0,-0.5,-1 }, { 0,1,0 },rotmod);
 		renderer->Load(mesh, material);
+		mesh->modelMatrix = TransformMatrix({ 1,0, -3 }, { 1,0,0 },rotmod);
 		renderer->Load(mesh, material);
-		renderer->DrawSingleObject(material->diffuseTexture, mesh.get());
 		//!load up objects -- currently single load
 
 		//present

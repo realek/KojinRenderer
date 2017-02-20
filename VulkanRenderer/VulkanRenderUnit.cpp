@@ -1,5 +1,6 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #define MIN_DESCRIPTOR_SET_SIZE 2
+#include "VulkanSystemStructs.h"
 #include "VulkanRenderUnit.h"
 #include "VulkanSystem.h"
 #include "VulkanCommandUnit.h"
@@ -49,33 +50,30 @@ void Vulkan::VulkanRenderUnit::Initialize(std::weak_ptr<Vulkan::VulkanSystem> vk
 	m_frameAvailableSemaphore = Vulkan::VulkanObjectContainer<VkSemaphore>{ m_deviceHandle,vkDestroySemaphore };
 	m_framePresentedSemaphore = Vulkan::VulkanObjectContainer<VkSemaphore>{ m_deviceHandle,vkDestroySemaphore };
 	m_descriptorPool = Vulkan::VulkanObjectContainer<VkDescriptorPool>{ m_deviceHandle, vkDestroyDescriptorPool };
+
+
 	try
 	{
 		//default combined texture sampler can be created first
 		this->CreateTextureSampler(m_defaultSampler);
 		//make semaphores as they dont require anything to be present
 		this->CreateSemaphores();
-		//descriptor set layout is the same as the default shaders // needs GLSL lang implementation
+		//descriptor set layout is the same as the default shaders // TODO: needs GLSL lang implementation
 		this->CreateDescriptorSetLayout();
 		//create solid graphics pipeline
 		this->CreateSolidGraphicsPipeline({ m_descSetLayoutVertex,m_descSetLayoutFragment });
-		this->CreateDescriptorPool(1,MIN_DESCRIPTOR_SET_SIZE);
-		vertexDescriptorSet = this->CreateDescriptorSet({ m_descSetLayoutVertex }, 1);
-		fragmentDescriptorSet = this->CreateDescriptorSet({ m_descSetLayoutFragment }, 1);
+		//this->CreateVertexUniformBuffer(); // TODO: rework after glsl lang implem
+		//this->CreateFragmentUniformBuffer(); // TODO: rework after glsl lang implem
 
-
-		this->CreateUniformBuffer();
-
-
-
+		//vertexDescriptorSet = this->CreateDescriptorSet({ m_descSetLayoutVertex }, 1);
+		//fragmentDescriptorSet = this->CreateDescriptorSet({ m_descSetLayoutFragment }, 1);
 
 	}
-	catch (std::runtime_error e)
+	catch (...)
 	{
-		throw e;
+		throw;
 	}
 }
-
 
 void Vulkan::VulkanRenderUnit::CreateSolidGraphicsPipeline(std::vector<VkDescriptorSetLayout> layouts)
 {
@@ -92,9 +90,9 @@ void Vulkan::VulkanRenderUnit::CreateSolidGraphicsPipeline(std::vector<VkDescrip
 		CreateShaderModule(m_defaultShader->GetVertCode(), vertShaderModule);
 		CreateShaderModule(m_defaultShader->GetFragCode(), fragShaderModule);
 	}
-	catch(std::runtime_error e)
+	catch(...)
 	{
-		throw e;
+		throw;
 	}
 	
 	VkPipelineShaderStageCreateInfo vertShaderStageCI = {};
@@ -288,68 +286,11 @@ void Vulkan::VulkanRenderUnit::CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer
 	{
 		cmdUnit->EndOneTimeCommand(cmd);
 	}
-	catch(std::runtime_error e)
+	catch(...)
 	{
-		throw e;
+		throw;
 	}
 
-}
-
-void Vulkan::VulkanRenderUnit::Render(VkImageView texture,Vulkan::Mesh * mesh)
-{
-	try
-	{
-		//write texture to sampler within descriptor set
-		UpdateUniformsAndWriteSets(texture);
-
-		//naive check to create consumed mesh once for testing
-		if(mesh->indices.size() != m_consumedMesh.totalIndiceCount)
-		{
-			VkDeviceSize vertexSize = sizeof(mesh->vertices[0]) * mesh->vertices.size();
-			VkDeviceSize indiceSize = sizeof(mesh->indices[0]) * mesh->indices.size();
-			m_consumedMesh = { m_deviceHandle,vertexSize,indiceSize,mesh->indices.size() };
-
-			//declare staging buffers
-			VkManagedBuffer vertexStagingBuffer{ m_deviceHandle,vertexSize };
-			VkManagedBuffer indiceStagingBuffer{ m_deviceHandle,indiceSize };
-
-			//create staging buffers
-			CreateBuffer(vertexStagingBuffer.bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertexStagingBuffer.buffer, vertexStagingBuffer.memory);
-			CreateBuffer(indiceStagingBuffer.bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, indiceStagingBuffer.buffer, indiceStagingBuffer.memory);
-
-			//copy data into staging buffers
-			memcpy(vertexStagingBuffer.Map(0, 0), mesh->vertices.data(), (size_t)vertexStagingBuffer.bufferSize);
-			vertexStagingBuffer.UnMap();
-			memcpy(indiceStagingBuffer.Map(0, 0), mesh->indices.data(), (size_t)indiceStagingBuffer.bufferSize);
-			indiceStagingBuffer.UnMap();
-
-			//create and load normal buffers
-			CreateBuffer(m_consumedMesh.vertexBuffer.bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_consumedMesh.vertexBuffer.buffer, m_consumedMesh.vertexBuffer.memory);
-			CreateBuffer(m_consumedMesh.indiceBuffer.bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_consumedMesh.indiceBuffer.buffer, m_consumedMesh.indiceBuffer.memory);
-			CopyBuffer(vertexStagingBuffer.buffer, m_consumedMesh.vertexBuffer.buffer, vertexStagingBuffer.bufferSize);
-			CopyBuffer(indiceStagingBuffer.buffer, m_consumedMesh.indiceBuffer.buffer, indiceStagingBuffer.bufferSize);
-		}
-
-		
-
-		//!Consume mesh each render call
-
-		auto swpChain = m_swapChainUnit.lock();
-		if (!swpChain)
-			throw std::runtime_error("Unable to lock weak ptr to Swapchain unit object.");
-		
-		auto cmdUnit = m_commandUnit.lock();
-		if (!cmdUnit)
-			throw std::runtime_error("Unable to lock weak ptr to Command unit object.");
-		
-		//record main render pass
-		RecordRenderPass(swpChain->RenderPass(), m_mainCamera, cmdUnit->SwapchainCommandBuffers(), m_consumedMesh.vertexBuffer.buffer, m_consumedMesh.indiceBuffer.buffer, m_consumedMesh.totalIndiceCount);
-
-	}
-	catch(std::runtime_error e)
-	{
-		throw e;
-	}
 }
 
 void Vulkan::VulkanRenderUnit::PresentFrame() {
@@ -441,13 +382,27 @@ void Vulkan::VulkanRenderUnit::CreateTextureSampler(VulkanObjectContainer<VkSamp
 		throw std::runtime_error("Unable to create texture sampler. Reason: "+ Vulkan::VkResultToString(result));
 }
 
-void Vulkan::VulkanRenderUnit::RecordRenderPass(VkRenderPass renderPass, VkCamera& passCamera, std::vector<VkCommandBuffer> recordBuffers,VkBuffer vertexBuffer,VkBuffer indiceBuffer,uint32_t indiceCount)
+void Vulkan::VulkanRenderUnit::Render()
 {
 
-		
+	auto cmdUnit = m_commandUnit.lock();
+	if (!cmdUnit)
+		throw std::runtime_error("Unable to lock weak ptr to Command unit object.");
+
 	auto scUnit = m_swapChainUnit.lock();
 	if(!scUnit)
 		throw std::runtime_error("Unable to lock weak ptr to Swap Chain unit.");
+
+	auto recordBuffers = cmdUnit->SwapchainCommandBuffers();
+
+	//write descriptor sets for all objects by updating the uniform buffer
+	for (uint32_t j = 0; j < m_consumedMesh.composingObjectCount; j++)
+	{
+		UpdateUniformBuffers(j);
+		WriteVertexSet(vertexDescriptorSets[j],j);
+		WriteFragmentSets(m_consumedMesh.material.diffuseTexture[j], fragmentDescriptorSets[j],j);
+	}
+
 
 	VkCommandBufferBeginInfo beginInfo = {};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -455,7 +410,7 @@ void Vulkan::VulkanRenderUnit::RecordRenderPass(VkRenderPass renderPass, VkCamer
 
 	VkRenderPassBeginInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassInfo.renderPass = renderPass;
+	renderPassInfo.renderPass = scUnit->RenderPass();
 	std::array<VkClearValue, 2> clearValues = {};
 	clearValues[0].color = { 0.0f, 0.0f, 1.0f, 0.25f };
 	clearValues[1].depthStencil = { (uint32_t)1.0f, (uint32_t)0.0f };
@@ -464,26 +419,43 @@ void Vulkan::VulkanRenderUnit::RecordRenderPass(VkRenderPass renderPass, VkCamer
 	renderPassInfo.renderArea.offset = { 0, 0 };
 	renderPassInfo.renderArea.extent = scUnit->swapChainExtent2D;
 
+
+
+
 	for (size_t i = 0; i < recordBuffers.size(); i++)
 	{
 		renderPassInfo.framebuffer = scUnit->FrameBuffer(i);
 
-
 		vkBeginCommandBuffer(recordBuffers[i], &beginInfo);
 
 		vkCmdBeginRenderPass(recordBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-		std::array<VkDescriptorSet,2U> descSets { vertexDescriptorSet, fragmentDescriptorSet };
-		vkCmdBindDescriptorSets(recordBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, descSets.size(), descSets.data(), 0, nullptr);
-		VkBuffer vertexBuffers[] = { vertexBuffer };
+
+		VkBuffer vertexBuffers[] = { m_consumedMesh.vertexBuffer.buffer };
 		VkDeviceSize offsets[] = { 0 };
 		vkCmdBindVertexBuffers(recordBuffers[i], 0, 1, vertexBuffers, offsets);
-		vkCmdBindIndexBuffer(recordBuffers[i], indiceBuffer, 0, VK_INDEX_TYPE_UINT32);
-
-
-		vkCmdSetScissor(recordBuffers[i], 0, 1, passCamera.scissor);
-		vkCmdSetViewport(recordBuffers[i], 0, 1, passCamera.viewport);
+		vkCmdBindIndexBuffer(recordBuffers[i], m_consumedMesh.indiceBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 		vkCmdBindPipeline(recordBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
-		vkCmdDrawIndexed(recordBuffers[i], indiceCount, 1, 0, 0, 0);
+		for(uint32_t j = 0; j < m_consumedMesh.composingObjectCount;j++)
+		{
+			std::array<VkDescriptorSet, 2U> descSets{ vertexDescriptorSets[j], fragmentDescriptorSets[j] };
+			vkCmdBindDescriptorSets(recordBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, descSets.size(), descSets.data(), 0, nullptr);
+
+			vkCmdSetScissor(recordBuffers[i], 0, 1, m_mainCamera.scissor);
+			vkCmdSetViewport(recordBuffers[i], 0, 1, m_mainCamera.viewport);
+	
+			vkCmdDrawIndexed(recordBuffers[i], m_consumedMesh.indiceCounts[j], 1, m_consumedMesh.indiceBases[j], 0, 0);
+		}
+
+	/*	std::array<VkDescriptorSet,2U> descSets { vertexDescriptorSet, fragmentDescriptorSet };
+		vkCmdBindDescriptorSets(recordBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, descSets.size(), descSets.data(), 0, nullptr);
+		VkBuffer vertexBuffers[] = { m_consumedMesh.vertexBuffer.buffer };
+		VkDeviceSize offsets[] = { 0 };
+		vkCmdBindVertexBuffers(recordBuffers[i], 0, 1, vertexBuffers, offsets);
+		vkCmdBindIndexBuffer(recordBuffers[i], m_consumedMesh.indiceBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);*/
+
+
+		
+
 		vkCmdEndRenderPass(recordBuffers[i]);
 
 		VkResult result = vkEndCommandBuffer(recordBuffers[i]);
@@ -494,51 +466,128 @@ void Vulkan::VulkanRenderUnit::RecordRenderPass(VkRenderPass renderPass, VkCamer
 	}
 }
 
-void Vulkan::VulkanRenderUnit::ConsumeMesh(bool recreate)
+void Vulkan::VulkanRenderUnit::ConsumeMesh(bool recreate, VkStagingMesh* staged)
 {
-	//throw std::exception("Not implemented");
+	
+	if (recreate && !m_consumedMesh.loaded) //recreate mesh and descriptors
+	{
+		VkDeviceSize vertexSize = sizeof(staged->vertex[0]) * staged->vertex.size();
+		VkDeviceSize indiceSize = sizeof(staged->indices[0]) * staged->indices.size();
+		m_consumedMesh = { m_deviceHandle, vertexSize, indiceSize, staged->totalIndices };
+		m_consumedMesh.composingObjectCount = staged->ids.size();
+		m_consumedMesh.indiceBases = staged->indiceBases;
+		m_consumedMesh.indiceCounts = staged->indiceCounts;
+		m_consumedMesh.modelMatrices = staged->modelMatrices;
+		m_consumedMesh.material.diffuseTexture = staged->diffuseTextures;
+		m_consumedMesh.material.specularity = staged->specularities;
+		m_consumedMesh.loaded = true;
+
+		//create pool
+		CreateDescriptorPool(m_consumedMesh.composingObjectCount); //1 descriptor pair for each object
+		
+	     //clear set refs
+		if (vertexDescriptorSets.size() > 0)
+		{
+			vertexDescriptorSets.clear();
+			fragmentDescriptorSets.clear();
+		}
+
+
+		//init uniform buffer containers
+		uniformBuffer.resize(m_consumedMesh.composingObjectCount, VulkanObjectContainer<VkBuffer>{ m_deviceHandle, vkDestroyBuffer });
+		uniformBufferMemory.resize(m_consumedMesh.composingObjectCount, VulkanObjectContainer<VkDeviceMemory>{ m_deviceHandle, vkFreeMemory });
+		uniformStagingBuffer.resize(m_consumedMesh.composingObjectCount, VulkanObjectContainer<VkBuffer>{ m_deviceHandle, vkDestroyBuffer });
+		uniformStagingBufferMemory.resize(m_consumedMesh.composingObjectCount, VulkanObjectContainer<VkDeviceMemory>{ m_deviceHandle, vkFreeMemory });
+
+		lightsUniformBuffer.resize(m_consumedMesh.composingObjectCount, VulkanObjectContainer<VkBuffer>{ m_deviceHandle, vkDestroyBuffer });
+		lightsUniformBufferMemory.resize(m_consumedMesh.composingObjectCount, VulkanObjectContainer<VkDeviceMemory>{ m_deviceHandle, vkFreeMemory });
+		lightsUniformStagingBuffer.resize(m_consumedMesh.composingObjectCount, VulkanObjectContainer<VkBuffer>{ m_deviceHandle, vkDestroyBuffer });
+		lightsUniformStagingBufferMemory.resize(m_consumedMesh.composingObjectCount, VulkanObjectContainer<VkDeviceMemory>{ m_deviceHandle, vkFreeMemory });
+
+		CreateVertexUniformBuffers(m_consumedMesh.composingObjectCount);
+		CreateFragmentUniformBuffers(m_consumedMesh.composingObjectCount);
+
+		//allocate vertex & fragment descriptor sets
+		for (uint32_t i = 0; i < m_consumedMesh.composingObjectCount; i++)
+		{
+			
+			fragmentDescriptorSets.push_back(CreateDescriptorSet({ m_descSetLayoutFragment }, 1));
+			vertexDescriptorSets.push_back(CreateDescriptorSet({ m_descSetLayoutVertex }, 1));
+		}
+
+		//create vertex and index buffers for the mesh
+		//declare staging buffers
+		VkManagedBuffer vertexStagingBuffer(m_deviceHandle,vertexSize);
+		VkManagedBuffer indiceStagingBuffer(m_deviceHandle,indiceSize);
+
+		//create staging buffers
+		CreateBuffer(vertexStagingBuffer.bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertexStagingBuffer.buffer, vertexStagingBuffer.memory);
+		CreateBuffer(indiceStagingBuffer.bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, indiceStagingBuffer.buffer, indiceStagingBuffer.memory);
+
+		//copy data into staging buffers
+		memcpy(vertexStagingBuffer.Map(0, 0), staged->vertex.data(), (size_t)vertexStagingBuffer.bufferSize);
+		vertexStagingBuffer.UnMap();
+		memcpy(indiceStagingBuffer.Map(0, 0), staged->indices.data(), (size_t)indiceStagingBuffer.bufferSize);
+		indiceStagingBuffer.UnMap();
+
+		//create and load normal buffers
+		CreateBuffer(m_consumedMesh.vertexBuffer.bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_consumedMesh.vertexBuffer.buffer, m_consumedMesh.vertexBuffer.memory);
+		CreateBuffer(m_consumedMesh.indiceBuffer.bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_consumedMesh.indiceBuffer.buffer, m_consumedMesh.indiceBuffer.memory);
+		CopyBuffer(vertexStagingBuffer.buffer, m_consumedMesh.vertexBuffer.buffer, vertexStagingBuffer.bufferSize);
+		CopyBuffer(indiceStagingBuffer.buffer, m_consumedMesh.indiceBuffer.buffer, indiceStagingBuffer.bufferSize);
+
+	}
+	else // just update uniform data
+	{
+		m_consumedMesh.modelMatrices = staged->modelMatrices;
+		m_consumedMesh.material.diffuseTexture = staged->diffuseTextures; 
+		m_consumedMesh.material.specularity = staged->specularities;
+		// TODO : add support for multiple textures
+	}
 }
 
-void Vulkan::VulkanRenderUnit::CreateUniformBuffer() {
-	
+void Vulkan::VulkanRenderUnit::CreateVertexUniformBuffers(uint32_t count)
+{
 	//Vertex shader UBO
 	VkDeviceSize bufferSize = sizeof(Vulkan::UniformBufferObject);
 
-	uniformStagingBuffer = VulkanObjectContainer<VkBuffer>{ m_deviceHandle,vkDestroyBuffer };
-	uniformStagingBufferMemory = VulkanObjectContainer<VkDeviceMemory>{ m_deviceHandle,vkFreeMemory };
-	uniformBuffer = VulkanObjectContainer<VkBuffer>{ m_deviceHandle,vkDestroyBuffer };
-	uniformBufferMemory = VulkanObjectContainer<VkDeviceMemory>{ m_deviceHandle,vkFreeMemory };
-
 	try
 	{
-		CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformStagingBuffer, uniformStagingBufferMemory);
-		CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, uniformBuffer, uniformBufferMemory);
-	}
-	catch (std::runtime_error e)
-	{
-		throw e;
-	}
+		for(uint32_t i = 0;  i < count; i++)
+		{
+			CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformStagingBuffer[i], uniformStagingBufferMemory[i]);
+			CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, uniformBuffer[i], uniformBufferMemory[i]);
+		}
 
-	//lights UBO
-	bufferSize = sizeof(Vulkan::LightingUniformBuffer);
-
-	lightsUniformStagingBuffer = VulkanObjectContainer<VkBuffer>{ m_deviceHandle,vkDestroyBuffer };
-	lightsUniformStagingBufferMemory = VulkanObjectContainer<VkDeviceMemory>{ m_deviceHandle,vkFreeMemory };
-	lightsUniformBuffer = VulkanObjectContainer<VkBuffer>{ m_deviceHandle,vkDestroyBuffer };
-	lightsUniformBufferMemory = VulkanObjectContainer<VkDeviceMemory>{ m_deviceHandle,vkFreeMemory };
-	try
-	{
-		CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, lightsUniformStagingBuffer, lightsUniformStagingBufferMemory);
-		CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, lightsUniformBuffer, lightsUniformBufferMemory);
 	}
-	catch (std::runtime_error e)
+	catch (...)
 	{
-		throw e;
+		throw;
 	}
 
 }
 
-void Vulkan::VulkanRenderUnit::CreateDescriptorPool(uint32_t descriptorCount, uint32_t setSize)
+void Vulkan::VulkanRenderUnit::CreateFragmentUniformBuffers(uint32_t count) {
+	
+	//lights UBO for fragment shader
+	VkDeviceSize bufferSize = sizeof(Vulkan::LightingUniformBuffer);
+
+	try
+	{
+		for (uint32_t i = 0; i < count; i++)
+		{
+			CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, lightsUniformStagingBuffer[i], lightsUniformStagingBufferMemory[i]);
+			CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, lightsUniformBuffer[i], lightsUniformBufferMemory[i]);
+		}
+	}
+	catch (...)
+	{
+		throw;
+	}
+
+}
+
+void Vulkan::VulkanRenderUnit::CreateDescriptorPool(uint32_t descriptorCount)
 {
 	std::array<VkDescriptorPoolSize, 3> poolSizes = {};
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -552,7 +601,7 @@ void Vulkan::VulkanRenderUnit::CreateDescriptorPool(uint32_t descriptorCount, ui
 	poolCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	poolCI.poolSizeCount = poolSizes.size();
 	poolCI.pPoolSizes = poolSizes.data();
-	poolCI.maxSets = descriptorCount*setSize;
+	poolCI.maxSets = descriptorCount*2;
 
 	VkResult result = vkCreateDescriptorPool(m_deviceHandle, &poolCI, nullptr, ++m_descriptorPool);
 
@@ -619,14 +668,30 @@ VkDescriptorSet Vulkan::VulkanRenderUnit::CreateDescriptorSet(std::vector<VkDesc
 
 	return descSet;
 }
-// descriptor sets and mesh pointer
-void Vulkan::VulkanRenderUnit::UpdateUniformsAndWriteSets(VkImageView textureImageView)
-{
 
+
+void Vulkan::VulkanRenderUnit::WriteVertexSet(VkDescriptorSet descSet, uint32_t index)
+{
 	VkDescriptorBufferInfo vertexUniformBufferInfo = {};
-	vertexUniformBufferInfo.buffer = uniformBuffer;
+	vertexUniformBufferInfo.buffer = uniformBuffer[index];
 	vertexUniformBufferInfo.offset = 0;
 	vertexUniformBufferInfo.range = sizeof(UniformBufferObject);
+
+	VkWriteDescriptorSet descriptorVertexWrite = {};
+	{
+		descriptorVertexWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorVertexWrite.dstSet = descSet;
+		descriptorVertexWrite.dstBinding = 0;
+		descriptorVertexWrite.dstArrayElement = 0;
+		descriptorVertexWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		descriptorVertexWrite.descriptorCount = 1;
+		descriptorVertexWrite.pBufferInfo = &vertexUniformBufferInfo;
+	}
+	vkUpdateDescriptorSets(m_deviceHandle, 1, &descriptorVertexWrite, 0, nullptr);
+}
+
+void Vulkan::VulkanRenderUnit::WriteFragmentSets(VkImageView textureImageView, VkDescriptorSet fragSet,uint32_t index)
+{
 
 	VkDescriptorImageInfo imageInfo = {};
 	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -634,27 +699,17 @@ void Vulkan::VulkanRenderUnit::UpdateUniformsAndWriteSets(VkImageView textureIma
 	imageInfo.sampler = m_defaultSampler;
 
 	VkDescriptorBufferInfo lightsUniformBufferInfo = {};
-	lightsUniformBufferInfo.buffer = lightsUniformBuffer;
+	lightsUniformBufferInfo.buffer = lightsUniformBuffer[index];
 	lightsUniformBufferInfo.offset = 0;
 	lightsUniformBufferInfo.range = sizeof(LightingUniformBuffer);
 
-	VkWriteDescriptorSet descriptorVertexWrite = {};
-	{
-		descriptorVertexWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorVertexWrite.dstSet = vertexDescriptorSet;
-		descriptorVertexWrite.dstBinding = 0;
-		descriptorVertexWrite.dstArrayElement = 0;
-		descriptorVertexWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		descriptorVertexWrite.descriptorCount = 1;
-		descriptorVertexWrite.pBufferInfo = &vertexUniformBufferInfo;
-	}
 
 
 	std::array<VkWriteDescriptorSet, 2> fragmentDescriptorWrites = {};
 
 	{
 		fragmentDescriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		fragmentDescriptorWrites[0].dstSet = fragmentDescriptorSet;
+		fragmentDescriptorWrites[0].dstSet = fragSet;
 		fragmentDescriptorWrites[0].dstBinding = 0;
 		fragmentDescriptorWrites[0].dstArrayElement = 0;
 		fragmentDescriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -662,7 +717,7 @@ void Vulkan::VulkanRenderUnit::UpdateUniformsAndWriteSets(VkImageView textureIma
 		fragmentDescriptorWrites[0].pImageInfo = &imageInfo;
 
 		fragmentDescriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		fragmentDescriptorWrites[1].dstSet = fragmentDescriptorSet;
+		fragmentDescriptorWrites[1].dstSet = fragSet;
 		fragmentDescriptorWrites[1].dstBinding = 1;
 		fragmentDescriptorWrites[1].dstArrayElement = 0;
 		fragmentDescriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -670,7 +725,7 @@ void Vulkan::VulkanRenderUnit::UpdateUniformsAndWriteSets(VkImageView textureIma
 		fragmentDescriptorWrites[1].pBufferInfo = &lightsUniformBufferInfo;
 	}
 	
-	vkUpdateDescriptorSets(m_deviceHandle, 1, &descriptorVertexWrite, 0, nullptr);
+
 	vkUpdateDescriptorSets(m_deviceHandle, fragmentDescriptorWrites.size(), fragmentDescriptorWrites.data(), 0, nullptr);
 }
 
@@ -688,38 +743,33 @@ void Vulkan::VulkanRenderUnit::CreateSemaphores()
 		throw std::runtime_error("Unable to create semaphore. Reason: " + Vulkan::VkResultToString(result));
 }
 
-void Vulkan::VulkanRenderUnit::UpdateStaticUniformBuffer(float time) {
+//needs overhaul after creation of specialized uniform buffers
+void Vulkan::VulkanRenderUnit::UpdateUniformBuffers(int objectIndex) {
 
 	auto scU = m_swapChainUnit.lock();
 	if (!scU)
 		throw std::runtime_error("Unable to lock Swapchain unit.");
 
 	auto extent = scU->swapChainExtent2D;
-	//just a simple derpy thing
-	rotationAngle+=5*time;
-	if (rotationAngle >= 360)
-		rotationAngle -= 360;
-	//nothing to see here X_X 
 
 	Vulkan::UniformBufferObject ubo = {};
-	ubo.model = glm::rotate(glm::translate(glm::mat4(1), glm::vec3(0, 0, -3)), glm::radians(rotationAngle), glm::vec3(0.0f, 1.0f, 0.0f));
-	ubo.model = glm::scale(ubo.model,glm::vec3(0.25,0.25,0.25));
+	ubo.model = m_consumedMesh.modelMatrices[objectIndex];
 	ubo.view = *m_mainCamera.view;
 	ubo.proj = *m_mainCamera.proj;
 	ubo.ComputeMatrices();
 	
 	void* data;
-	vkMapMemory(m_deviceHandle, uniformStagingBufferMemory, 0, sizeof(ubo), 0, &data);
+	vkMapMemory(m_deviceHandle, uniformStagingBufferMemory[objectIndex], 0, sizeof(ubo), 0, &data);
 	memcpy(data, &ubo, sizeof(ubo));
-	vkUnmapMemory(m_deviceHandle, uniformStagingBufferMemory);
+	vkUnmapMemory(m_deviceHandle, uniformStagingBufferMemory[objectIndex]);
 
 	try
 	{
-		CopyBuffer(uniformStagingBuffer, uniformBuffer, sizeof(ubo));
+		CopyBuffer(uniformStagingBuffer[objectIndex], uniformBuffer[objectIndex], sizeof(ubo));
 	}
-	catch (std::runtime_error e)
+	catch (...)
 	{
-		throw e;
+		throw;
 	}
 	data = nullptr;
 
@@ -739,19 +789,19 @@ void Vulkan::VulkanRenderUnit::UpdateStaticUniformBuffer(float time) {
 	lightsUbo.perFragmentLightIntensity[1] = glm::vec4(1.0, 1.0, 1.0, 1.0);
 	lightsUbo.perFragmentLightIntensity[2] = glm::vec4(1.0, 1.0, 1.0, 1.0);
 	lightsUbo.perFragmentLightIntensity[3] = glm::vec4(1.0, 1.0, 1.0, 1.0);
-	lightsUbo.specularity = 32;
+	lightsUbo.specularity = m_consumedMesh.material.specularity[objectIndex];
 
-	vkMapMemory(m_deviceHandle, lightsUniformStagingBufferMemory, 0, sizeof(lightsUbo), 0, &data);
+	vkMapMemory(m_deviceHandle, lightsUniformStagingBufferMemory[objectIndex], 0, sizeof(lightsUbo), 0, &data);
 	memcpy(data, &lightsUbo, sizeof(lightsUbo));
-	vkUnmapMemory(m_deviceHandle, lightsUniformStagingBufferMemory);
+	vkUnmapMemory(m_deviceHandle, lightsUniformStagingBufferMemory[objectIndex]);
 
 	try
 	{
-		CopyBuffer(lightsUniformStagingBuffer, lightsUniformBuffer, sizeof(lightsUbo));
+		CopyBuffer(lightsUniformStagingBuffer[objectIndex], lightsUniformBuffer[objectIndex], sizeof(lightsUbo));
 	}
-	catch (std::runtime_error e)
+	catch (...)
 	{
-		throw e;
+		throw;
 	}
 
 }

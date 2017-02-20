@@ -9,7 +9,7 @@ versions of the imported images.
 #include <memory>
 namespace Vulkan
 {
-	struct VkManagedImage;
+	class VkManagedImage;
 	class VulkanImageUnit;
 	class Texture2D
 	{

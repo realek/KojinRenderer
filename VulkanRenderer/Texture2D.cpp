@@ -46,9 +46,9 @@ std::weak_ptr<Vulkan::Texture2D> Vulkan::Texture2D::GetWhiteTexture()
 		Texture2D::imageUnit->CreateVulkanImage(k_defaultTexturesWidth, k_defaultTexturesHeight, pixels.data(), m_whiteTexture->m_image);
 		textures.insert(std::make_pair(Texture2D::k_WhiteTextureNoAlphaPath.c_str(), m_whiteTexture));
 	}
-	catch(std::runtime_error e)
+	catch(...)
 	{
-		throw e;
+		throw;
 	}
 
 	return m_whiteTexture;

@@ -147,9 +147,9 @@ void Vulkan::VulkanImageUnit::TransitionImageLayout(VkImage image, VkFormat form
 	{
 		cmd->EndOneTimeCommand(commandBuffer);
 	}
-	catch (std::runtime_error e)
+	catch (...)
 	{
-		throw e;
+		throw;
 	}
 }
 
@@ -188,9 +188,9 @@ void Vulkan::VulkanImageUnit::CopyImage(VkImage source, VkImage destination, uin
 	{
 		cmd->EndOneTimeCommand(cmdBuffer);
 	}
-	catch (std::runtime_error e)
+	catch (...)
 	{
-		throw e;
+		throw;
 	}
 }
 

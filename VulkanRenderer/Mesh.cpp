@@ -5,6 +5,7 @@
 #include <assimp/postprocess.h>
 #include <assimp/cimport.h>
 #include <unordered_map>
+#include <VulkanHash.h>
 std::atomic<int> Vulkan::Mesh::globalID = 0;
 
 
@@ -93,7 +94,8 @@ std::shared_ptr<Vulkan::Mesh> Vulkan::Mesh::LoadMesh(const char * filename,int f
 	//	iMesh->BuildVertexBuffer();
 	//	iMesh->BuildIndiceBuffer();
 	//}
-	//catch (std::runtime_error e)
+	//
+	//(std::runtime_error e)
 	//{
 	//	throw e;
 	//}
