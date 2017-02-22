@@ -19,7 +19,6 @@ use them.
 namespace Vulkan
 {
 
-
 	struct VkPhysicalDeviceRequiredQueues
 	{
 		bool hasGraphicsQueue;
@@ -60,26 +59,7 @@ namespace Vulkan
 		uint32_t transferFamily = -1;
 		uint32_t sparseBindingFamily = -1;
 
-		bool Validate(const VkPhysicalDeviceRequiredQueues * reqs)
-		{
-			VkPhysicalDeviceRequiredQueues checks = { false,false,false,false,false };
-			if (reqs->hasGraphicsQueue && graphicsFamily >= 0)
-				checks.hasGraphicsQueue = true;
-
-			if (reqs->hasComputeQueue && computeFamily >= 0)
-				checks.hasComputeQueue = true;
-
-			if (reqs->hasPresentQueue && presentFamily >= 0)
-				checks.hasPresentQueue = true;
-
-			if (reqs->hasSparseBindingQueue && sparseBindingFamily >= 0)
-				checks.hasSparseBindingQueue = true;
-
-			if (reqs->hasTransferQueue && transferFamily >= 0)
-				checks.hasTransferQueue = true;
-
-			return checks == reqs;
-		}
+		bool Validate(const VkPhysicalDeviceRequiredQueues * reqs);
 	};
 
 	struct VkSwapChainSupportData {
@@ -87,12 +67,8 @@ namespace Vulkan
 		std::vector<VkSurfaceFormatKHR> formats;
 		std::vector<VkPresentModeKHR> presentModes;
 
-		bool Validate()
-		{
-			return formats.size() > 0 && presentModes.size() > 0;
-		}
+		bool Validate();
 	};
-
 
 	struct VkQueueContainer
 	{
@@ -159,64 +135,6 @@ namespace Vulkan
 		glm::mat4* view;
 		glm::mat4* proj;
 
-	};
-
-	struct VkStagingMesh
-	{
-		std::vector<int> ids;
-
-		std::vector<uint32_t> indiceBases;
-		std::vector<uint32_t> indiceCounts;
-		std::vector<VkVertex> vertex;
-		std::vector<uint32_t> indices;
-	
-		uint32_t totalIndices;
-
-		std::vector<glm::mat4> modelMatrices;
-		std::vector<glm::vec4> diffuseColors;
-		std::vector<float> specularities;
-		std::vector<VkImageView> diffuseTextures;
-
-		VkStagingMesh();
-		VkStagingMesh(const VkStagingMesh& other) = delete;
-
-		void UpdateUniforms(VkStagingMesh& updated);
-		void ClearTemporary();
-		void ClearAll();
-	};
-
-	struct VkConsumedMaterial
-	{
-		//std::vector<glm::vec4> diffuseColor;
-		std::vector<VkImageView> diffuseTexture;
-		std::vector<VkImageView> normalMap;
-		std::vector<VkImageView> specularMap;
-		std::vector<float> specularity;
-	};
-
-	struct VkConsumedMesh
-	{
-
-		VkConsumedMesh() { this->totalIndiceCount = 0; }
-
-		VkConsumedMesh(VkDevice device, VkDeviceSize vertexSize, VkDeviceSize indiceSize,uint32_t indiceCount)
-		{
-			vertexBuffer = VkManagedBuffer{ device, vertexSize };
-			indiceBuffer = VkManagedBuffer{ device, indiceSize };
-			material = {};
-			this->totalIndiceCount = indiceCount;
-		}
-
-
-		bool loaded = false;
-		VkManagedBuffer vertexBuffer;
-		VkManagedBuffer indiceBuffer;
-		std::vector<uint32_t> indiceBases;
-		std::vector<uint32_t> indiceCounts;
-		uint32_t totalIndiceCount;
-		uint32_t composingObjectCount;
-		VkConsumedMaterial material;
-		std::vector<glm::mat4> modelMatrices;
 	};
 
 	struct UniformBufferObject

@@ -50,38 +50,40 @@ Vulkan::KojinRenderer::KojinRenderer(SDL_Window * window, const char * appName, 
 	m_defaultCamera->LookAt({ 0, 0.25, 0 });
 	BindCamera(m_defaultCamera, true);
 
-	//init staging objects
-	m_stagingOld = new VkStagingMesh{};
-	m_stagingCurrent = new VkStagingMesh{};
-
 }
 
 Vulkan::KojinRenderer::~KojinRenderer()
 {
-	delete(m_stagingOld);
-	delete(m_stagingCurrent);
+
 }
 
-void Vulkan::KojinRenderer::Load(std::weak_ptr<Vulkan::Mesh> mesh, std::weak_ptr<Vulkan::Material> material)
+void Vulkan::KojinRenderer::Load(std::weak_ptr<Vulkan::Mesh> mesh, Vulkan::Material * material)
 {
 	auto lockedMesh = mesh.lock();
-	auto lockedMat = material.lock();
 
 	if (!lockedMesh)
 		throw std::runtime_error("Unable to lock weak ptr to provided mesh");
-	if (!lockedMat)
-		throw std::runtime_error("Unable to lock weak ptr to provided material");
 
-	m_stagingCurrent->ids.push_back(lockedMesh->GetID());
-	m_stagingCurrent->vertex.insert(m_stagingCurrent->vertex.end(),lockedMesh->vertices.begin(),lockedMesh->vertices.end());
-	m_stagingCurrent->indices.insert(m_stagingCurrent->indices.end(), lockedMesh->indices.begin(), lockedMesh->indices.end());
-	m_stagingCurrent->indiceCounts.push_back(lockedMesh->indices.size());
-	m_stagingCurrent->indiceBases.push_back(m_stagingCurrent->totalIndices);
-	m_stagingCurrent->totalIndices += lockedMesh->indices.size();
-	m_stagingCurrent->modelMatrices.push_back(lockedMesh->modelMatrix);
-	m_stagingCurrent->diffuseColors.push_back(lockedMat->diffuseColor);
-	m_stagingCurrent->specularities.push_back(lockedMat->specularity);
-	m_stagingCurrent->diffuseTextures.push_back(lockedMat->diffuseTexture);
+	auto meshID = lockedMesh->GetID();
+	if (meshDraws.count(meshID) == 0)
+		meshDraws.insert(std::make_pair(meshID,1));
+	else
+		meshDraws[meshID]++;
+	objectCount++;
+	meshPartMaterials.push_back(material);
+	meshPartTransforms.push_back(lockedMesh->modelMatrix);
+	//m_stagingCurrent->ids.push_back(lockedMesh->GetID());
+	//m_stagingCurrent->vertex.insert(m_stagingCurrent->vertex.end(),lockedMesh->vertices.begin(),lockedMesh->vertices.end());
+	//m_stagingCurrent->indices.insert(m_stagingCurrent->indices.end(), lockedMesh->indices.begin(), lockedMesh->indices.end());
+	//m_stagingCurrent->indiceCounts.push_back(lockedMesh->indices.size());
+	//m_stagingCurrent->indiceBases.push_back(m_stagingCurrent->totalIndices);
+	//m_stagingCurrent->totalIndices += lockedMesh->indices.size();
+	//VkStagingMaterial meshMaterial = {};
+	//meshMaterial.diffuseColor = lockedMat->diffuseColor;
+	//meshMaterial.specularity = lockedMat->specularity;
+	//meshMaterial.diffuseTextures = lockedMat->diffuseTexture;
+	//m_stagingCurrent->meshMaterials.push_back(meshMaterial);
+	//m_stagingCurrent->meshTransforms.push_back(lockedMesh->modelMatrix);
 }
 
 void Vulkan::KojinRenderer::BindCamera(const std::weak_ptr<KojinCamera>& camera,bool isMainCamera)
@@ -114,19 +116,21 @@ void Vulkan::KojinRenderer::UnbindCamera(std::weak_ptr<KojinCamera>& camera)
 
 void Vulkan::KojinRenderer::Render()
 {
-	bool recreateBuffers = false;
-	if (m_stagingCurrent->ids != m_stagingOld->ids)
-	{
-		m_stagingOld->indiceBases = m_stagingCurrent->indiceBases;
-		m_stagingOld->ids = m_stagingCurrent->ids;
-		m_stagingOld->totalIndices = m_stagingCurrent->totalIndices;
-		recreateBuffers = true;
-	}
 
-	m_renderUnit->ConsumeMesh(recreateBuffers,m_stagingCurrent);
+	m_renderUnit->ConsumeMesh(
+		Mesh::m_iMeshVertices.data(),
+		Mesh::m_iMeshVertices.size(),
+		Mesh::m_iMeshIndices.data(),
+		Mesh::m_iMeshIndices.size(),
+		meshDraws,
+		objectCount);
+	m_renderUnit->SetTransformsAndMaterials(meshPartTransforms, meshPartMaterials);
 	m_renderUnit->Render();
+	meshDraws.clear();
+	meshPartTransforms.clear();
+	meshPartMaterials.clear();
 	m_renderUnit->PresentFrame();
-	m_stagingCurrent->ClearAll();
+
 }
 
 void Vulkan::KojinRenderer::WaitForIdle()

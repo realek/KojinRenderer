@@ -6,10 +6,15 @@
 #include <assimp/cimport.h>
 #include <unordered_map>
 #include "VulkanHash.h"
+
 std::atomic<int> Vulkan::Mesh::globalID = 0;
+std::map<std::string,int> Vulkan::Mesh::m_loadedIMeshes;
+std::map<int,Vulkan::IMeshData> Vulkan::Mesh::m_iMeshData;
+std::vector<Vulkan::VkVertex> Vulkan::Mesh::m_iMeshVertices;
+std::vector<uint32_t> Vulkan::Mesh::m_iMeshIndices;
 
 
-Vulkan::Mesh::Mesh() : vertCount(0), m_meshID(++globalID)
+Vulkan::Mesh::Mesh() : m_meshID(++globalID)
 {
 }
 
@@ -17,12 +22,21 @@ int Vulkan::Mesh::GetID()
 {
 	return m_meshID;
 }
+Vulkan::IMeshData * Vulkan::Mesh::GetMeshData(int meshID)
+{
+	return &Mesh::m_iMeshData[meshID];
+}
 ///asumes the file has one mesh within its scene
 std::shared_ptr<Vulkan::Mesh> Vulkan::Mesh::LoadMesh(const char * filename,int flags)
 {
 
 	std::unordered_map<Vulkan::VkVertex, uint32_t> uVertices = {}; // used to apply indexing
 	auto iMesh = std::make_shared<Vulkan::Mesh>(Mesh());
+	IMeshData meshData = {};
+	meshData.vertexRange.x = m_iMeshVertices.size();
+	meshData.indiceRange.x = m_iMeshIndices.size();
+	std::vector<VkVertex> readVerts;
+	std::vector<uint32_t> readIndices;
 
 	{
 		Assimp::Importer Importer;
@@ -38,7 +52,8 @@ std::shared_ptr<Vulkan::Mesh> Vulkan::Mesh::LoadMesh(const char * filename,int f
 		for (uint32_t i = 0; i < meshCount; i++)
 		{
 			auto mesh = scene->mMeshes[i];
-			iMesh->vertCount += mesh->mNumVertices;
+			readIndices.reserve(mesh->mNumVertices);
+			readVerts.reserve(mesh->mNumVertices);
 			for (uint32_t j = 0; j < mesh->mNumVertices; j++)
 			{
 
@@ -71,34 +86,40 @@ std::shared_ptr<Vulkan::Mesh> Vulkan::Mesh::LoadMesh(const char * filename,int f
 
 				if (uVertices.count(vertex) == 0)
 				{
-					uVertices[vertex] = iMesh->vertices.size();
-					iMesh->vertices.push_back(vertex);
+					uVertices[vertex] = readVerts.size();
+					readVerts.push_back(vertex);
 				}
 
-				iMesh->indices.push_back(uVertices[vertex]);
+				readIndices.push_back(uVertices[vertex]);
 			}
 
+			readVerts.shrink_to_fit();
 			uVertices.clear();
+
+			size_t currentSize = m_iMeshVertices.size();
+			size_t neededSize = currentSize + readVerts.size();
+			size_t currentCap = m_iMeshVertices.capacity();	
+			if (neededSize > currentCap)
+				m_iMeshVertices.resize(neededSize);
+
+			std::move(readVerts.begin(), readVerts.end(), m_iMeshVertices.begin() + currentSize);
+
+			currentSize = m_iMeshIndices.size();
+			neededSize = currentSize + readIndices.size();
+			currentCap = m_iMeshIndices.capacity();
+			if (neededSize > currentCap)
+				m_iMeshIndices.resize(neededSize);
+
+			std::move(readIndices.begin(), readIndices.end(), m_iMeshIndices.begin() + currentSize);
+			meshData.indiceRange.y = m_iMeshIndices.size();
+			meshData.vertexRange.y = m_iMeshVertices.size();
+			meshData.vertexCount = readVerts.size();
+			meshData.indiceCount = readIndices.size();
+			m_iMeshData.insert(std::make_pair(iMesh->m_meshID,meshData));
+			m_loadedIMeshes.insert(std::make_pair(filename,iMesh->m_meshID));
+
 		}
 	}
-
-	
-
-	//iMesh->vertexBuffer = VulkanObjectContainer<VkBuffer>{ devicePtr,vkDestroyBuffer };
-	//iMesh->vertexBufferMemory = VulkanObjectContainer<VkDeviceMemory>{ devicePtr,vkFreeMemory };
-	//iMesh->indiceBuffer = VulkanObjectContainer<VkBuffer>{ devicePtr,vkDestroyBuffer };
-	//iMesh->indiceBufferMemory = VulkanObjectContainer<VkDeviceMemory>{ devicePtr,vkFreeMemory };
-
-	//try
-	//{
-	//	iMesh->BuildVertexBuffer();
-	//	iMesh->BuildIndiceBuffer();
-	//}
-	//
-	//(std::runtime_error e)
-	//{
-	//	throw e;
-	//}
 	return iMesh;
 
 }
@@ -122,42 +143,3 @@ Vulkan::Mesh::~Mesh()
 {
 
 }
-
-/*
-inline void Vulkan::Mesh::BuildVertexBuffer() {
-	VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
-
-	//VulkanObjectContainer<VkBuffer> stagingBuffer{ devicePtr, vkDestroyBuffer };
-	//VulkanObjectContainer<VkDeviceMemory> stagingBufferMemory{ devicePtr, vkFreeMemory };
-
-	//renderUnitPtr->CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-	
-	//auto device = devicePtr->Get();
-	void* data;
-	
-	//vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-	memcpy(data, vertices.data(), (size_t)bufferSize);
-//	vkUnmapMemory(device, stagingBufferMemory);
-
-//	renderUnitPtr->CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
-
-//	renderUnitPtr->CopyBuffer(stagingBuffer, vertexBuffer, bufferSize);
-}
-inline void Vulkan::Mesh::BuildIndiceBuffer()
-{
-	VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
-
-//	VulkanObjectContainer<VkBuffer> stagingBuffer{ devicePtr, vkDestroyBuffer };
-//	VulkanObjectContainer<VkDeviceMemory> stagingBufferMemory{ devicePtr, vkFreeMemory };
-//	renderUnitPtr->CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-
-//	auto device = devicePtr->Get();
-	void* data;
-//	vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-	memcpy(data, indices.data(), (size_t)bufferSize);
-//	vkUnmapMemory(device, stagingBufferMemory);
-//	renderUnitPtr->CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indiceBuffer, indiceBufferMemory);
-
-//	renderUnitPtr->CopyBuffer(stagingBuffer, indiceBuffer, bufferSize);
-}
-*/

@@ -9,6 +9,7 @@ namespace Vulkan
 	public:
 		VkManagedBuffer() {};
 		VkManagedBuffer(VkDevice device, VkDeviceSize bufferSize);
+		void Make();
 		void* Map(VkDeviceSize offset = 0, VkMemoryMapFlags flags = 0);
 		void UnMap();
 	public:

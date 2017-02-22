@@ -11,8 +11,6 @@ shader uniforms to vulkan uniform buffers
 typedef uint64_t VkImageView;
 namespace Vulkan
 {
-	class Texture2D;
-
 	class Material
 	{
 	public:
@@ -21,9 +19,5 @@ namespace Vulkan
 		float specularity;
 		Material();
 		~Material();
-		int GetID();
-	private:
-		int m_materialID;
-		static std::atomic<int> globalID;
 	};
 }

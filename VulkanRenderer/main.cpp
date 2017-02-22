@@ -23,7 +23,6 @@ ENTRY POINT - Used to test current functionality of the renderer.
 #include <atlconv.h>
 #endif
 
-
 SDL_Window * window;
 #ifdef _WIN32
 
@@ -101,15 +100,16 @@ int main()
 
 	int appVer[3] = { 0,0,0 };
 	Vulkan::KojinRenderer * renderer = nullptr;
+
 	std::shared_ptr<Vulkan::Mesh> mesh;
-	std::shared_ptr<Vulkan::Material> material = std::make_shared<Vulkan::Material>(Vulkan::Material());
+	Vulkan::Material material;
 	
 	std::string err;
 	bool e = false;
 	try
 	{
 		renderer = new Vulkan::KojinRenderer{window,"Vulkan Tester",appVer};
-		material->diffuseTexture = Vulkan::Texture2D::CreateFromFile("textures/Stormtrooper_Diffuse.png").lock()->ImageView();
+		material.diffuseTexture = Vulkan::Texture2D::CreateFromFile("textures/Stormtrooper_Diffuse.png").lock()->ImageView();
 		//material->albedo = Vk::Texture2D::GetWhiteTexture();
 		mesh = Vulkan::Mesh::LoadMesh("models/Stormtrooper.obj");
 
@@ -166,7 +166,6 @@ int main()
 #endif
 
 
-
 	bool running = true;
 	auto startTime = std::chrono::high_resolution_clock::now();
 	float currentDelta = 0.0;
@@ -180,7 +179,6 @@ int main()
 
 		//input read
 		running = SDLExitInput();
-
 		//do updates with delta time here
 		while(currentDelta>=fixedTimeStep)
 		{
@@ -198,15 +196,18 @@ int main()
 			SDL_Delay((uint32_t)currentDelta);
 		
 		//load up objects to the renderer
-		mesh->modelMatrix = TransformMatrix({ 0,-0.5,-2 }, { 0,1,0 },rotmod);
-		renderer->Load(mesh, material);
-		mesh->modelMatrix = TransformMatrix({ 1,0, -4 }, { 1,0,0 },rotmod);
-		renderer->Load(mesh, material);
-		mesh->modelMatrix = TransformMatrix({ -1,0, -4 }, { 0,0,1 }, rotmod);
-		renderer->Load(mesh, material);
-		mesh->modelMatrix = TransformMatrix({ 0,0.5, -2 }, { 1,1,0 }, -rotmod);
-		renderer->Load(mesh, material);
-		//!load up objects -- currently single load
+		for(int i = 0 ; i < 10; i++)
+		{
+			mesh->modelMatrix = TransformMatrix({ (i*0.10f),-0.5,-2 }, { 0,1,0 }, rotmod);
+			renderer->Load(mesh, &material);
+			mesh->modelMatrix = TransformMatrix({ 1,(i*0.10f), -4 }, { 1,0,0 }, rotmod);
+			renderer->Load(mesh, &material);
+			mesh->modelMatrix = TransformMatrix({ -1,0, (i*0.10f)-2 }, { 0,0,1 }, rotmod);
+			renderer->Load(mesh, &material);
+			mesh->modelMatrix = TransformMatrix({ (i*0.10f) ,0.5, -2 }, { 1,1,0 }, -rotmod);
+			renderer->Load(mesh, &material);
+		}
+		//!load up objects
 
 		//present
 

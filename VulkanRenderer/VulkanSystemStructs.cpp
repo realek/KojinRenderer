@@ -1,35 +1,27 @@
 #include "VulkanSystemStructs.h"
 #include "VulkanHash.h"
-Vulkan::VkStagingMesh::VkStagingMesh()
-{
-	totalIndices = 0;
+
+bool Vulkan::VkQueueFamilyIDs::Validate(const Vulkan::VkPhysicalDeviceRequiredQueues * reqs) {
+	VkPhysicalDeviceRequiredQueues checks = { false,false,false,false,false };
+	if (reqs->hasGraphicsQueue && graphicsFamily >= 0)
+		checks.hasGraphicsQueue = true;
+
+	if (reqs->hasComputeQueue && computeFamily >= 0)
+		checks.hasComputeQueue = true;
+
+	if (reqs->hasPresentQueue && presentFamily >= 0)
+		checks.hasPresentQueue = true;
+
+	if (reqs->hasSparseBindingQueue && sparseBindingFamily >= 0)
+		checks.hasSparseBindingQueue = true;
+
+	if (reqs->hasTransferQueue && transferFamily >= 0)
+		checks.hasTransferQueue = true;
+
+	return checks == reqs;
 }
 
-void Vulkan::VkStagingMesh::UpdateUniforms(VkStagingMesh& updated)
+bool Vulkan::VkSwapChainSupportData::Validate()
 {
-	this->modelMatrices = updated.modelMatrices;
-	this->diffuseColors = updated.diffuseColors;
-	this->specularities = updated.specularities;
-	this->diffuseTextures = updated.diffuseTextures;
-}
-
-
-void Vulkan::VkStagingMesh::ClearTemporary()
-{
-	vertex.clear();
-	indices.clear();
-}
-
-void Vulkan::VkStagingMesh::ClearAll()
-{
-	totalIndices = 0;
-	ids.clear();
-	vertex.clear();
-	indices.clear();
-	modelMatrices.clear();
-	diffuseTextures.clear();
-	diffuseColors.clear();
-	specularities.clear();
-	indiceBases.clear();
-
+	return formats.size() > 0 && presentModes.size() > 0;
 }

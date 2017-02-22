@@ -8,6 +8,11 @@ Vulkan::VkManagedBuffer::VkManagedBuffer(VkDevice device, VkDeviceSize bufferSiz
 	memory = VulkanObjectContainer<VkDeviceMemory>{ device, vkFreeMemory };
 }
 
+void Vulkan::VkManagedBuffer::Make()
+{
+	//make the buffer here instead
+}
+
 void * Vulkan::VkManagedBuffer::Map(VkDeviceSize offset, VkMemoryMapFlags flags)
 {
 	vkMapMemory(device, memory, offset, bufferSize, flags, &mappedMemory);

@@ -17,8 +17,8 @@ namespace Vulkan
 	class VulkanSwapchainUnit;
 	class VulkanImageUnit;
 	class VulkanCommandUnit;
-	struct VkStagingMesh;
-	struct VkConsumedMesh;
+	class Material;
+	struct IMeshData;
 	class VulkanRenderUnit
 	{
 	
@@ -27,23 +27,30 @@ namespace Vulkan
 		void Initialize(std::weak_ptr<Vulkan::VulkanSystem> vkSystem, std::shared_ptr<Vulkan::VulkanCommandUnit> vkCmdUnit, std::shared_ptr<Vulkan::VulkanImageUnit> vkImageUnit, std::shared_ptr<Vulkan::VulkanSwapchainUnit> vkSCUnit);
 		void Render();
 		void PresentFrame();
-		void UpdateUniformBuffers(int objectIndex);
+		void UpdateUniformBuffers(int objectIndex, glm::mat4 modelTransform, Material * material);
 		bool AddCamera(int id, VkViewport* viewport, VkRect2D* scissor, glm::mat4* view, glm::mat4* proj);
 		void SetAsMainCamera(int id, VkViewport* viewport, VkRect2D* scissor, glm::mat4* view, glm::mat4* proj);
 		void RemoveCamera(int id);
-		void ConsumeMesh(bool recreateBuffers, VkStagingMesh * staged);
+		void ConsumeMesh(VkVertex * vertexData, uint32_t vertexCount, uint32_t * indiceData, uint32_t indiceCount, std::map<int, int> meshDrawCounts, int objectCount);
+		void SetTransformsAndMaterials(std::vector<glm::mat4>& transforms, std::vector<Material*>& materials);
 
 		~VulkanRenderUnit();
 	
 	private:
 
-		uint32_t currentPoolSize = 0;
 		SPIRVShader * m_defaultShader;
 		VkDevice m_deviceHandle;
 		VkPhysicalDevice m_currentPhysicalDevice;
 		std::weak_ptr<Vulkan::VulkanCommandUnit> m_commandUnit;
 		std::weak_ptr<Vulkan::VulkanImageUnit> m_imageUnit;
 		std::weak_ptr<Vulkan::VulkanSwapchainUnit> m_swapChainUnit;
+
+		//meshData
+		VkManagedBuffer vertexBuffer;
+		VkManagedBuffer indiceBuffer;
+		std::map<int, int> meshPartDraws;
+		std::vector<glm::mat4> meshTransforms;
+		std::vector<Material*> meshMaterials;
 
 		VulkanObjectContainer<VkDescriptorSetLayout> m_descSetLayoutVertex;
 		VulkanObjectContainer<VkDescriptorSetLayout> m_descSetLayoutFragment;
@@ -82,14 +89,10 @@ namespace Vulkan
 		VulkanObjectContainer<VkSemaphore> m_frameAvailableSemaphore;
 		VulkanObjectContainer<VkSemaphore> m_framePresentedSemaphore;
 
-		//dummy rotation
-		float rotationAngle = 0;
-		
-	private:
-		VkConsumedMesh m_consumedMesh;
 		static VkCamera m_mainCamera;
 		static std::map<int, VkCamera> m_cameras;
 
+	private:
 		void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, Vulkan::VulkanObjectContainer<VkBuffer>& buffer, Vulkan::VulkanObjectContainer<VkDeviceMemory>& bufferMemory);
 		void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 		void CreateDescriptorSetLayout();

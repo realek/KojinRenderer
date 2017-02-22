@@ -8,10 +8,19 @@ vertices, indices, normals from a file loaded with assimp.
 #include <vector>
 #include <glm\matrix.hpp>
 #include <memory>
+#include <map>
 #include <atomic>
 struct aiScene;
 namespace Vulkan
 {
+	struct IMeshData
+	{
+		glm::vec2 vertexRange;
+		glm::vec2 indiceRange;
+		uint32_t indiceCount;
+		uint32_t vertexCount;
+	};
+
 	struct VkVertex;
 	class Mesh
 	{
@@ -23,19 +32,22 @@ namespace Vulkan
 		static Vulkan::Mesh* GetSphere();
 		static Vulkan::Mesh* GetPlane();
 		~Mesh();
-		uint32_t vertCount;
-		std::vector<VkVertex> vertices;
-		std::vector<uint32_t> indices;
 		glm::mat4 modelMatrix;
 		int GetID();
+
+		static IMeshData * GetMeshData(int meshID);
 	private:
 		Mesh();
 		int m_meshID;
-		bool m_consumeOnSubmit;
 		uint32_t materialIndex;
 		static std::atomic<int> globalID;
 		//default assimp import flags
 		static const int defaultFlags = aiProcess_FlipWindingOrder | aiProcess_Triangulate | aiProcess_PreTransformVertices | aiProcess_CalcTangentSpace | aiProcess_GenSmoothNormals;
+		static std::map<std::string, int> m_loadedIMeshes;
+		static std::map<int,IMeshData> m_iMeshData;
+		static std::vector<VkVertex> m_iMeshVertices;
+		static std::vector<uint32_t> m_iMeshIndices;
+		friend class KojinRenderer;
 
 	};
 }
