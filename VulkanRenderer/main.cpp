@@ -89,7 +89,7 @@ void InitSDL()
 glm::mat4 TransformMatrix(glm::vec3 position,glm::vec3 rotationAxes, float angle)
 {
 	 glm::mat4 model = glm::rotate(glm::translate(glm::mat4(1), position), glm::radians(angle), rotationAxes);
-	 model = glm::scale(model, glm::vec3(0.1, 0.1, 0.1));
+	 model = glm::scale(model, glm::vec3(0.5, 0.5, 0.5));
 	 return model;
 }
 
@@ -196,17 +196,19 @@ int main()
 			SDL_Delay((uint32_t)currentDelta);
 		
 		//load up objects to the renderer
-		for(int i = 0 ; i < 10; i++)
-		{
-			mesh->modelMatrix = TransformMatrix({ (i*0.10f),-0.5,-2 }, { 0,1,0 }, rotmod);
-			renderer->Load(mesh, &material);
-			mesh->modelMatrix = TransformMatrix({ 1,(i*0.10f), -4 }, { 1,0,0 }, rotmod);
-			renderer->Load(mesh, &material);
-			mesh->modelMatrix = TransformMatrix({ -1,0, (i*0.10f)-2 }, { 0,0,1 }, rotmod);
-			renderer->Load(mesh, &material);
-			mesh->modelMatrix = TransformMatrix({ (i*0.10f) ,0.5, -2 }, { 1,1,0 }, -rotmod);
-			renderer->Load(mesh, &material);
-		}
+		//for(int i = 0 ; i < 10; i++)
+		//{
+		//	mesh->modelMatrix = TransformMatrix({ (i*0.10f),-0.5,-2 }, { 0,1,0 }, rotmod);
+		//	renderer->Load(mesh, &material);
+		//	mesh->modelMatrix = TransformMatrix({ 1,(i*0.10f), -4 }, { 1,0,0 }, rotmod);
+		//	renderer->Load(mesh, &material);
+		//	mesh->modelMatrix = TransformMatrix({ -1,0, (i*0.10f)-2 }, { 0,0,1 }, rotmod);
+		//	renderer->Load(mesh, &material);
+		//	mesh->modelMatrix = TransformMatrix({ (i*0.10f) ,0.5, -2 }, { 1,1,0 }, -rotmod);
+		//	renderer->Load(mesh, &material);
+		//}
+		mesh->modelMatrix = TransformMatrix({ 0,0,0 }, { 0,1,0 }, rotmod);
+		renderer->Load(mesh, &material);
 		//!load up objects
 
 		//present

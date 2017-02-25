@@ -3,9 +3,6 @@
 //#include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
-#define ZFAR_DEFAULT 100;
-#define ZNEAR_DEFAULT 0.0001f;
-#define FOV_DEFAULT 60;
 
 std::atomic<int> Vulkan::KojinCamera::globalID = 0;
 
@@ -38,9 +35,12 @@ Vulkan::KojinCamera::~KojinCamera()
 
 }
 
-void Vulkan::KojinCamera::SetOrthographic()
+void Vulkan::KojinCamera::SetOrthographic(float orthoSize)
 {
-	//projection = glm::ortho(0.0f, (float)m_swapChainExtent.width, (float)m_swapChainExtent.height, 0.0f, zNear, zFar);
+	float aspect = (float)this->m_swapChainExtent.width / (float)this->m_swapChainExtent.height;
+	aspect *= orthoSize;
+	m_projectionMatrix = glm::orthoRH(-aspect / 2, aspect/2, -orthoSize/2, orthoSize / 2, m_zNear, m_zFar);
+	m_projectionMatrix = k_clip * m_projectionMatrix;
 }
 
 
@@ -49,7 +49,8 @@ void Vulkan::KojinCamera::SetPerspective()
 {
 	float aspect = (float)this->m_swapChainExtent.width / (float)this->m_swapChainExtent.height;
 	m_projectionMatrix = glm::perspective(glm::radians(m_fov), aspect, m_zNear, m_zFar);
-	m_projectionMatrix[1][1] *= -1;
+	m_projectionMatrix = k_clip * m_projectionMatrix;
+
 }
 
 void Vulkan::KojinCamera::SetPosition(glm::vec3 position)
@@ -92,6 +93,6 @@ void Vulkan::KojinCamera::SetViewport(glm::vec2 screenCoords, glm::vec2 scale)
 
 void Vulkan::KojinCamera::LookAt(glm::vec3 target)
 {
-	m_viewMatrix = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), (target+glm::vec3(0,0,-1)), glm::vec3(0.0f, 1.0f, 0.0f)); 
+	m_viewMatrix = glm::lookAt(m_position, target, glm::vec3(0.0f, 1.0f, 0.0f)); 
 
 }

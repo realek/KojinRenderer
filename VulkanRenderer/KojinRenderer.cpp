@@ -47,7 +47,9 @@ Vulkan::KojinRenderer::KojinRenderer(SDL_Window * window, const char * appName, 
 	//add default camera 
 	m_defaultCamera = std::make_shared<KojinCamera>(KojinCamera(this->m_swapChainUnit->swapChainExtent2D));
 	m_defaultCamera->SetPerspective();
-	m_defaultCamera->LookAt({ 0, 0.25, 0 });
+	//m_defaultCamera->SetOrthographic();
+	m_defaultCamera->SetPosition({ 0,0,-1.0 });
+	m_defaultCamera->LookAt({ 0, 0, 0});
 	BindCamera(m_defaultCamera, true);
 
 }
@@ -72,18 +74,6 @@ void Vulkan::KojinRenderer::Load(std::weak_ptr<Vulkan::Mesh> mesh, Vulkan::Mater
 	objectCount++;
 	meshPartMaterials.push_back(material);
 	meshPartTransforms.push_back(lockedMesh->modelMatrix);
-	//m_stagingCurrent->ids.push_back(lockedMesh->GetID());
-	//m_stagingCurrent->vertex.insert(m_stagingCurrent->vertex.end(),lockedMesh->vertices.begin(),lockedMesh->vertices.end());
-	//m_stagingCurrent->indices.insert(m_stagingCurrent->indices.end(), lockedMesh->indices.begin(), lockedMesh->indices.end());
-	//m_stagingCurrent->indiceCounts.push_back(lockedMesh->indices.size());
-	//m_stagingCurrent->indiceBases.push_back(m_stagingCurrent->totalIndices);
-	//m_stagingCurrent->totalIndices += lockedMesh->indices.size();
-	//VkStagingMaterial meshMaterial = {};
-	//meshMaterial.diffuseColor = lockedMat->diffuseColor;
-	//meshMaterial.specularity = lockedMat->specularity;
-	//meshMaterial.diffuseTextures = lockedMat->diffuseTexture;
-	//m_stagingCurrent->meshMaterials.push_back(meshMaterial);
-	//m_stagingCurrent->meshTransforms.push_back(lockedMesh->modelMatrix);
 }
 
 void Vulkan::KojinRenderer::BindCamera(const std::weak_ptr<KojinCamera>& camera,bool isMainCamera)

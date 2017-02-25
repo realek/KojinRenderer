@@ -8,6 +8,10 @@ functionality to the KojinRenderer class
 #include <vulkan\vulkan.h>
 #include "VulkanSystemStructs.h"
 #include <atomic>
+#define ZFAR_DEFAULT 100.0f
+#define ZNEAR_DEFAULT 0.1f
+#define FOV_DEFAULT 60.0f
+#define DEFAULT_ORTHO_SIZE 8.0f
 namespace Vulkan
 {
 
@@ -17,7 +21,7 @@ namespace Vulkan
 	public:
 
 		~KojinCamera();
-		void SetOrthographic();
+		void SetOrthographic(float orthoSize = DEFAULT_ORTHO_SIZE);
 		void SetPerspective();
 		void SetPosition(glm::vec3 position);
 		void SetRotation(glm::vec3 rotation);
@@ -41,5 +45,10 @@ namespace Vulkan
 		int m_cameraID;
 		static std::atomic<int> globalID;
 		friend class KojinRenderer;
+		const glm::mat4 k_clip = glm::mat4(
+			1.0f, 0.0f, 0.0f, 0.0f,
+			0.0f, -1.0f, 0.0f, 0.0f,
+			0.0f, 0.0f, 0.5f, 0.0f,
+			0.0f, 0.0f, 0.5f, 1.0f);
 	};
 }

@@ -1,4 +1,3 @@
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #define MIN_DESCRIPTOR_SET_SIZE 2
 #include "VulkanSystemStructs.h"
 #include "VulkanRenderUnit.h"

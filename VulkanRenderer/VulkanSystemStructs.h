@@ -137,6 +137,16 @@ namespace Vulkan
 
 	};
 
+	struct VkLight
+	{
+		glm::vec3 position;
+		glm::vec3 color;
+		glm::vec3 rotation;
+		float angle;
+		float range;
+		int lightType;
+	};
+
 	struct UniformBufferObject
 	{
 		glm::mat4 model;
