@@ -562,11 +562,11 @@ void Vulkan::VulkanRenderUnit::SetLights(std::vector<Light*>& lights)
 	for(int i = 0 ; i < lights.size();i++)
 	{
 		VkLight light = {};
-		light.angle = lights[i]->angle;
 		light.color = lights[i]->diffuseColor;
-		light.lightType = lights[i]->GetType();
+		//light.lightType = lights[i]->GetType();
 		light.position = glm::vec4(lights[i]->position,1.0f);
-		light.specularColor = lights[i]->specularColor;
+		//light.range = lights[i]->range;
+		//light.specularColor = lights[i]->specularColor;
 		m_lights.push_back(light);
 	}
 }
@@ -798,28 +798,26 @@ void Vulkan::VulkanRenderUnit::UpdateUniformBuffers(int objectIndex, glm::mat4 m
 	data = nullptr;
 
 	Vulkan::LightingUniformBuffer lightsUbo = {};
-	lightsUbo.ambientLightColor = glm::vec4(0.5, 0.5, 0.5, 0.5);
-	auto nrOfLights = m_lights.size();
-	for(int i = 0 ; i < MAX_LIGHTS_PER_FRAGMENT;i++)
-	{
-		if(nrOfLights-1 >= i)
-			lightsUbo.lights[i] = m_lights[i];
-	}
-	//lightsUbo.perFragmentLightPos[0] = glm::vec4(0.0, -4.0, 5.0, 1.0); // Note to self : world up is -y in Vulkan  >_<
-	//lightsUbo.perFragmentLightPos[1] = glm::vec4(0.0, -5.0, -5.0, 1.0);
-	//lightsUbo.perFragmentLightPos[2] = glm::vec4(-3.0, -2.0, 0.0, 1.0);
-	//lightsUbo.perFragmentLightPos[3] = glm::vec4(3.0, -2.0, 0.0, 1.0);
+	lightsUbo.ambientLightColor = glm::vec4(1.0, 1.0, 1.0, 0.0);
+	lightsUbo.specularity = material->specularity;
 
-	//lightsUbo.perFragmentLightColor[0] = glm::vec4(1.0, 0.0, 0.0, 1.0);
+	lightsUbo.lights[0] = m_lights[0];
+
+	//lightsUbo.perFragmentLightPos[0] = glm::vec4(3.0, 0.0, 2.0, 1.0); // Note to self : world up is -y in Vulkan  >_<
+	/*lightsUbo.perFragmentLightPos[1] = glm::vec4(0.0, -5.0, -5.0, 1.0);
+	lightsUbo.perFragmentLightPos[2] = glm::vec4(-3.0, -2.0, 0.0, 1.0);
+	lightsUbo.perFragmentLightPos[3] = glm::vec4(3.0, -2.0, 0.0, 1.0);*/
+
+	//lightsUbo.perFragmentLightColor[0] = glm::vec4(0.75, 0.0, 0.75, 1.0);
 	//lightsUbo.perFragmentLightColor[1] = glm::vec4(0.0, 0.0, 1.0, 1.0);
 	//lightsUbo.perFragmentLightColor[2] = glm::vec4(0.0, 1.0, 0.0, 1.0);
-	//lightsUbo.perFragmentLightColor[3] = glm::vec4(0.75, 0.0, 0.75, 1.0);
+	//lightsUbo.perFragmentLightColor[3] = glm::vec4(0.15, 0.25, 0.75, 1.0);
 
 	//lightsUbo.perFragmentLightIntensity[0] = glm::vec4(1.0, 1.0, 1.0, 1.0);
 	//lightsUbo.perFragmentLightIntensity[1] = glm::vec4(1.0, 1.0, 1.0, 1.0);
 	//lightsUbo.perFragmentLightIntensity[2] = glm::vec4(1.0, 1.0, 1.0, 1.0);
 	//lightsUbo.perFragmentLightIntensity[3] = glm::vec4(1.0, 1.0, 1.0, 1.0);
-	lightsUbo.specularity = material->specularity;
+
 
 	vkMapMemory(m_deviceHandle, lightsUniformStagingBufferMemory[objectIndex], 0, sizeof(lightsUbo), 0, &data);
 	memcpy(data, &lightsUbo, sizeof(lightsUbo));
