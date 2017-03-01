@@ -18,6 +18,7 @@ namespace Vulkan
 	class VulkanImageUnit;
 	class VulkanCommandUnit;
 	class Material;
+	class Light;
 	struct IMeshData;
 	class VulkanRenderUnit
 	{
@@ -27,13 +28,12 @@ namespace Vulkan
 		void Initialize(std::weak_ptr<Vulkan::VulkanSystem> vkSystem, std::shared_ptr<Vulkan::VulkanCommandUnit> vkCmdUnit, std::shared_ptr<Vulkan::VulkanImageUnit> vkImageUnit, std::shared_ptr<Vulkan::VulkanSwapchainUnit> vkSCUnit);
 		void Render();
 		void PresentFrame();
-		void UpdateUniformBuffers(int objectIndex, glm::mat4 modelTransform, Material * material);
+		void UpdateUniformBuffers(int objectIndex, glm::mat4 modelTransform, Material * material, VkCamera& cam);
 		bool AddCamera(int id, VkViewport* viewport, VkRect2D* scissor, glm::mat4* view, glm::mat4* proj);
-		void SetAsMainCamera(int id, VkViewport* viewport, VkRect2D* scissor, glm::mat4* view, glm::mat4* proj);
 		void RemoveCamera(int id);
 		void ConsumeMesh(VkVertex * vertexData, uint32_t vertexCount, uint32_t * indiceData, uint32_t indiceCount, std::map<int, int> meshDrawCounts, int objectCount);
 		void SetTransformsAndMaterials(std::vector<glm::mat4>& transforms, std::vector<Material*>& materials);
-
+		void SetLights(std::vector<Light*>& lights);
 		~VulkanRenderUnit();
 	
 	private:
@@ -51,7 +51,9 @@ namespace Vulkan
 		std::map<int, int> meshPartDraws;
 		std::vector<glm::mat4> meshTransforms;
 		std::vector<Material*> meshMaterials;
-
+		
+		//light uniforms
+		std::vector<VkLight> m_lights;
 		VulkanObjectContainer<VkDescriptorSetLayout> m_descSetLayoutVertex;
 		VulkanObjectContainer<VkDescriptorSetLayout> m_descSetLayoutFragment;
 		VulkanObjectContainer<VkPipelineLayout> m_pipelineLayout;

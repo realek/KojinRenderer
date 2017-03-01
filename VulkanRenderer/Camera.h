@@ -14,7 +14,6 @@ functionality to the KojinRenderer class
 #define DEFAULT_ORTHO_SIZE 8.0f
 namespace Vulkan
 {
-
 	class KojinRenderer;
 	class KojinCamera
 	{
@@ -27,11 +26,16 @@ namespace Vulkan
 		void SetRotation(glm::vec3 rotation);
 		void SetViewport(glm::vec2 screenCoords, glm::vec2 scale);
 		void LookAt(glm::vec3 target);
+	private:
+		KojinCamera(KojinRenderer * rend, 
+			std::function<void(KojinRenderer*, KojinCamera*)> bindFunction, 
+			std::function<void(KojinRenderer*, KojinCamera*)> deleter, VkExtent2D swapChainExtent, 
+			bool perspective);
+		void BindSelf();
+		void ComputeViewMatrix(glm::vec3 position, glm::vec3 rotation, glm::mat4& viewMatrix);
 
 	private:
-		KojinCamera(VkExtent2D swapChainExt);
-
-	private:
+		bool m_bound = false;
 		glm::vec3 m_position;
 		glm::vec3 m_rotation;
 		float m_fov;
@@ -44,11 +48,9 @@ namespace Vulkan
 		glm::mat4 m_projectionMatrix;
 		int m_cameraID;
 		static std::atomic<int> globalID;
+		std::function<void(KojinCamera*)> onBind;
+		std::function<void(KojinCamera*)> onDestroy;
+
 		friend class KojinRenderer;
-		const glm::mat4 k_clip = glm::mat4(
-			1.0f, 0.0f, 0.0f, 0.0f,
-			0.0f, -1.0f, 0.0f, 0.0f,
-			0.0f, 0.0f, 0.5f, 0.0f,
-			0.0f, 0.0f, 0.5f, 1.0f);
 	};
 }

@@ -9,7 +9,6 @@ wrapers.
 #include <vector>
 #include <map>
 #include <glm\matrix.hpp>
-
 #ifndef RENDER_ENGINE_NAME
 #define RENDER_ENGINE_NAME "KojinRenderer"
 #endif // !RENDER_ENGINE_NAME
@@ -36,6 +35,7 @@ namespace Vulkan
 	class VulkanSwapchainUnit;
 	class VulkanRenderUnit;
 	class KojinCamera;
+	class Light;
 	class Mesh;
 	class Texture2D;
 	class Material;
@@ -46,24 +46,29 @@ namespace Vulkan
 		KojinRenderer(SDL_Window * window, const char * appName, int appVer[3]);
 		~KojinRenderer();
 		void Load(std::weak_ptr<Vulkan::Mesh> mesh, Vulkan::Material * material);
-		void BindCamera(const std::weak_ptr<KojinCamera>& camera, bool isMainCamera);
-		void UnbindCamera(std::weak_ptr<KojinCamera>& camera);
+		std::shared_ptr<Vulkan::Light> CreateLight(glm::vec3 initialPosition);
+		std::shared_ptr<Vulkan::KojinCamera> CreateCamera(glm::vec3 initialPosition, bool perspective = true);
 		void Render();
 		void WaitForIdle();
-		std::weak_ptr<KojinCamera> GetDefaultCamera();
-	private:
-		std::map<int, int> meshDraws;
-		std::map<int, int> meshDrawsOld;
-		int objectCount = 0;
-		std::vector<Material*> meshPartMaterials;
-		std::vector<glm::mat4> meshPartTransforms;
+		std::weak_ptr<KojinCamera> GetMainCamera();
+		void SetMainCamera(std::shared_ptr<KojinCamera> camera);
 
+	private:
+		static void BindCamera(KojinRenderer* rend, KojinCamera* cam);
+		static void UnbindCamera(KojinRenderer* rend, KojinCamera* cam);
+		static void ClearLight(Vulkan::Light * light, Vulkan::KojinRenderer* rend);
+		std::map<int, int> m_meshDraws;
+		std::map<int, int> m_meshDrawsOld;
+		int m_objectCount = 0;
+		std::vector<Material*> m_meshPartMaterials;
+		std::vector<glm::mat4> m_meshPartTransforms;
+		std::vector<Light*> m_lights;
+		std::weak_ptr<KojinCamera> m_mainCamera;
 		std::shared_ptr<VulkanSystem> m_system;
 		std::shared_ptr<VulkanCommandUnit> m_commandUnit;
 		std::shared_ptr<VulkanImageUnit> m_imageUnit;
 		std::shared_ptr<VulkanSwapchainUnit> m_swapChainUnit;
 		std::shared_ptr<VulkanRenderUnit> m_renderUnit;
-		std::shared_ptr<KojinCamera> m_defaultCamera;
 
 	};
 }

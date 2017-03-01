@@ -4,13 +4,19 @@ ENTRY POINT - Used to test current functionality of the renderer.
 
 
 #pragma once
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLM_FORCE_LEFT_HANDED 
+#define VK_WORLD_UP glm::vec3(0.0,-1.0,0.0)
 #include "KojinRenderer.h"
+#include "Camera.h"
+#include "Light.h"
 #include "Texture2D.h"
 #include "Material.h"
 #include "Mesh.h"
 #include "SPIRVShader.h"
+#include <glm/glm.hpp>
+#include <glm/gtx/euler_angles.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #define SDL_MAIN_HANDLED
 #include <SDL2\SDL.h>
 #include <SDL_image.h>
@@ -88,9 +94,10 @@ void InitSDL()
 
 glm::mat4 TransformMatrix(glm::vec3 position,glm::vec3 rotationAxes, float angle)
 {
-	 glm::mat4 model = glm::rotate(glm::translate(glm::mat4(1), position), glm::radians(angle), rotationAxes);
-	 model = glm::scale(model, glm::vec3(0.5, 0.5, 0.5));
-	 return model;
+	glm::mat4 model = glm::rotate(glm::translate(glm::mat4(1), position), glm::radians(angle), VK_WORLD_UP);
+	model = glm::scale(model, glm::vec3(0.5, 0.5, 0.5));
+	return model;
+
 }
 
 int main() 
@@ -100,16 +107,17 @@ int main()
 
 	int appVer[3] = { 0,0,0 };
 	Vulkan::KojinRenderer * renderer = nullptr;
-
+	std::shared_ptr<Vulkan::KojinCamera> camera;
+	std::shared_ptr<Vulkan::Light> light;
 	std::shared_ptr<Vulkan::Mesh> mesh;
 	Vulkan::Material material;
-	
 	std::string err;
 	bool e = false;
 	try
 	{
 		renderer = new Vulkan::KojinRenderer{window,"Vulkan Tester",appVer};
 		material.diffuseTexture = Vulkan::Texture2D::CreateFromFile("textures/Stormtrooper_Diffuse.png").lock()->ImageView();
+		material.specularity = 32;
 		//material->albedo = Vk::Texture2D::GetWhiteTexture();
 		mesh = Vulkan::Mesh::LoadMesh("models/Stormtrooper.obj");
 
@@ -171,6 +179,23 @@ int main()
 	float currentDelta = 0.0;
 	float fixedTimeStep = 1/60.0f;
 	float rotmod = 0;
+
+	//Light Test
+	{
+		camera = renderer->CreateCamera({ 0, 1, -3 });
+		camera->SetRotation({ 0.0,0.0,0.0 });
+		renderer->SetMainCamera(camera);
+		//camera->SetOrthographic();
+		//camera->LookAt({ 0,0.0,0.0 });
+		light = renderer->CreateLight({ 0.0, 0.0, 0.0 });
+		light->angle = 10;
+		light->rotation = { 0,1,0 };
+		light->diffuseColor = { 0.25f,0.15f, 0.0f, 1.0f };
+		light->specularColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+	}
+	//!Light Test
+
 	while(running)
 	{
 		auto currentTime = std::chrono::high_resolution_clock::now();
@@ -207,7 +232,7 @@ int main()
 		//	mesh->modelMatrix = TransformMatrix({ (i*0.10f) ,0.5, -2 }, { 1,1,0 }, -rotmod);
 		//	renderer->Load(mesh, &material);
 		//}
-		mesh->modelMatrix = TransformMatrix({ 0,0,0 }, { 0,1,0 }, rotmod);
+		mesh->modelMatrix = TransformMatrix({ 0,0,0 }, { 0,-1,0 }, rotmod);
 		renderer->Load(mesh, &material);
 		//!load up objects
 
@@ -223,7 +248,7 @@ int main()
 
 
 	std::cout << "Vulkan resource cleanup." << std::endl;
-	delete(renderer);
+	//delete(renderer);
 	std::cout <<std::endl<< "Finished Vulkan resource cleanup." << std::endl;
 	IMG_Quit();
 	SDL_Quit();

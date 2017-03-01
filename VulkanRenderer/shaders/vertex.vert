@@ -30,6 +30,6 @@ void main() {
     gl_Position = ubo.modelViewProjection * position;
     fragColor = inColor;
     fragTexCoord = inTexCoord;
-	fragNormal = vec3(transpose(inverse(ubo.modelView)) * vec4(inNormal,1.0));
-	fragPos = vec3(ubo.modelView * position);
+	fragNormal = vec3(ubo.normal * vec4(inNormal,1.0));
+	fragPos = vec3(-(ubo.modelView * position));
 }

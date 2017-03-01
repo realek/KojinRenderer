@@ -156,8 +156,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="KojinCamera.cpp" />
-    <ClCompile Include="KojinLight.cpp" />
+    <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="Light.cpp" />
     <ClCompile Include="KojinRenderer.cpp" />
     <ClCompile Include="Material.cpp" />
     <ClCompile Include="SPIRVShader.cpp" />
@@ -176,8 +176,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Allocation.h" />
-    <ClInclude Include="KojinCamera.h" />
-    <ClInclude Include="KojinLight.h" />
+    <ClInclude Include="Camera.h" />
+    <ClInclude Include="Light.h" />
     <ClInclude Include="KojinRenderer.h" />
     <ClInclude Include="Material.h" />
     <ClInclude Include="Mesh.h" />

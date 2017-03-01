@@ -1,0 +1,141 @@
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLM_FORCE_LEFT_HANDED 
+#define VK_WORLD_UP glm::vec3(0.0,-1.0,0.0)
+#define VK_WORLD_FORWARD glm::vec3(0.0,0.0,1.0)
+#define VK_WORLD_RIGHT glm::vec3(1.0,0.0,0.0)
+
+#include "Camera.h"
+#include "VulkanRenderUnit.h"
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/rotate_vector.hpp>
+#include <glm\gtx\euler_angles.hpp>
+#include <functional>
+
+std::atomic<int> Vulkan::KojinCamera::globalID = 0;
+
+
+Vulkan::KojinCamera::KojinCamera(KojinRenderer* rend, std::function<void(KojinRenderer*, KojinCamera*)> bindFunction, std::function<void(KojinRenderer*, KojinCamera*)> deleter, VkExtent2D swapChainExtent, bool perspective) : m_cameraID(++globalID)
+{
+	m_swapChainExtent = swapChainExtent;
+	m_cameraViewport = {};
+	m_cameraViewport.width = (float)swapChainExtent.width;
+	m_cameraViewport.height = (float)swapChainExtent.height;
+	m_cameraViewport.x = 0;
+	m_cameraViewport.y = 0;
+	m_cameraViewport.minDepth = 0;
+	m_cameraViewport.maxDepth = 1;
+
+	m_cameraScissor = {};
+	m_cameraScissor.extent = swapChainExtent;
+	m_cameraScissor.offset = { 0,0 };
+
+	m_fov = FOV_DEFAULT;
+	m_zNear = ZNEAR_DEFAULT;
+	m_zFar = ZFAR_DEFAULT;
+
+
+
+	m_rotation = { 0,0,0 };
+
+	if (perspective)
+		SetPerspective();
+	else
+		SetOrthographic();
+
+	onBind = [rend,bindFunction](KojinCamera* camera)
+	{
+		bindFunction(rend, camera);
+	};
+
+	onDestroy = [rend,deleter](KojinCamera* camera)
+	{
+		deleter(rend,camera);
+	};
+
+}
+
+void Vulkan::KojinCamera::BindSelf()
+{
+	onBind(this);
+	m_bound = true;
+}
+
+void Vulkan::KojinCamera::ComputeViewMatrix(glm::vec3 position, glm::vec3 rotation, glm::mat4 & viewMatrix)
+{
+	auto target = VK_WORLD_FORWARD - position;
+
+	glm::mat4 rotZ = glm::eulerAngleZ(glm::radians(rotation.z));
+	glm::mat4 rotY = glm::eulerAngleY(glm::radians(rotation.y));
+	glm::mat4 rotX = glm::eulerAngleX(glm::radians(rotation.x));
+
+
+
+	auto zAxis = glm::normalize(target);
+	auto xAxis = glm::normalize(glm::cross(VK_WORLD_UP, zAxis));
+	auto yAxis = glm::cross(zAxis, xAxis);
+
+	viewMatrix = {
+		xAxis.x, xAxis.y,xAxis.z, 0.0f,
+		yAxis.x, yAxis.y,yAxis.z, 0.0f,
+		zAxis.x, zAxis.y, zAxis.z, 0.0f,
+		-glm::dot(xAxis,position), - glm::dot(yAxis,position), - glm::dot(zAxis,position), 1
+	};
+
+	viewMatrix = rotZ*rotY*rotX*viewMatrix;
+}
+
+Vulkan::KojinCamera::~KojinCamera()
+{
+	if(m_bound)
+		onDestroy(this);
+}
+
+void Vulkan::KojinCamera::SetOrthographic(float orthoSize)
+{
+	float width = (float)this->m_swapChainExtent.width / (float)this->m_swapChainExtent.height;
+	width *= orthoSize;
+	m_projectionMatrix = glm::ortho(-width / 2, width/2, -orthoSize/2, orthoSize / 2, m_zNear, m_zFar);
+}
+
+
+
+void Vulkan::KojinCamera::SetPerspective()
+{
+	float aspect = (float)this->m_swapChainExtent.width / (float)this->m_swapChainExtent.height;
+	m_projectionMatrix = glm::perspective(glm::radians(m_fov), aspect, m_zNear, m_zFar);
+
+}
+
+void Vulkan::KojinCamera::SetPosition(glm::vec3 position)
+{
+	m_position = position;
+	ComputeViewMatrix(m_position, m_rotation, m_viewMatrix);
+
+}
+
+void Vulkan::KojinCamera::SetRotation(glm::vec3 rotation)
+{
+	this->m_rotation = rotation;
+	ComputeViewMatrix(m_position,m_rotation,m_viewMatrix);
+}
+
+void Vulkan::KojinCamera::SetViewport(glm::vec2 screenCoords, glm::vec2 scale)
+{
+
+	m_cameraViewport.width = m_swapChainExtent.width * scale.x;
+	m_cameraViewport.height = m_swapChainExtent.height * scale.y;
+	m_cameraScissor.extent.width = (uint32_t)m_cameraViewport.width;
+	m_cameraScissor.extent.height = (uint32_t)m_cameraViewport.height;
+	screenCoords = glm::clamp(screenCoords, glm::vec2(0.0, 0.0), glm::vec2(1.0, 1.0));
+	m_cameraViewport.x = (float)m_swapChainExtent.width*screenCoords.x;
+	m_cameraViewport.y = (float)m_swapChainExtent.height*screenCoords.y;
+	m_cameraScissor.offset.x = (int32_t)m_cameraViewport.x;
+	m_cameraScissor.offset.y = (int32_t)m_cameraViewport.y;
+
+}
+
+void Vulkan::KojinCamera::LookAt(glm::vec3 target)
+{
+	m_viewMatrix = glm::lookAt(m_position, target+VK_WORLD_FORWARD, VK_WORLD_UP); 
+
+}

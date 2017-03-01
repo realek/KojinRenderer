@@ -16,6 +16,7 @@ use them.
 #include <glm\vec3.hpp>
 #include <glm\vec4.hpp>
 #include <glm\matrix.hpp>
+#define MAX_LIGHTS_PER_FRAGMENT 8
 namespace Vulkan
 {
 
@@ -139,9 +140,10 @@ namespace Vulkan
 
 	struct VkLight
 	{
-		glm::vec3 position;
-		glm::vec3 color;
-		glm::vec3 rotation;
+		glm::vec4 position;
+		glm::vec4 color;
+		glm::vec4 specularColor;
+		//glm::vec3 direction;
 		float angle;
 		float range;
 		int lightType;
@@ -166,11 +168,14 @@ namespace Vulkan
 
 	struct LightingUniformBuffer
 	{
+
 		glm::vec4 ambientLightColor;
-		glm::vec4 perFragmentLightPos[4];
-		glm::vec4 perFragmentLightColor[4];
-		glm::vec4 perFragmentLightIntensity[4];
 		float specularity;
+		VkLight lights[MAX_LIGHTS_PER_FRAGMENT];
+	//	glm::vec4 perFragmentLightPos[4];
+	//  glm::vec4 perFragmentLightColor[4];
+	//	glm::vec4 perFragmentLightIntensity[4];
+
 	};
 
 	//dynamic uniform buffers - unused
