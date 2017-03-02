@@ -1,9 +1,5 @@
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#define GLM_FORCE_LEFT_HANDED 
-#define VK_WORLD_UP glm::vec3(0.0,-1.0,0.0)
-#define VK_WORLD_FORWARD glm::vec3(0.0,0.0,1.0)
-#define VK_WORLD_RIGHT glm::vec3(1.0,0.0,0.0)
 
+#include "VKWorldSpace.h"
 #include "Camera.h"
 #include "VulkanRenderUnit.h"
 #include <glm/gtc/matrix_transform.hpp>
@@ -62,21 +58,13 @@ void Vulkan::KojinCamera::BindSelf()
 
 void Vulkan::KojinCamera::ComputeViewMatrix(glm::vec3 position, glm::vec3 rotation, glm::mat4 & viewMatrix)
 {
-	auto target = VK_WORLD_FORWARD - position;
-	glm::mat4 rot = glm::eulerAngleXYZ(glm::radians(rotation.x), glm::radians(rotation.y), glm::radians(rotation.z));
-
-	auto zAxis = glm::normalize(target);
-	auto xAxis = glm::normalize(glm::cross(VK_WORLD_UP, zAxis));
-	auto yAxis = glm::cross(zAxis, xAxis);
-
-	viewMatrix = {
-		xAxis.x, xAxis.y,xAxis.z, 0.0f,
-		yAxis.x, yAxis.y,yAxis.z, 0.0f,
-		zAxis.x, zAxis.y, zAxis.z, 0.0f,
-		-glm::dot(xAxis,position), - glm::dot(yAxis,position), - glm::dot(zAxis,position), 1
-	};
-
-	viewMatrix = rot*viewMatrix;
+	auto target = position;
+	target.z += 1; // position +1 unit
+	auto rotZ = glm::eulerAngleZ(glm::radians(-rotation.z));
+	auto rotY = glm::eulerAngleY(glm::radians(-rotation.y));
+	auto rotX = glm::eulerAngleX(glm::radians(-rotation.x));
+	glm::mat4 tran = glm::lookAt(position, target, VkWorldSpace::WORLD_UP);
+	viewMatrix = (rotZ*rotY*rotX)*tran;
 }
 
 Vulkan::KojinCamera::~KojinCamera()
@@ -131,6 +119,6 @@ void Vulkan::KojinCamera::SetViewport(glm::vec2 screenCoords, glm::vec2 scale)
 
 void Vulkan::KojinCamera::LookAt(glm::vec3 target)
 {
-	m_viewMatrix = glm::lookAt(m_position, target+VK_WORLD_FORWARD, VK_WORLD_UP); 
+	m_viewMatrix = glm::lookAt(m_position, target, VkWorldSpace::WORLD_UP);
 
 }

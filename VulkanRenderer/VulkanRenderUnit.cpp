@@ -798,25 +798,18 @@ void Vulkan::VulkanRenderUnit::UpdateUniformBuffers(int objectIndex, glm::mat4 m
 	data = nullptr;
 
 	Vulkan::LightingUniformBuffer lightsUbo = {};
-	lightsUbo.ambientLightColor = glm::vec4(1.0, 1.0, 1.0, 0.0);
+	lightsUbo.ambientLightColor = glm::vec4(1.0, 1.0, 1.0, 0.1);
 	lightsUbo.specularity = material->specularity;
+	
+	int size = m_lights.size();
+	for (int i = 0; i < MAX_LIGHTS_PER_FRAGMENT;i++) 
+	{
+		if (size > i)
+			lightsUbo.lights[i] = m_lights[i];
+		else
+			break;
+	}
 
-	lightsUbo.lights[0] = m_lights[0];
-
-	//lightsUbo.perFragmentLightPos[0] = glm::vec4(3.0, 0.0, 2.0, 1.0); // Note to self : world up is -y in Vulkan  >_<
-	/*lightsUbo.perFragmentLightPos[1] = glm::vec4(0.0, -5.0, -5.0, 1.0);
-	lightsUbo.perFragmentLightPos[2] = glm::vec4(-3.0, -2.0, 0.0, 1.0);
-	lightsUbo.perFragmentLightPos[3] = glm::vec4(3.0, -2.0, 0.0, 1.0);*/
-
-	//lightsUbo.perFragmentLightColor[0] = glm::vec4(0.75, 0.0, 0.75, 1.0);
-	//lightsUbo.perFragmentLightColor[1] = glm::vec4(0.0, 0.0, 1.0, 1.0);
-	//lightsUbo.perFragmentLightColor[2] = glm::vec4(0.0, 1.0, 0.0, 1.0);
-	//lightsUbo.perFragmentLightColor[3] = glm::vec4(0.15, 0.25, 0.75, 1.0);
-
-	//lightsUbo.perFragmentLightIntensity[0] = glm::vec4(1.0, 1.0, 1.0, 1.0);
-	//lightsUbo.perFragmentLightIntensity[1] = glm::vec4(1.0, 1.0, 1.0, 1.0);
-	//lightsUbo.perFragmentLightIntensity[2] = glm::vec4(1.0, 1.0, 1.0, 1.0);
-	//lightsUbo.perFragmentLightIntensity[3] = glm::vec4(1.0, 1.0, 1.0, 1.0);
 
 
 	vkMapMemory(m_deviceHandle, lightsUniformStagingBufferMemory[objectIndex], 0, sizeof(lightsUbo), 0, &data);

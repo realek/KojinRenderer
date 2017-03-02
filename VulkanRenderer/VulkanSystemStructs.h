@@ -165,7 +165,7 @@ namespace Vulkan
 
 	struct LightingUniformBuffer
 	{
-		VkLight lights[4];
+		VkLight lights[MAX_LIGHTS_PER_FRAGMENT];
 		float specularity;
 		glm::vec4 ambientLightColor;
 

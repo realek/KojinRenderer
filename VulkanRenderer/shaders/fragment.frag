@@ -49,7 +49,7 @@ void main()
 		
 		if(incidenceAngle > 0.0)
 		{
-			diffuse = diffuseFrac * incidenceAngle * ubo.lights[i].color.xyzw; // diffuse component
+			diffuse = diffuseFrac * incidenceAngle * ubo.lights[i].color; // diffuse component
 		}
 		
 		if(ubo.specularity > 0.0)

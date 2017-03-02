@@ -108,6 +108,7 @@ int main()
 	int appVer[3] = { 0,0,0 };
 	Vulkan::KojinRenderer * renderer = nullptr;
 	std::shared_ptr<Vulkan::KojinCamera> camera;
+	std::shared_ptr<Vulkan::KojinCamera> camera1;
 	std::shared_ptr<Vulkan::Light> light;
 	std::shared_ptr<Vulkan::Mesh> mesh;
 	Vulkan::Material material;
@@ -182,15 +183,18 @@ int main()
 
 	//Light and camera Test
 	{
-		camera = renderer->CreateCamera({ 0, 1, -3 });
-		camera->SetRotation({ 0.0,0.0,0.0 });
+		camera = renderer->CreateCamera({ 0, 0, -3 });
+		camera->SetRotation({0.0,0.0,0.0 });
+		//camera->LookAt({ 0,0,0 });
 		renderer->SetMainCamera(camera);
+		//camera1 = renderer->CreateCamera({ 0, -1, 3 });
+		//camera1->SetRotation({ 0.0,0.0,0.0 });
 		//camera->SetOrthographic();
 		//camera->LookAt({ 0,0.0,0.0 });
-		light = renderer->CreateLight({ 3.0, 0.0, -3.0 });
+		light = renderer->CreateLight({ 3.0, 0.0, 0.0 });
 		light->angle = 10;
 		light->rotation = { 0,1,0 };
-		light->diffuseColor = glm::vec4(0.6, 0.35, 0.75, 1.0);
+		light->diffuseColor = glm::vec4(1.0, 1.0, 1.0, 1.0);
 		light->specularColor = glm::vec4(1);
 
 	}
