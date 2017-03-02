@@ -798,6 +798,7 @@ void Vulkan::VulkanRenderUnit::UpdateUniformBuffers(int objectIndex, glm::mat4 m
 	Vulkan::LightingUniformBuffer lightsUbo = {};
 	lightsUbo.ambientLightColor = glm::vec4(0.5, 0.5, 0.5, 0.1);
 	lightsUbo.specularity = material->specularity;
+	lightsUbo.cameraPos = glm::vec4(*cam.position*VkWorldSpace::REVERSE_AXES, 1.0);
 	int size = m_lights.size();
 	for (int i = 0; i < MAX_LIGHTS_PER_FRAGMENT;i++) 
 	{

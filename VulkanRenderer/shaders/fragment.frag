@@ -21,6 +21,7 @@ struct VkLight
 layout(set = 1, binding = 0) uniform sampler2D texSampler;
 layout(set = 1, binding = 1) uniform FragUbo {
 
+	vec4 cameraPos;
 	VkLight lights[4];
 	float specularity;
 	vec4 ambientLightColor;
@@ -42,12 +43,12 @@ void main()
 	vec4 diffuse = vec4(0.0,0.0,0.0,0.0);
 	
 	vec3 N = normalize(fragNormal);
-	
+	vec3 V = normalize(cross(vec3(fragPos),vec3(ubo.cameraPos)));
 	
 	for(int i = 0;i < 4;i++)
 	{
 		vec3 L = normalize(ubo.lights[i].position.xyz - fragPos); // light dir
-		vec3 V = normalize(-ubo.lights[i].position.xyz);
+
 		
 		float incidenceAngle = max(0.0,dot(L, N));
 
