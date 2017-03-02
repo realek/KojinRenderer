@@ -80,8 +80,6 @@ void Vulkan::KojinCamera::SetOrthographic(float orthoSize)
 	m_projectionMatrix = glm::ortho(-width / 2, width/2, -orthoSize/2, orthoSize / 2, m_zNear, m_zFar);
 }
 
-
-
 void Vulkan::KojinCamera::SetPerspective()
 {
 	float aspect = (float)this->m_swapChainExtent.width / (float)this->m_swapChainExtent.height;

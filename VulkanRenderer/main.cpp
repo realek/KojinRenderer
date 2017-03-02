@@ -4,9 +4,7 @@ ENTRY POINT - Used to test current functionality of the renderer.
 
 
 #pragma once
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#define GLM_FORCE_LEFT_HANDED 
-#define VK_WORLD_UP glm::vec3(0.0,-1.0,0.0)
+#include "VKWorldSpace.h"
 #include "KojinRenderer.h"
 #include "Camera.h"
 #include "Light.h"
@@ -94,7 +92,7 @@ void InitSDL()
 
 glm::mat4 TransformMatrix(glm::vec3 position,glm::vec3 rotationAxes, float angle)
 {
-	glm::mat4 model = glm::rotate(glm::translate(glm::mat4(1), position), glm::radians(angle), VK_WORLD_UP);
+	glm::mat4 model = glm::rotate(glm::translate(glm::mat4(1), position), glm::radians(angle), VkWorldSpace::WORLD_UP);
 	model = glm::scale(model, glm::vec3(0.5, 0.5, 0.5));
 	return model;
 
@@ -118,7 +116,7 @@ int main()
 	{
 		renderer = new Vulkan::KojinRenderer{window,"Vulkan Tester",appVer};
 		material.diffuseTexture = Vulkan::Texture2D::CreateFromFile("textures/Stormtrooper_Diffuse.png").lock()->ImageView();
-		material.specularity = 100;
+		material.specularity = 64;
 		//material->albedo = Vk::Texture2D::GetWhiteTexture();
 		mesh = Vulkan::Mesh::LoadMesh("models/Stormtrooper.obj");
 
@@ -183,15 +181,15 @@ int main()
 
 	//Light and camera Test
 	{
-		camera = renderer->CreateCamera({ 0, 0, -3 });
-		camera->SetRotation({0.0,0.0,0.0 });
-		//camera->LookAt({ 0,0,0 });
+		camera = renderer->CreateCamera({ 0, 1, -3 });
+		camera->SetRotation({0.0,0.0,90.0 });
+		camera->LookAt({ 0,0,0 });
 		renderer->SetMainCamera(camera);
 		//camera1 = renderer->CreateCamera({ 0, -1, 3 });
 		//camera1->SetRotation({ 0.0,0.0,0.0 });
 		//camera->SetOrthographic();
 		//camera->LookAt({ 0,0.0,0.0 });
-		light = renderer->CreateLight({ 3.0, 0.0, 0.0 });
+		light = renderer->CreateLight({ 3.0, -2.0, 0.0 });
 		light->angle = 10;
 		light->rotation = { 0,1,0 };
 		light->diffuseColor = glm::vec4(1.0, 1.0, 1.0, 1.0);

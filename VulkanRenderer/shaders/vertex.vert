@@ -2,9 +2,6 @@
 #extension GL_ARB_separate_shader_objects : enable
 
 layout(set = 0, binding = 0) uniform UniformBufferObject {
-    mat4 model;
-    mat4 view;
-    mat4 proj;
 	mat4 modelView;
 	mat4 modelViewProjection;
 	mat4 normal;
@@ -26,10 +23,10 @@ out gl_PerVertex {
 
 void main() {
 
-	vec4 position = vec4(inPosition, 1.0);
-    gl_Position = ubo.modelViewProjection * position;
+    gl_Position = ubo.modelViewProjection * vec4(inPosition, 1.0);
     fragColor = inColor;
     fragTexCoord = inTexCoord;
-	fragNormal = vec3(transpose(inverse(ubo.modelView)) * vec4(inNormal,1.0));
-	fragPos = vec3(ubo.modelView * position);
+	fragNormal = vec3(ubo.normal * vec4(inNormal,1.0));
+	vec4 vPos = ubo.modelView*vec4(inPosition,1.0f);
+	fragPos = vec3(vPos)/vPos.w;
 }

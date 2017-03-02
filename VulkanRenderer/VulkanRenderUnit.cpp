@@ -1,5 +1,6 @@
 #define MIN_DESCRIPTOR_SET_SIZE 2
 #include "VulkanSystemStructs.h"
+#include "VKWorldSpace.h"
 #include "VulkanRenderUnit.h"
 #include "VulkanSystem.h"
 #include "VulkanCommandUnit.h"
@@ -777,10 +778,7 @@ void Vulkan::VulkanRenderUnit::UpdateUniformBuffers(int objectIndex, glm::mat4 m
 	auto extent = scU->swapChainExtent2D;
 
 	Vulkan::UniformBufferObject ubo = {};
-	ubo.model = modelTransform;
-	ubo.view = *cam.view;
-	ubo.proj = *cam.proj;
-	ubo.ComputeMatrices();
+	ubo.ComputeMatrices(*cam.view,*cam.proj,modelTransform);
 	
 	void* data;
 	vkMapMemory(m_deviceHandle, uniformStagingBufferMemory[objectIndex], 0, sizeof(ubo), 0, &data);
@@ -798,9 +796,9 @@ void Vulkan::VulkanRenderUnit::UpdateUniformBuffers(int objectIndex, glm::mat4 m
 	data = nullptr;
 
 	Vulkan::LightingUniformBuffer lightsUbo = {};
-	lightsUbo.ambientLightColor = glm::vec4(1.0, 1.0, 1.0, 0.1);
+	lightsUbo.ambientLightColor = glm::vec4(0.5, 0.5, 0.5, 0.1);
 	lightsUbo.specularity = material->specularity;
-	
+	lightsUbo.eyePosition = glm::vec4(*cam.position*VkWorldSpace::REVERSE_AXES, 1.0f);
 	int size = m_lights.size();
 	for (int i = 0; i < MAX_LIGHTS_PER_FRAGMENT;i++) 
 	{
@@ -827,7 +825,7 @@ void Vulkan::VulkanRenderUnit::UpdateUniformBuffers(int objectIndex, glm::mat4 m
 
 }
 
-bool Vulkan::VulkanRenderUnit::AddCamera(int id, VkViewport* viewport, VkRect2D* scissor, glm::mat4* view, glm::mat4* proj)
+bool Vulkan::VulkanRenderUnit::AddCamera(int id, VkViewport* viewport, VkRect2D* scissor, glm::mat4* view, glm::mat4* proj,glm::vec3* position)
 {
 
 	auto it = m_cameras.find(id);
@@ -839,6 +837,7 @@ bool Vulkan::VulkanRenderUnit::AddCamera(int id, VkViewport* viewport, VkRect2D*
 	cam.scissor = scissor;
 	cam.view = view;
 	cam.proj = proj;
+	cam.position = position;
 	m_cameras.insert(std::make_pair(id, cam));
 	return true;
 }

@@ -94,7 +94,7 @@ void Vulkan::KojinRenderer::BindCamera(KojinRenderer* rend, KojinCamera* cam)
 {
 	rend->m_renderUnit->AddCamera(cam->m_cameraID, 
 		&cam->m_cameraViewport, &cam->m_cameraScissor, 
-		&cam->m_viewMatrix, &cam->m_projectionMatrix);
+		&cam->m_viewMatrix, &cam->m_projectionMatrix,&cam->m_position);
 }
 
 void Vulkan::KojinRenderer::UnbindCamera(KojinRenderer* rend, KojinCamera* cam)

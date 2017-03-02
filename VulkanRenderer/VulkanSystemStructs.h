@@ -135,6 +135,7 @@ namespace Vulkan
 		VkRect2D* scissor;
 		glm::mat4* view;
 		glm::mat4* proj;
+		glm::vec3* position;
 
 	};
 
@@ -148,14 +149,11 @@ namespace Vulkan
 
 	struct UniformBufferObject
 	{
-		glm::mat4 model;
-		glm::mat4 view;
-		glm::mat4 proj;
 		glm::mat4 modelView;
 		glm::mat4 modelViewProjection;
 		glm::mat4 normal;
 
-		inline void ComputeMatrices()
+		inline void ComputeMatrices(glm::mat4& view, glm::mat4& proj, glm::mat4& model)
 		{
 			modelView = view*model;
 			normal = glm::transpose(glm::inverse(modelView));
@@ -165,9 +163,11 @@ namespace Vulkan
 
 	struct LightingUniformBuffer
 	{
+		glm::vec4 eyePosition;
 		VkLight lights[MAX_LIGHTS_PER_FRAGMENT];
 		float specularity;
 		glm::vec4 ambientLightColor;
+
 
 
 		//glm::vec4 perFragmentLightPos[MAX_LIGHTS_PER_FRAGMENT];

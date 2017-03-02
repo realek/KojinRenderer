@@ -21,9 +21,13 @@ struct VkLight
 layout(set = 1, binding = 0) uniform sampler2D texSampler;
 layout(set = 1, binding = 1) uniform FragUbo {
 
+
+	vec4 eyePos;
 	VkLight lights[4];
 	float specularity;
 	vec4 ambientLightColor;
+
+
 
 } ubo;
 
@@ -32,28 +36,31 @@ layout(location = 0) out vec4 outColor;
 void main() 
 {
 
-	vec3 N = normalize(fragNormal);
+
     outColor = vec4(fragColor,1.0) * texture(texSampler, fragTexCoord);
-	vec4 lightColor = vec4(ubo.ambientLightColor.xyz,1.0);
+	vec4 lightColor = vec4(ubo.ambientLightColor.xyz,1.0f);
 	float diffuseFrac = 1.0 - ubo.ambientLightColor.w;
 	vec3 specular = vec3(0.0,0.0,0.0);
 	vec4 diffuse = vec4(0.0,0.0,0.0,0.0);
 	
+	vec3 N = normalize(fragNormal);
+	vec3 V = normalize(ubo.eyePos.xyz - fragPos);// eye coord
+	
 	for(int i = 0;i < 4;i++)
 	{
-		vec3 L = normalize(fragPos - ubo.lights[i].position.xyz); // light dir
-		vec3 V = normalize(fragPos);// eye coord
-		vec3 R = reflect(-L, N); // reflection
+		vec3 L = normalize(ubo.lights[i].position.xyz - fragPos); // light dir
 		
-		float incidenceAngle = max(0.0,dot(-L, N));
 		
+		float incidenceAngle = max(0.0,dot(L, N));
+
 		if(incidenceAngle > 0.0)
 		{
-			diffuse = diffuseFrac * incidenceAngle * ubo.lights[i].color; // diffuse component
+			diffuse = diffuseFrac * incidenceAngle * ubo.lights[i].color; // diffuse component		
 		}
 		
 		if(ubo.specularity > 0.0)
 		{
+			vec3 R = reflect(-L, N); // reflection
 			specular = vec3(pow(max(dot(R, V), 0.0), ubo.specularity)); // specular component		
 		}
 		
