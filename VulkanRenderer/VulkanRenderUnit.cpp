@@ -798,12 +798,14 @@ void Vulkan::VulkanRenderUnit::UpdateUniformBuffers(int objectIndex, glm::mat4 m
 	Vulkan::LightingUniformBuffer lightsUbo = {};
 	lightsUbo.ambientLightColor = glm::vec4(0.5, 0.5, 0.5, 0.1);
 	lightsUbo.specularity = material->specularity;
-	lightsUbo.eyePosition = glm::vec4(*cam.position*VkWorldSpace::REVERSE_AXES, 1.0f);
 	int size = m_lights.size();
 	for (int i = 0; i < MAX_LIGHTS_PER_FRAGMENT;i++) 
 	{
 		if (size > i)
+		{
 			lightsUbo.lights[i] = m_lights[i];
+			lightsUbo.lights[i].position = *cam.view*(lightsUbo.lights[i].position*glm::vec4(VkWorldSpace::REVERSE_AXES, 1.0f));
+		}
 		else
 			break;
 	}

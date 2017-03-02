@@ -182,17 +182,17 @@ int main()
 	//Light and camera Test
 	{
 		camera = renderer->CreateCamera({ 0, 1, -3 });
-		camera->SetRotation({0.0,0.0,90.0 });
-		camera->LookAt({ 0,0,0 });
+		camera->SetRotation({0.0,0.0,0.0 });
+		//camera->LookAt({ 0,0,0 });
 		renderer->SetMainCamera(camera);
 		//camera1 = renderer->CreateCamera({ 0, -1, 3 });
 		//camera1->SetRotation({ 0.0,0.0,0.0 });
 		//camera->SetOrthographic();
 		//camera->LookAt({ 0,0.0,0.0 });
-		light = renderer->CreateLight({ 3.0, -2.0, 0.0 });
+		light = renderer->CreateLight({ -1.0, 0.0, 0.0 });
 		light->angle = 10;
 		light->rotation = { 0,1,0 };
-		light->diffuseColor = glm::vec4(1.0, 1.0, 1.0, 1.0);
+		light->diffuseColor = glm::vec4(1.0, 0.5, 0.5, 1.0);
 		light->specularColor = glm::vec4(1);
 
 	}
