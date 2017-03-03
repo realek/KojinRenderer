@@ -92,7 +92,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>vulkan-1.lib;SDL2.lib;SDL2_image.lib;%(AdditionalDependencies);assimp-vc140-mt.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)\Dependencies\Development\SDL_image 2.0.1\lib\x86;$(SolutionDir)\Dependencies\Development\assimp-3.3.1\lib\x86;$(VULKAN_SDK)\Bin32;$(VULKAN_SDK)\Third-Party\Bin32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)\Dependencies\Development\SDL_image 2.0.1\lib\x86;$(SolutionDir)\Dependencies\Development\assimp-3.3.1\lib\x86;$(VULKAN_SDK)\Lib32;$(VULKAN_SDK)\Third-Party\Bin32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
     </Link>
   </ItemDefinitionGroup>

@@ -141,10 +141,12 @@ namespace Vulkan
 
 	struct VkLight
 	{
+
 		glm::vec4 color;
 		glm::vec4 position;
-		//float range;
 		//int lightType;
+		//float range;
+
 	};
 
 	struct UniformBufferObject
@@ -163,10 +165,10 @@ namespace Vulkan
 
 	struct LightingUniformBuffer
 	{
-		glm::vec4 cameraPos;
+		//glm::vec4 cameraPos;
 		VkLight lights[MAX_LIGHTS_PER_FRAGMENT];
-		float specularity;
 		glm::vec4 ambientLightColor;
+		float specularity;
 
 
 

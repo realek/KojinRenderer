@@ -116,7 +116,7 @@ int main()
 	{
 		renderer = new Vulkan::KojinRenderer{window,"Vulkan Tester",appVer};
 		material.diffuseTexture = Vulkan::Texture2D::CreateFromFile("textures/Stormtrooper_Diffuse.png").lock()->ImageView();
-		material.specularity = 64;
+		material.specularity = 1000;
 		//material->albedo = Vk::Texture2D::GetWhiteTexture();
 		mesh = Vulkan::Mesh::LoadMesh("models/Stormtrooper.obj");
 
@@ -189,10 +189,11 @@ int main()
 		//camera1->SetRotation({ 0.0,0.0,0.0 });
 		//camera->SetOrthographic();
 		//camera->LookAt({ 0,0.0,0.0 });
-		light = renderer->CreateLight({ -1.0, 0.0, 0.0 });
+		light = renderer->CreateLight({ 0.0, 1.0, 2.0 });
+		light->SetType(Vulkan::LightType::Point);
 		light->angle = 10;
 		light->rotation = { 0,1,0 };
-		light->diffuseColor = glm::vec4(1.0, 0.5, 0.5, 1.0);
+		light->diffuseColor = glm::vec4(0.0, 0.5, 0.75, 1.0);
 		light->specularColor = glm::vec4(1);
 
 	}

@@ -14,20 +14,19 @@ struct VkLight
 {
 	vec4 color;
 	vec4 position;
-//	float range;
 //	int lightType;
+
+//	float range;
+
 };
 
 layout(set = 1, binding = 0) uniform sampler2D texSampler;
 layout(set = 1, binding = 1) uniform FragUbo {
 
-	vec4 cameraPos;
+	//vec4 cameraPos;
 	VkLight lights[4];
-	float specularity;
 	vec4 ambientLightColor;
-
-
-
+	float specularity;
 } ubo;
 
 layout(location = 0) out vec4 outColor;
@@ -41,17 +40,17 @@ void main()
 	float diffuseFrac = 1.0 - ubo.ambientLightColor.w;
 	vec4 specular = vec4(0.0,0.0,0.0,0.0);
 	vec4 diffuse = vec4(0.0,0.0,0.0,0.0);
-	
+	float atten = 1.0f;
 	vec3 N = normalize(fragNormal);
-	vec3 V = normalize(cross(vec3(fragPos),vec3(ubo.cameraPos)));
 	
 	for(int i = 0;i < 4;i++)
 	{
 		vec3 L = normalize(ubo.lights[i].position.xyz - fragPos); // light dir
-
+		vec3 V = normalize(-ubo.lights[i].position.xyz);
+		
+		
 		
 		float incidenceAngle = max(0.0,dot(L, N));
-
 		if(incidenceAngle > 0.0)
 		{
 			diffuse = diffuseFrac * incidenceAngle * ubo.lights[i].color; // diffuse component		
@@ -62,9 +61,27 @@ void main()
 			
 			vec3 H = normalize(L+V);
 			float specAngle = max(dot(H, N), 0.0);
-			specular = pow(specAngle, ubo.specularity) * vec4(1.0f,1.0f,1.0f,1.0f);	
+			if(specAngle > 0.0)
+			{
+				specular = pow(specAngle, ubo.specularity) * vec4(1.0f,1.0f,1.0f,1.0f);				
+			}
+
 		}
 		
+	//	if(ubo.lights[i].lightType == 0) //is point
+	//	{
+	//		atten = 1.0f;
+	//	}
+	//	else if(ubo.lights[i].lightType == 1) // is spot
+	//	{
+	//		atten = 0.0f;
+	//		//compute
+	//	}
+	//	else
+	//	{
+	//		atten = 0.0f;
+	//		//is directional
+	//	}
 
 		
 		
