@@ -564,7 +564,11 @@ void Vulkan::VulkanRenderUnit::SetLights(std::vector<Light*>& lights)
 	{
 		VkLight light = {};
 		light.color = lights[i]->diffuseColor;
-		//light.lightType = lights[i]->GetType();
+		light.lightProps = {};
+		light.lightProps.lightType = lights[i]->GetType();
+		light.lightProps.intensity = lights[i]->intensity;
+		light.lightProps.falloff = lights[i]->range;
+		light.lightProps.angle = lights[i]->angle;
 		light.position = glm::vec4(lights[i]->position,1.0f);
 		//light.range = lights[i]->range;
 		//light.specularColor = lights[i]->specularColor;
@@ -812,9 +816,8 @@ void Vulkan::VulkanRenderUnit::UpdateUniformBuffers(int objectIndex, glm::mat4 m
 	}
 
 
-
 	vkMapMemory(m_deviceHandle, lightsUniformStagingBufferMemory[objectIndex], 0, sizeof(lightsUbo), 0, &data);
-	memcpy(data, &lightsUbo, sizeof(lightsUbo));
+	memcpy(data, &lightsUbo, (uint64_t)sizeof(lightsUbo));
 	vkUnmapMemory(m_deviceHandle, lightsUniformStagingBufferMemory[objectIndex]);
 
 	try

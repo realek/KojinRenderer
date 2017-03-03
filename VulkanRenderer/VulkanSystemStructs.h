@@ -5,6 +5,7 @@ use them.
 =============================================================================*/
 
 #pragma once
+#include <stdio.h>
 #include <memory>
 #include <vector>
 #include <array>
@@ -139,12 +140,22 @@ namespace Vulkan
 
 	};
 
+
+	struct VkLightProps
+	{
+		int32_t lightType;
+		int32_t intensity;
+		float falloff;
+		float angle;
+
+	};
+
 	struct VkLight
 	{
 
 		glm::vec4 color;
 		glm::vec4 position;
-		//int lightType;
+		VkLightProps lightProps; //type,angle,range, 1.0f pad
 		//float range;
 
 	};

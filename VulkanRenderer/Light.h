@@ -19,9 +19,9 @@ namespace Vulkan
 	public:
 		~Light();
 		glm::vec4 diffuseColor;
-		glm::vec4 specularColor;
 		glm::vec3 position;
 		glm::vec3 rotation;
+		float intensity;
 		float range;
 		float angle;
 		LightType GetType();
