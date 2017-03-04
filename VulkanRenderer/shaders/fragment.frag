@@ -49,18 +49,20 @@ void main()
 	vec4 diffuse = vec4(0.0,0.0,0.0,0.0);
 	float atten = 1.0f;
 	vec3 N = normalize(fragNormal);
-	vec3 L;
-	vec3 V;
+	vec3 L; // fragment light dir
+	vec3 V; // fragment eye 
+	vec3 D; // light forward from rotation
 	for(int i = 0;i < 4;i++)
 	{
+		D = normalize(-ubo.lights[i].direction.xyz);
 		if(ubo.lights[i].lightProps.lightType == 2)
 		{
-			L = normalize(-ubo.lights[i].direction.xyz); // light dir
 			V = normalize(-ubo.lights[i].direction.xyz - fragPos);
+			L = D;
 		}
 		else
 		{
-			L = normalize(ubo.lights[i].position.xyz - fragPos); // light dir
+			L = normalize(ubo.lights[i].position.xyz - fragPos); 
 			V = normalize(-ubo.lights[i].position.xyz);
 		}
 
@@ -95,7 +97,13 @@ void main()
 				atten = clamp(1.0 - pow(dist,2)/pow(ubo.lights[i].lightProps.falloff,2), 0.0, 1.0);
 				if(ubo.lights[i].lightProps.lightType == 1) // is spot thus extra per fragment testing
 				{
-					
+					float coneAngle = degrees(acos(dot(L, D)));
+					if(coneAngle > ubo.lights[i].lightProps.angle)
+					{
+						atten = 0.0f;
+					}
+					else
+						atten = clamp(atten - pow(coneAngle,2)/pow(ubo.lights[i].lightProps.angle,2),0.0,1.0);
 				}
 			}
 			else
