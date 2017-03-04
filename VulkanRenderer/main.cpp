@@ -189,12 +189,12 @@ int main()
 		//camera1->SetRotation({ 0.0,0.0,0.0 });
 		//camera->SetOrthographic();
 		//camera->LookAt({ 0,0.0,0.0 });
-		light = renderer->CreateLight({ 0.0, 1.0, 1.0 });
-		light->SetType(Vulkan::LightType::Point);
+		light = renderer->CreateLight({ 0.0, 0.0, 0.0 });
+		light->SetType(Vulkan::LightType::Directional);
 		light->range = 1.0f;
 		light->intensity = 1.0f;
 		light->angle = 10;
-		light->rotation = { 0,1,0 };
+		light->rotation = {90,0,0 };
 		light->diffuseColor = glm::vec4(0.0, 0.5, 0.75, 1.0);
 
 	}
@@ -236,7 +236,7 @@ int main()
 		//	mesh->modelMatrix = TransformMatrix({ (i*0.10f) ,0.5, -2 }, { 1,1,0 }, -rotmod);
 		//	renderer->Load(mesh, &material);
 		//}
-		mesh->modelMatrix = TransformMatrix({ 0,0,0 }, { 0,-1,0 }, rotmod);
+		mesh->modelMatrix = TransformMatrix({ 0,0,0 }, { 0,-1,0 }, 0);
 		renderer->Load(mesh, &material);
 		//!load up objects
 

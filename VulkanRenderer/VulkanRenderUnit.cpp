@@ -570,6 +570,7 @@ void Vulkan::VulkanRenderUnit::SetLights(std::vector<Light*>& lights)
 		light.lightProps.falloff = lights[i]->range;
 		light.lightProps.angle = lights[i]->angle;
 		light.position = glm::vec4(lights[i]->position,1.0f);
+		light.direction = lights[i]->GetLightForward();
 		//light.range = lights[i]->range;
 		//light.specularColor = lights[i]->specularColor;
 		m_lights.push_back(light);
@@ -809,7 +810,8 @@ void Vulkan::VulkanRenderUnit::UpdateUniformBuffers(int objectIndex, glm::mat4 m
 		if (size > i)
 		{
 			lightsUbo.lights[i] = m_lights[i];
-			lightsUbo.lights[i].position = *cam.view*(lightsUbo.lights[i].position*glm::vec4(VkWorldSpace::REVERSE_AXES, 1.0f));
+			lightsUbo.lights[i].direction = *cam.view*lightsUbo.lights[i].direction;
+			lightsUbo.lights[i].position = *cam.view*lightsUbo.lights[i].position;
 		}
 		else
 			break;

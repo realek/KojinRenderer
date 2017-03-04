@@ -26,6 +26,7 @@ namespace Vulkan
 		float angle;
 		LightType GetType();
 		void SetType(LightType type);
+		glm::vec4 GetLightForward();
 	private:
 		Light(KojinRenderer * rend, std::function<void(Light*, KojinRenderer*)> deleter, glm::vec3 initialPosition);
 		int m_lightType = 0;

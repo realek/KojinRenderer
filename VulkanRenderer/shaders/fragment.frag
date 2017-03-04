@@ -21,6 +21,7 @@ struct VkLight
 {
 	vec4 color;
 	vec4 position;
+	vec4 direction;
 	VkLightProps lightProps;
 //	float range;
 
@@ -47,13 +48,23 @@ void main()
 	vec4 specular = vec4(0.0,0.0,0.0,0.0);
 	vec4 diffuse = vec4(0.0,0.0,0.0,0.0);
 	float atten = 1.0f;
-
 	vec3 N = normalize(fragNormal);
-	
+	vec3 L;
+	vec3 V;
 	for(int i = 0;i < 4;i++)
 	{
-		vec3 L = normalize(ubo.lights[i].position.xyz - fragPos); // light dir
-		vec3 V = normalize(-ubo.lights[i].position.xyz);
+		if(ubo.lights[i].lightProps.lightType == 2)
+		{
+			L = normalize(-ubo.lights[i].direction.xyz); // light dir
+			V = normalize(-ubo.lights[i].direction.xyz - fragPos);
+		}
+		else
+		{
+			L = normalize(ubo.lights[i].position.xyz - fragPos); // light dir
+			V = normalize(-ubo.lights[i].position.xyz);
+		}
+
+
 	    float intensity = ubo.lights[i].lightProps.intensity;
 		
 		
@@ -76,23 +87,22 @@ void main()
 
 		}
 		
-		if(ubo.lights[i].lightProps.lightType == 0) //is point
+		if(ubo.lights[i].lightProps.lightType == 0 || ubo.lights[i].lightProps.lightType == 1) //is point or spot
 		{
 			float dist = length(ubo.lights[i].position.xyz - fragPos);
 			if(dist <= ubo.lights[i].lightProps.falloff)
 			{
-				atten = clamp(1.0 - pow(dist,2)/pow(ubo.lights[i].lightProps.falloff,2), 0.0, 1.0);				
+				atten = clamp(1.0 - pow(dist,2)/pow(ubo.lights[i].lightProps.falloff,2), 0.0, 1.0);
+				if(ubo.lights[i].lightProps.lightType == 1) // is spot thus extra per fragment testing
+				{
+					
+				}
 			}
 			else
 				atten = 0.0f;
 
 
 
-		}
-		else if(ubo.lights[i].lightProps.lightType == 1) // is spot
-		{
-			atten = 0.0f;
-			//compute
 		}
 
 		
