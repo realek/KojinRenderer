@@ -4,6 +4,7 @@
 
 namespace std {
 
+	//VkVertex hash for uniqueness comparison
 	template<> struct hash<Vulkan::VkVertex> {
 		size_t operator()(Vulkan::VkVertex const& vertex) const {
 			return (((hash<glm::vec3>()(vertex.pos) ^

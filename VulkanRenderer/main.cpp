@@ -90,14 +90,6 @@ void InitSDL()
 	}
 }
 
-glm::mat4 TransformMatrix(glm::vec3 position,glm::vec3 rotationAxes, float angle)
-{
-	glm::mat4 model = glm::rotate(glm::translate(glm::mat4(1), position), glm::radians(angle), VkWorldSpace::WORLD_UP);
-	model = glm::scale(model, glm::vec3(0.5, 0.5, 0.5));
-	return model;
-
-}
-
 int main() 
 {
 	
@@ -109,7 +101,9 @@ int main()
 	std::shared_ptr<Vulkan::KojinCamera> camera1;
 	std::shared_ptr<Vulkan::Light> light;
 	std::shared_ptr<Vulkan::Mesh> mesh;
+	std::shared_ptr<Vulkan::Mesh> planeMesh;
 	Vulkan::Material material;
+	Vulkan::Material planeMaterial;
 	std::string err;
 	bool e = false;
 	try
@@ -117,8 +111,11 @@ int main()
 		renderer = new Vulkan::KojinRenderer{window,"Vulkan Tester",appVer};
 		material.diffuseTexture = Vulkan::Texture2D::CreateFromFile("textures/Stormtrooper_Diffuse.png").lock()->ImageView();
 		material.specularity = 1000;
-		//material->albedo = Vk::Texture2D::GetWhiteTexture();
+		planeMaterial.diffuseTexture =Vulkan::Texture2D::GetWhiteTexture().lock()->ImageView();
+		planeMaterial.specularity = 0;
+		planeMesh = Vulkan::Mesh::GetPlane();
 		mesh = Vulkan::Mesh::LoadMesh("models/Stormtrooper.obj");
+
 
 	}
 	catch (const std::runtime_error& re)
@@ -181,8 +178,8 @@ int main()
 
 	//Light and camera Test
 	{
-		camera = renderer->CreateCamera({ 0, 1, -3 });
-		camera->SetRotation({0.0,0.0,0.0 });
+		camera = renderer->CreateCamera({ 0, 3, -3 });
+		camera->SetRotation({45.0,0.0,0.0 });
 		//camera->LookAt({ 0,0,0 });
 		renderer->SetMainCamera(camera);
 		//camera1 = renderer->CreateCamera({ 0, -1, 3 });
@@ -190,11 +187,11 @@ int main()
 		//camera->SetOrthographic();
 		//camera->LookAt({ 0,0.0,0.0 });
 		light = renderer->CreateLight({ 0.0, 1.0, -1.0 });
-		light->SetType(Vulkan::LightType::Spot);
+		light->SetType(Vulkan::LightType::Directional);
 		light->range = 1.0f;
 		light->intensity = 1.0f;
-		light->angle = 25;
-		light->rotation = {0,0,0 };
+		light->angle = 30;
+		light->rotation = {50,30,0 };
 		light->diffuseColor = glm::vec4(0.0, 0.5, 0.75, 1.0);
 
 	}
@@ -236,8 +233,10 @@ int main()
 		//	mesh->modelMatrix = TransformMatrix({ (i*0.10f) ,0.5, -2 }, { 1,1,0 }, -rotmod);
 		//	renderer->Load(mesh, &material);
 		//}
-		mesh->modelMatrix = TransformMatrix({ 0,0,0 }, { 0,-1,0 }, 0);
+		mesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 0,0,0 }, { 0,0,0 }, {0.5,0.5,0.5});
 		renderer->Load(mesh, &material);
+		planeMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 0,0,0 }, { -90, 0, 0 }, { 2,2,2 });
+		renderer->Load(planeMesh, &planeMaterial);
 		//!load up objects
 
 		//present

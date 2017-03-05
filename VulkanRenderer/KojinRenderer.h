@@ -7,7 +7,7 @@ wrapers.
 #pragma once
 #include <memory>
 #include <vector>
-#include <map>
+#include <unordered_map>
 #include <glm\matrix.hpp>
 #ifndef RENDER_ENGINE_NAME
 #define RENDER_ENGINE_NAME "KojinRenderer"
@@ -57,8 +57,8 @@ namespace Vulkan
 		static void BindCamera(KojinRenderer* rend, KojinCamera* cam);
 		static void UnbindCamera(KojinRenderer* rend, KojinCamera* cam);
 		static void ClearLight(Vulkan::Light * light, Vulkan::KojinRenderer* rend);
-		std::map<int, int> m_meshDraws;
-		std::map<int, int> m_meshDrawsOld;
+		std::unordered_map<int, int> m_meshDraws;
+		std::unordered_map<int, int> m_meshDrawsOld;
 		int m_objectCount = 0;
 		std::vector<Material*> m_meshPartMaterials;
 		std::vector<glm::mat4> m_meshPartTransforms;

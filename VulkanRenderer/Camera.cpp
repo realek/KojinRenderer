@@ -60,8 +60,8 @@ void Vulkan::KojinCamera::ComputeViewMatrix(glm::vec3 position, glm::vec3 rotati
 {
 	auto target = position;
 	target.z += 1; // position +1 unit
-	auto rotZ = glm::eulerAngleZ(glm::radians(rotation.z));
-	auto rotY = glm::eulerAngleY(glm::radians(rotation.y));
+	auto rotZ = glm::eulerAngleZ(glm::radians(-rotation.z));
+	auto rotY = glm::eulerAngleY(glm::radians(-rotation.y));
 	auto rotX = glm::eulerAngleX(glm::radians(rotation.x));
 	glm::mat4 tran = glm::lookAt(position, target, VkWorldSpace::WORLD_UP);
 	viewMatrix = (rotZ*rotY*rotX)*tran;

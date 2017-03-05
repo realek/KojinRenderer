@@ -440,20 +440,28 @@ void Vulkan::VulkanRenderUnit::Render()
 			vkCmdBindIndexBuffer(recordBuffers[i], indiceBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 			vkCmdBindPipeline(recordBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
 
+
 			int offset = 0;
 			for (auto const mesh : meshPartDraws)
 			{
+				int vertexOffset = 0;
 				//draw all the mesh copies
 				for (int k = 0; k<mesh.second; k++)
 				{
 					auto j = k + offset;
+					if(mesh.first > 1)
+					{
+						IMeshData * prevMeshData = Mesh::GetMeshData(mesh.first - 1);
+						vertexOffset = prevMeshData->vertexRange.y;
+					}
+
 					IMeshData * meshData = Mesh::GetMeshData(mesh.first);
 					std::array<VkDescriptorSet, 2U> descSets{ vertexDescriptorSets[j], fragmentDescriptorSets[j] };
 					vkCmdBindDescriptorSets(recordBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, descSets.size(), descSets.data(), 0, nullptr);
 
 					vkCmdSetScissor(recordBuffers[i], 0, 1, camera.second.scissor);
 					vkCmdSetViewport(recordBuffers[i], 0, 1, camera.second.viewport);
-					vkCmdDrawIndexed(recordBuffers[i], meshData->indiceCount, 1, meshData->indiceRange.x, 0, 0);
+					vkCmdDrawIndexed(recordBuffers[i], meshData->indiceCount, 1, meshData->indiceRange.x, vertexOffset, 0);
 				}
 				offset += mesh.second;
 			}
@@ -469,7 +477,7 @@ void Vulkan::VulkanRenderUnit::Render()
 
 }
 
-void Vulkan::VulkanRenderUnit::ConsumeMesh(VkVertex * vertexData, uint32_t vertexCount, uint32_t * indiceData, uint32_t indiceCount, std::map<int, int> meshDrawCounts, int objectCount)
+void Vulkan::VulkanRenderUnit::ConsumeMesh(VkVertex * vertexData, uint32_t vertexCount, uint32_t * indiceData, uint32_t indiceCount, std::unordered_map<int, int> meshDrawCounts, int objectCount)
 {
 	
 	if (meshPartDraws != meshDrawCounts) //recreate mesh and descriptors

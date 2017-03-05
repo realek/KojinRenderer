@@ -11,7 +11,7 @@ void Vulkan::Light::SetType(Vulkan::LightType type)
 
 glm::vec4 Vulkan::Light::GetLightForward()
 {
-	auto rotY = glm::eulerAngleY(glm::radians(rotation.y));
+	auto rotY = glm::eulerAngleY(glm::radians(-rotation.y));
 	auto rotX = glm::eulerAngleX(glm::radians(rotation.x));
 
 	return rotX*rotY*glm::vec4(VkWorldSpace::WORLD_FORWARD, 0.0f);
