@@ -102,19 +102,28 @@ int main()
 	std::shared_ptr<Vulkan::Light> light;
 	std::shared_ptr<Vulkan::Mesh> mesh;
 	std::shared_ptr<Vulkan::Mesh> planeMesh;
+	std::shared_ptr<Vulkan::Mesh> cubeMesh;
 	Vulkan::Material material;
 	Vulkan::Material planeMaterial;
+	Vulkan::Material whiteMaterial;
+
 	std::string err;
 	bool e = false;
 	try
 	{
 		renderer = new Vulkan::KojinRenderer{window,"Vulkan Tester",appVer};
+		//testing stuff
+		whiteMaterial.diffuseTexture = Vulkan::Texture2D::GetWhiteTexture().lock()->ImageView();
+		whiteMaterial.specularity = 1000;
+		cubeMesh = Vulkan::Mesh::GetCube();
+		planeMaterial.diffuseColor = { 0.4f,0.3f,0.0f,1.0f };
+		planeMaterial.diffuseTexture = Vulkan::Texture2D::GetWhiteTexture().lock()->ImageView();
+		planeMaterial.specularity = 1500;
+		planeMesh = Vulkan::Mesh::GetPlane();
+
+		mesh = Vulkan::Mesh::LoadMesh("models/Stormtrooper.obj");
 		material.diffuseTexture = Vulkan::Texture2D::CreateFromFile("textures/Stormtrooper_Diffuse.png").lock()->ImageView();
 		material.specularity = 1000;
-		planeMaterial.diffuseTexture =Vulkan::Texture2D::GetWhiteTexture().lock()->ImageView();
-		planeMaterial.specularity = 0;
-		planeMesh = Vulkan::Mesh::GetPlane();
-		mesh = Vulkan::Mesh::LoadMesh("models/Stormtrooper.obj");
 
 
 	}
@@ -178,8 +187,8 @@ int main()
 
 	//Light and camera Test
 	{
-		camera = renderer->CreateCamera({ 0, 3, -3 });
-		camera->SetRotation({45.0,0.0,0.0 });
+		camera = renderer->CreateCamera({ 0, 3, -4 });
+		camera->SetRotation({30,0,0.0 });
 		//camera->LookAt({ 0,0,0 });
 		renderer->SetMainCamera(camera);
 		//camera1 = renderer->CreateCamera({ 0, -1, 3 });
@@ -221,22 +230,12 @@ int main()
 		if(currentDelta>0 && currentDelta < fixedTimeStep)
 			SDL_Delay((uint32_t)currentDelta);
 		
-		//load up objects to the renderer
-		//for(int i = 0 ; i < 10; i++)
-		//{
-		//	mesh->modelMatrix = TransformMatrix({ (i*0.10f),-0.5,-2 }, { 0,1,0 }, rotmod);
-		//	renderer->Load(mesh, &material);
-		//	mesh->modelMatrix = TransformMatrix({ 1,(i*0.10f), -4 }, { 1,0,0 }, rotmod);
-		//	renderer->Load(mesh, &material);
-		//	mesh->modelMatrix = TransformMatrix({ -1,0, (i*0.10f)-2 }, { 0,0,1 }, rotmod);
-		//	renderer->Load(mesh, &material);
-		//	mesh->modelMatrix = TransformMatrix({ (i*0.10f) ,0.5, -2 }, { 1,1,0 }, -rotmod);
-		//	renderer->Load(mesh, &material);
-		//}
-		mesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 0,0,0 }, { 0,0,0 }, {0.5,0.5,0.5});
+		mesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 0,0,0 }, { 0,rotmod,0 }, {0.5,0.5,0.5});
 		renderer->Load(mesh, &material);
-		planeMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 0,0,0 }, { -90, 0, 0 }, { 2,2,2 });
+		planeMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 0,0,0 }, { 0, 0, 0 }, { 2,2,2 });
 		renderer->Load(planeMesh, &planeMaterial);
+		cubeMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 0,1,0 }, { 45, rotmod, 0 }, { 1,1,1 });
+		renderer->Load(cubeMesh, &whiteMaterial);
 		//!load up objects
 
 		//present

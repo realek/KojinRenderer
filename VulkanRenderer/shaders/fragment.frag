@@ -12,7 +12,7 @@ layout(location = 3) in vec3 fragPos;
 struct VkLightProps
 {
 	int lightType;
-	int intensity;
+	float intensity;
 	float falloff;
 	float angle;
 };
@@ -33,6 +33,7 @@ layout(set = 1, binding = 1) uniform FragUbo {
 	//vec4 cameraPos;
 	VkLight lights[4];
 	vec4 ambientLightColor;
+	vec4 materialDiffuse;
 	float specularity;
 } ubo;
 
@@ -42,7 +43,7 @@ void main()
 {
 
 
-    outColor = vec4(fragColor,1.0) * texture(texSampler, fragTexCoord);
+    outColor = vec4(fragColor,1.0) * (ubo.materialDiffuse*texture(texSampler, fragTexCoord));
 	vec4 lightColor = vec4(ubo.ambientLightColor.xyz,1.0f);
 	float diffuseFrac = 1.0 - ubo.ambientLightColor.w;
 	vec4 specular = vec4(0.0,0.0,0.0,0.0);

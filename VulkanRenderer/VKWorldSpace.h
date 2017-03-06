@@ -11,6 +11,7 @@ namespace VkWorldSpace
 	static const glm::vec3 WORLD_RIGHT(1.0f, 0.0f, 0.0f);
 	static const glm::vec3 REVERSE_AXES(-1.0f, 1.0f, -1.0f);
 	static const glm::vec3 AXES(1.0f, -1.0f, 1.0f);
+	static const float UNIT = 1.0f;
 
 	static glm::mat4 ComputeModelMatrix(glm::vec3 position, glm::vec3 eulerRotation, glm::vec3 scale)
 	{
@@ -18,7 +19,7 @@ namespace VkWorldSpace
 		auto rotY = glm::eulerAngleY(glm::radians(-eulerRotation.y));
 		auto rotZ = glm::eulerAngleZ(glm::radians(-eulerRotation.z));
 		auto model = glm::translate(glm::mat4(1), position);
-		model = glm::scale(rotZ*rotY*rotX*model, scale);
+		model = glm::scale(model*rotZ*rotY*rotX, scale);
 		return model;
 
 	}

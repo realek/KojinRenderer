@@ -144,7 +144,7 @@ namespace Vulkan
 	struct VkLightProps
 	{
 		int32_t lightType;
-		int32_t intensity;
+		float intensity;
 		float falloff;
 		float angle;
 
@@ -180,15 +180,8 @@ namespace Vulkan
 		//glm::vec4 cameraPos;
 		VkLight lights[MAX_LIGHTS_PER_FRAGMENT];
 		glm::vec4 ambientLightColor;
+		glm::vec4 materialDiffuse;
 		float specularity;
-
-
-
-		//glm::vec4 perFragmentLightPos[MAX_LIGHTS_PER_FRAGMENT];
-		//glm::vec4 perFragmentLightColor[MAX_LIGHTS_PER_FRAGMENT];
-		//glm::vec4 perFragmentLightIntensity[MAX_LIGHTS_PER_FRAGMENT];
-
-
 	};
 
 	//dynamic uniform buffers - unused

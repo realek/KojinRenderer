@@ -415,8 +415,6 @@ void Vulkan::VulkanRenderUnit::Render()
 	renderPassInfo.renderArea.offset = { 0, 0 };
 	renderPassInfo.renderArea.extent = scUnit->swapChainExtent2D;
 
-
-
 	for(auto camera : m_cameras)
 	{
 		for (uint32_t j = 0; j < meshTransforms.size(); j++)
@@ -444,7 +442,7 @@ void Vulkan::VulkanRenderUnit::Render()
 			int offset = 0;
 			for (auto const mesh : meshPartDraws)
 			{
-				int vertexOffset = 0;
+				uint32_t vertexOffset = 0;
 				//draw all the mesh copies
 				for (int k = 0; k<mesh.second; k++)
 				{
@@ -452,7 +450,7 @@ void Vulkan::VulkanRenderUnit::Render()
 					if(mesh.first > 1)
 					{
 						IMeshData * prevMeshData = Mesh::GetMeshData(mesh.first - 1);
-						vertexOffset = prevMeshData->vertexRange.y;
+						vertexOffset = prevMeshData->vertexRange.end;
 					}
 
 					IMeshData * meshData = Mesh::GetMeshData(mesh.first);
@@ -461,7 +459,7 @@ void Vulkan::VulkanRenderUnit::Render()
 
 					vkCmdSetScissor(recordBuffers[i], 0, 1, camera.second.scissor);
 					vkCmdSetViewport(recordBuffers[i], 0, 1, camera.second.viewport);
-					vkCmdDrawIndexed(recordBuffers[i], meshData->indiceCount, 1, meshData->indiceRange.x, vertexOffset, 0);
+					vkCmdDrawIndexed(recordBuffers[i], meshData->indiceCount, 1, meshData->indiceRange.start, vertexOffset, 0);
 				}
 				offset += mesh.second;
 			}
@@ -477,7 +475,7 @@ void Vulkan::VulkanRenderUnit::Render()
 
 }
 
-void Vulkan::VulkanRenderUnit::ConsumeMesh(VkVertex * vertexData, uint32_t vertexCount, uint32_t * indiceData, uint32_t indiceCount, std::unordered_map<int, int> meshDrawCounts, int objectCount)
+void Vulkan::VulkanRenderUnit::ConsumeMesh(VkVertex * vertexData, uint32_t vertexCount, uint32_t * indiceData, uint32_t indiceCount, std::unordered_map<int, int> meshDrawCounts, uint32_t objectCount)
 {
 	
 	if (meshPartDraws != meshDrawCounts) //recreate mesh and descriptors
@@ -568,7 +566,7 @@ void Vulkan::VulkanRenderUnit::SetLights(std::vector<Light*>& lights)
 {
 	m_lights.clear();
 	m_lights.reserve(lights.size());
-	for(int i = 0 ; i < lights.size();i++)
+	for(uint32_t i = 0 ; i < lights.size();i++)
 	{
 		VkLight light = {};
 		light.color = lights[i]->diffuseColor;
@@ -810,6 +808,7 @@ void Vulkan::VulkanRenderUnit::UpdateUniformBuffers(int objectIndex, glm::mat4 m
 
 	Vulkan::LightingUniformBuffer lightsUbo = {};
 	lightsUbo.ambientLightColor = glm::vec4(0.1, 0.1, 0.1, 0.1);
+	lightsUbo.materialDiffuse = material->diffuseColor;
 	lightsUbo.specularity = material->specularity;
 	//lightsUbo.cameraPos = glm::vec4(*cam.position*VkWorldSpace::REVERSE_AXES, 1.0);
 	int size = m_lights.size();

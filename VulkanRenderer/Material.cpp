@@ -3,7 +3,7 @@
 
 Vulkan::Material::Material()
 {
-	diffuseColor = glm::vec4(0);
+	diffuseColor = glm::vec4(1);
 	diffuseTexture = VK_NULL_HANDLE;
 	specularity = 0;
 }

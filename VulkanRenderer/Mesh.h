@@ -13,10 +13,15 @@ vertices, indices, normals from a file loaded with assimp.
 struct aiScene;
 namespace Vulkan
 {
+	struct UIntRange
+	{
+		uint32_t start;
+		uint32_t end;
+	};
 	struct IMeshData
 	{
-		glm::vec2 vertexRange;
-		glm::vec2 indiceRange;
+		UIntRange vertexRange;
+		UIntRange indiceRange;
 		uint32_t indiceCount;
 		uint32_t vertexCount;
 		uint32_t materialIndex; // to be used when creating materials via import
@@ -29,8 +34,8 @@ namespace Vulkan
 	public:
 
 		static std::shared_ptr<Vulkan::Mesh> LoadMesh(const char * filename, int flags=defaultFlags);
-		//static std::shared_ptr<Vulkan::Mesh> GetCube();
-		//static std::shared_ptr<Vulkan::Mesh> GetSphere();
+		static std::shared_ptr<Vulkan::Mesh> GetCube();
+		static std::shared_ptr<Vulkan::Mesh> GetSphere();
 		static std::shared_ptr<Vulkan::Mesh> GetPlane();
 		~Mesh();
 		glm::mat4 modelMatrix;
