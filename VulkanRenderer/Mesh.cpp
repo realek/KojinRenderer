@@ -185,7 +185,6 @@ std::shared_ptr<Vulkan::Mesh> Vulkan::Mesh::GetCube()
 			{ glm::vec3(halfUnit,-halfUnit,-halfUnit), glm::vec3(0,-1,0), glm::vec3(1,1,1), glm::vec2(1,0) } //v5
 		};
 
-
 		std::vector<uint32_t> indices
 		{ 
 			0,1,2,0,2,3,
@@ -195,6 +194,7 @@ std::shared_ptr<Vulkan::Mesh> Vulkan::Mesh::GetCube()
 			16,17,18,16,18,19,
 			20,21,22,20,22,23
 		};
+
 		size_t currentSize = m_iMeshVertices.size();
 		size_t neededSize = currentSize + verts.size();
 		size_t currentCap = m_iMeshVertices.capacity();

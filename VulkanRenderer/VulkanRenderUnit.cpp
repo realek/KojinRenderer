@@ -576,6 +576,7 @@ void Vulkan::VulkanRenderUnit::SetLights(std::vector<Light*>& lights)
 		light.lightProps.falloff = lights[i]->range;
 		light.lightProps.angle = lights[i]->angle;
 		light.position = glm::vec4(lights[i]->position,1.0f);
+		light.position.x *= -1; // due to flipping Y axis
 		light.direction = lights[i]->GetLightForward();
 		//light.range = lights[i]->range;
 		//light.specularColor = lights[i]->specularColor;

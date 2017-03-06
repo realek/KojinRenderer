@@ -15,6 +15,7 @@ namespace VkWorldSpace
 
 	static glm::mat4 ComputeModelMatrix(glm::vec3 position, glm::vec3 eulerRotation, glm::vec3 scale)
 	{
+		position.x *= -1; // flipping X due to flipping Y axis for the world
 		auto rotX = glm::eulerAngleX(glm::radians(eulerRotation.x));
 		auto rotY = glm::eulerAngleY(glm::radians(-eulerRotation.y));
 		auto rotZ = glm::eulerAngleZ(glm::radians(-eulerRotation.z));

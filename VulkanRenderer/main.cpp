@@ -187,20 +187,20 @@ int main()
 
 	//Light and camera Test
 	{
-		camera = renderer->CreateCamera({ 0, 3, -4 });
-		camera->SetRotation({30,0,0.0 });
+		camera = renderer->CreateCamera({ 0, 1, -5 });
+		camera->SetRotation({0,0,0.0 });
 		//camera->LookAt({ 0,0,0 });
 		renderer->SetMainCamera(camera);
 		//camera1 = renderer->CreateCamera({ 0, -1, 3 });
 		//camera1->SetRotation({ 0.0,0.0,0.0 });
 		//camera->SetOrthographic();
 		//camera->LookAt({ 0,0.0,0.0 });
-		light = renderer->CreateLight({ 0.0, 1.0, -1.0 });
-		light->SetType(Vulkan::LightType::Directional);
-		light->range = 1.0f;
+		light = renderer->CreateLight({ 0.0, 2.0, 0.0 });
+		light->SetType(Vulkan::LightType::Spot);
+		light->range = 4.0f;
 		light->intensity = 1.0f;
-		light->angle = 30;
-		light->rotation = {50,30,0 };
+		light->angle = 90;
+		light->rotation = {90,0,0 };
 		light->diffuseColor = glm::vec4(0.0, 0.5, 0.75, 1.0);
 
 	}
@@ -234,7 +234,7 @@ int main()
 		renderer->Load(mesh, &material);
 		planeMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 0,0,0 }, { 0, 0, 0 }, { 2,2,2 });
 		renderer->Load(planeMesh, &planeMaterial);
-		cubeMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 0,1,0 }, { 45, rotmod, 0 }, { 1,1,1 });
+		cubeMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 2,1,2 }, { 45, rotmod, 0 }, { 1,1,1 });
 		renderer->Load(cubeMesh, &whiteMaterial);
 		//!load up objects
 

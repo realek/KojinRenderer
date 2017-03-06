@@ -37,8 +37,6 @@ Vulkan::Light::Light(KojinRenderer * rend, std::function<void(Light*,KojinRender
 }
 
 
-
-
 Vulkan::Light::~Light()
 {
 	if(m_bound)
