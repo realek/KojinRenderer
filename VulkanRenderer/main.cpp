@@ -103,6 +103,8 @@ int main()
 	std::shared_ptr<Vulkan::Mesh> mesh;
 	std::shared_ptr<Vulkan::Mesh> planeMesh;
 	std::shared_ptr<Vulkan::Mesh> cubeMesh;
+	std::shared_ptr<Vulkan::Mesh> sphereMesh;
+
 	Vulkan::Material material;
 	Vulkan::Material planeMaterial;
 	Vulkan::Material whiteMaterial;
@@ -120,7 +122,7 @@ int main()
 		planeMaterial.diffuseTexture = Vulkan::Texture2D::GetWhiteTexture().lock()->ImageView();
 		planeMaterial.specularity = 1500;
 		planeMesh = Vulkan::Mesh::GetPlane();
-
+		sphereMesh = Vulkan::Mesh::GetSphere();
 		mesh = Vulkan::Mesh::LoadMesh("models/Stormtrooper.obj");
 		material.diffuseTexture = Vulkan::Texture2D::CreateFromFile("textures/Stormtrooper_Diffuse.png").lock()->ImageView();
 		material.specularity = 1000;
@@ -187,7 +189,7 @@ int main()
 
 	//Light and camera Test
 	{
-		camera = renderer->CreateCamera({ 0, 1, -5 });
+		camera = renderer->CreateCamera({ 0, 1, -3 });
 		camera->SetRotation({0,0,0.0 });
 		//camera->LookAt({ 0,0,0 });
 		renderer->SetMainCamera(camera);
@@ -236,6 +238,8 @@ int main()
 		renderer->Load(planeMesh, &planeMaterial);
 		cubeMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 2,1,2 }, { 45, rotmod, 0 }, { 1,1,1 });
 		renderer->Load(cubeMesh, &whiteMaterial);
+		sphereMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ -2,1,1 }, { 0,rotmod,0 }, { 1,1,1 });
+		renderer->Load(sphereMesh, &whiteMaterial);
 		//!load up objects
 
 		//present

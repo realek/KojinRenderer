@@ -13,9 +13,9 @@ std::map<std::string,int> Vulkan::Mesh::m_loadedIMeshes;
 std::map<int,Vulkan::IMeshData> Vulkan::Mesh::m_iMeshData;
 std::vector<Vulkan::VkVertex> Vulkan::Mesh::m_iMeshVertices;
 std::vector<uint32_t> Vulkan::Mesh::m_iMeshIndices;
-#define PLANE_PATH "CODE_QUAD"
-#define SPHERE_PATH "CODE_SPHERE"
-#define CUBE_PATH "CODE_CUBE"
+const std::string Vulkan::Mesh::PLANE_PATH = "KJ_PATH_QUAD_INTERNAL";
+const std::string Vulkan::Mesh::CUBE_PATH = "KJ_PATH_CUBE_INTERNAL";
+const std::string Vulkan::Mesh::SPHERE_PATH = "KJ_PATH_SPHERE_INTERNAL";
 
 Vulkan::Mesh::Mesh() : m_meshID(++globalID)
 {
@@ -45,9 +45,6 @@ std::shared_ptr<Vulkan::Mesh> Vulkan::Mesh::LoadMesh(const char * filename,int f
 	{
 		std::unordered_map<Vulkan::VkVertex, uint32_t> uVertices = {}; // used to apply indexing
 		auto iMesh = std::make_shared<Vulkan::Mesh>(Mesh());
-		IMeshData meshData = {};
-		meshData.vertexRange.start = m_iMeshVertices.size();
-		meshData.indiceRange.start = m_iMeshIndices.size();
 		std::vector<VkVertex> readVerts;
 		std::vector<uint32_t> readIndices;
 
@@ -109,7 +106,9 @@ std::shared_ptr<Vulkan::Mesh> Vulkan::Mesh::LoadMesh(const char * filename,int f
 				readVerts.shrink_to_fit();
 				uVertices.clear();
 
-				size_t currentSize = m_iMeshVertices.size();
+				WriteToInternalMesh(filename, readVerts, readIndices, iMesh);
+
+				/*size_t currentSize = m_iMeshVertices.size();
 				size_t neededSize = currentSize + readVerts.size();
 				size_t currentCap = m_iMeshVertices.capacity();
 				if (neededSize > currentCap)
@@ -129,10 +128,35 @@ std::shared_ptr<Vulkan::Mesh> Vulkan::Mesh::LoadMesh(const char * filename,int f
 				meshData.vertexCount = readVerts.size();
 				meshData.indiceCount = readIndices.size();
 				m_iMeshData.insert(std::make_pair(iMesh->m_meshID, meshData));
-				m_loadedIMeshes.insert(std::make_pair(filename, iMesh->m_meshID));
+				m_loadedIMeshes.insert(std::make_pair(filename, iMesh->m_meshID));*/
 
 			}
 		}
+		return iMesh;
+	}
+}
+
+
+std::shared_ptr<Vulkan::Mesh> Vulkan::Mesh::GetPlane()
+{
+	if (m_loadedIMeshes.count(PLANE_PATH) != 0)
+	{
+		return std::make_shared<Vulkan::Mesh>(Mesh(m_loadedIMeshes[PLANE_PATH]));
+	}
+	else
+	{
+		auto iMesh = std::make_shared<Vulkan::Mesh>(Mesh());
+
+		std::vector<VkVertex> verts
+		{
+			{ glm::vec3(VkWorldSpace::UNIT,0,VkWorldSpace::UNIT), glm::vec3(0,1,0), glm::vec3(1,1,1), glm::vec2(1,1) }, //v0
+			{ glm::vec3(-VkWorldSpace::UNIT,0,VkWorldSpace::UNIT), glm::vec3(0,1,0), glm::vec3(1,1,1), glm::vec2(0,1) }, //v1
+			{ glm::vec3(-VkWorldSpace::UNIT,0,-VkWorldSpace::UNIT), glm::vec3(0,1,0), glm::vec3(1,1,1), glm::vec2(0,0) }, //v2
+			{ glm::vec3(VkWorldSpace::UNIT,0,-VkWorldSpace::UNIT), glm::vec3(0,1,0), glm::vec3(1,1,1), glm::vec2(1,0) } //v3
+		};
+		std::vector<uint32_t> indices{ 0,2,1,0,3,2 };
+
+		WriteToInternalMesh(PLANE_PATH.c_str(), verts, indices, iMesh);
 		return iMesh;
 	}
 }
@@ -147,9 +171,6 @@ std::shared_ptr<Vulkan::Mesh> Vulkan::Mesh::GetCube()
 	else
 	{
 		auto iMesh = std::make_shared<Vulkan::Mesh>(Mesh());
-		IMeshData meshData = {};
-		meshData.vertexRange.start = m_iMeshVertices.size();
-		meshData.indiceRange.start = m_iMeshIndices.size();
 		float halfUnit = VkWorldSpace::UNIT/2;
 		std::vector<VkVertex> verts
 		{
@@ -195,28 +216,7 @@ std::shared_ptr<Vulkan::Mesh> Vulkan::Mesh::GetCube()
 			20,21,22,20,22,23
 		};
 
-		size_t currentSize = m_iMeshVertices.size();
-		size_t neededSize = currentSize + verts.size();
-		size_t currentCap = m_iMeshVertices.capacity();
-		if (neededSize > currentCap)
-			m_iMeshVertices.resize(neededSize);
-
-		std::move(verts.begin(), verts.end(), m_iMeshVertices.begin() + currentSize);
-
-		currentSize = m_iMeshIndices.size();
-		neededSize = currentSize + indices.size();
-		currentCap = m_iMeshIndices.capacity();
-		if (neededSize > currentCap)
-			m_iMeshIndices.resize(neededSize);
-
-		std::move(indices.begin(), indices.end(), m_iMeshIndices.begin() + currentSize);
-		meshData.indiceRange.end = m_iMeshIndices.size();
-		meshData.vertexRange.end = m_iMeshVertices.size();
-		meshData.vertexCount = verts.size();
-		meshData.indiceCount = indices.size();
-		m_iMeshData.insert(std::make_pair(iMesh->m_meshID, meshData));
-		m_loadedIMeshes.insert(std::make_pair(CUBE_PATH, iMesh->m_meshID));
-
+		WriteToInternalMesh(CUBE_PATH.c_str(), verts, indices, iMesh);
 		return iMesh;
 	}
 }
@@ -230,88 +230,83 @@ std::shared_ptr<Vulkan::Mesh> Vulkan::Mesh::GetSphere()
 	else
 	{
 		auto iMesh = std::make_shared<Vulkan::Mesh>(Mesh());
-		IMeshData meshData = {};
-		meshData.vertexRange.start = m_iMeshVertices.size();
-		meshData.indiceRange.end = m_iMeshIndices.size();
-		std::vector<VkVertex> verts
+
+		const int segments = 24;
+		const int rings = 12;
+		const float radius = VkWorldSpace::UNIT/2;
+		const float ringSize = 1.0f / (float)(rings - 1);
+		const float segmentSize = 1.0f / (float)(segments - 1);
+		const float halfPi = glm::half_pi<float>();
+		const float pi = glm::pi<float>();
+		std::vector<VkVertex> verts;
+		verts.reserve(segments*rings);
+		std::vector<uint32_t> indices;
+		indices.reserve((segments-1)*(rings-1)* 6);
+		for (int i = 0; i < rings; i++) 
 		{
-			{ glm::vec3(1,-1,0), glm::vec3(0,0,1), glm::vec3(1,1,1), glm::vec2(1,0) },
-			{ glm::vec3(1,1,0), glm::vec3(0,0,1), glm::vec3(1,1,1), glm::vec2(1,1) },
-			{ glm::vec3(-1,-1,0), glm::vec3(0,0,1), glm::vec3(1,1,1), glm::vec2(0,0) },
-			{ glm::vec3(-1,1,0), glm::vec3(0,0,1), glm::vec3(1,1,1), glm::vec2(0,1) }
-		};
+			for (int j = 0; j < segments; j++) 
+			{
+				float x = glm::cos(2 * pi * j * segmentSize) * sin(pi * i * ringSize);
+				float y = glm::sin(-halfPi + pi * i * ringSize);
+				float z = glm::sin(2 * pi * j * segmentSize) * sin(pi * i * ringSize);
+				//pass xyz as normals to create smooth normals
+				VkVertex vertex = { { x*radius,y*radius,z*radius },{ x, y, z},{ 1,1,1 },{ j*segmentSize,i*ringSize } };
+				verts.push_back(vertex);
 
-		std::vector<uint32_t> indices{ 0,1,2,2,1,3 };
-		size_t currentSize = m_iMeshVertices.size();
-		size_t neededSize = currentSize + verts.size();
-		size_t currentCap = m_iMeshVertices.capacity();
-		if (neededSize > currentCap)
-			m_iMeshVertices.resize(neededSize);
+				if(i+1 < rings && j+1 < segments)
+				{
+					int curRow = i * segments;
+					int nextRow = (i + 1) * segments;
+					int nextS = (j + 1) % segments;
 
-		std::move(verts.begin(), verts.end(), m_iMeshVertices.begin() + currentSize);
+					//first triangle
+					indices.push_back(curRow + j);
+					indices.push_back(nextRow + j);
+					indices.push_back(nextRow + nextS);
 
-		currentSize = m_iMeshIndices.size();
-		neededSize = currentSize + indices.size();
-		currentCap = m_iMeshIndices.capacity();
-		if (neededSize > currentCap)
-			m_iMeshIndices.resize(neededSize);
+					//second triangle
+					indices.push_back(curRow + j);
+					indices.push_back(nextRow + nextS);
+					indices.push_back(curRow + nextS);
+				}
+			}
+		}
 
-		std::move(indices.begin(), indices.end(), m_iMeshIndices.begin() + currentSize);
-		meshData.indiceRange.end = m_iMeshIndices.size();
-		meshData.vertexRange.end = m_iMeshVertices.size();
-		meshData.vertexCount = verts.size();
-		meshData.indiceCount = indices.size();
-		m_iMeshData.insert(std::make_pair(iMesh->m_meshID, meshData));
-		m_loadedIMeshes.insert(std::make_pair(SPHERE_PATH, iMesh->m_meshID));
+		WriteToInternalMesh(SPHERE_PATH.c_str(), verts, indices, iMesh);
 
 		return iMesh;
 	}
 }
 
-std::shared_ptr<Vulkan::Mesh> Vulkan::Mesh::GetPlane()
+void Vulkan::Mesh::WriteToInternalMesh(const char* filepath,std::vector<Vulkan::VkVertex>& verts, std::vector<uint32_t>& indices, std::shared_ptr<Vulkan::Mesh>& mesh)
 {
-	if(m_loadedIMeshes.count(PLANE_PATH)!=0)
-	{
-		return std::make_shared<Vulkan::Mesh>(Mesh(m_loadedIMeshes[PLANE_PATH]));
-	}
-	else
-	{
-		auto iMesh = std::make_shared<Vulkan::Mesh>(Mesh());
-		IMeshData meshData = {};
-		meshData.vertexRange.start = m_iMeshVertices.size();
-		meshData.indiceRange.start = m_iMeshIndices.size();
-		std::vector<VkVertex> verts 
-		{
-			{ glm::vec3(VkWorldSpace::UNIT,0,VkWorldSpace::UNIT), glm::vec3(0,1,0), glm::vec3(1,1,1), glm::vec2(1,1) }, //v0
-			{ glm::vec3(-VkWorldSpace::UNIT,0,VkWorldSpace::UNIT), glm::vec3(0,1,0), glm::vec3(1,1,1), glm::vec2(0,1) }, //v1
-			{ glm::vec3(-VkWorldSpace::UNIT,0,-VkWorldSpace::UNIT), glm::vec3(0,1,0), glm::vec3(1,1,1), glm::vec2(0,0) }, //v2
-			{ glm::vec3(VkWorldSpace::UNIT,0,-VkWorldSpace::UNIT), glm::vec3(0,1,0), glm::vec3(1,1,1), glm::vec2(1,0) } //v3
-		};
-		std::vector<uint32_t> indices { 0,2,1,0,3,2 };
-		size_t currentSize = m_iMeshVertices.size();
-		size_t neededSize = currentSize + verts.size();
-		size_t currentCap = m_iMeshVertices.capacity();
-		if (neededSize > currentCap)
-			m_iMeshVertices.resize(neededSize);
+	IMeshData meshData = {};
+	meshData.vertexRange.start = m_iMeshVertices.size();
+	meshData.indiceRange.start = m_iMeshIndices.size();
 
-		std::move(verts.begin(), verts.end(), m_iMeshVertices.begin() + currentSize);
+	size_t currentSize = m_iMeshVertices.size();
+	size_t neededSize = currentSize + verts.size();
+	size_t currentCap = m_iMeshVertices.capacity();
+	if (neededSize > currentCap)
+		m_iMeshVertices.resize(neededSize);
 
-		currentSize = m_iMeshIndices.size();
-		neededSize = currentSize + indices.size();
-		currentCap = m_iMeshIndices.capacity();
-		if (neededSize > currentCap)
-			m_iMeshIndices.resize(neededSize);
+	std::move(verts.begin(), verts.end(), m_iMeshVertices.begin() + currentSize);
 
-		std::move(indices.begin(), indices.end(), m_iMeshIndices.begin() + currentSize);
-		meshData.indiceRange.end = m_iMeshIndices.size();
-		meshData.vertexRange.end = m_iMeshVertices.size();
-		meshData.vertexCount = verts.size();
-		meshData.indiceCount = indices.size();
-		m_iMeshData.insert(std::make_pair(iMesh->m_meshID, meshData));
-		m_loadedIMeshes.insert(std::make_pair(PLANE_PATH, iMesh->m_meshID));
+	currentSize = m_iMeshIndices.size();
+	neededSize = currentSize + indices.size();
+	currentCap = m_iMeshIndices.capacity();
+	if (neededSize > currentCap)
+		m_iMeshIndices.resize(neededSize);
 
-		return iMesh;
-	}
+	std::move(indices.begin(), indices.end(), m_iMeshIndices.begin() + currentSize);
+
+	meshData.indiceRange.end = m_iMeshIndices.size();
+	meshData.vertexRange.end = m_iMeshVertices.size();
+	meshData.vertexCount = verts.size();
+	meshData.indiceCount = indices.size();
+	m_iMeshData.insert(std::make_pair(mesh->m_meshID, meshData));
+	m_loadedIMeshes.insert(std::make_pair(filepath, mesh->m_meshID));
+
 }
 
 Vulkan::Mesh::~Mesh()

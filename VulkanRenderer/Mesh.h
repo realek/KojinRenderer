@@ -36,6 +36,7 @@ namespace Vulkan
 		static std::shared_ptr<Vulkan::Mesh> LoadMesh(const char * filename, int flags=defaultFlags);
 		static std::shared_ptr<Vulkan::Mesh> GetCube();
 		static std::shared_ptr<Vulkan::Mesh> GetSphere();
+		
 		static std::shared_ptr<Vulkan::Mesh> GetPlane();
 		~Mesh();
 		glm::mat4 modelMatrix;
@@ -45,6 +46,9 @@ namespace Vulkan
 	private:
 		Mesh();
 		Mesh(int meshID);
+		static void WriteToInternalMesh(const char* filepath, std::vector<Vulkan::VkVertex>& verts, std::vector<uint32_t>& indices, std::shared_ptr<Vulkan::Mesh>& mesh);
+	
+	private:
 		int m_meshID;
 		static std::atomic<int> globalID;
 		//default assimp import flags
@@ -53,6 +57,9 @@ namespace Vulkan
 		static std::map<int,IMeshData> m_iMeshData;
 		static std::vector<VkVertex> m_iMeshVertices;
 		static std::vector<uint32_t> m_iMeshIndices;
+		static const std::string PLANE_PATH;
+		static const std::string CUBE_PATH;
+		static const std::string SPHERE_PATH;
 		friend class KojinRenderer;
 
 	};
