@@ -231,8 +231,8 @@ std::shared_ptr<Vulkan::Mesh> Vulkan::Mesh::GetSphere()
 	{
 		auto iMesh = std::make_shared<Vulkan::Mesh>(Mesh());
 
-		const int segments = 24;
-		const int rings = 12;
+		const int segments = 28;
+		const int rings = 16;
 		const float radius = VkWorldSpace::UNIT/2;
 		const float ringSize = 1.0f / (float)(rings - 1);
 		const float segmentSize = 1.0f / (float)(segments - 1);

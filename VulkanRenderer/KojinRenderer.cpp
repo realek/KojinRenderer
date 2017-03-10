@@ -38,7 +38,7 @@ Vulkan::KojinRenderer::KojinRenderer(SDL_Window * window, const char * appName, 
 		this->m_commandUnit->Initialize(m_system);
 		this->m_imageUnit->Initialize(m_system, m_commandUnit);
 		this->m_swapChainUnit->Initialize(m_system, m_imageUnit);
-		this->m_renderUnit->Initialize(m_system, m_commandUnit, m_imageUnit, m_swapChainUnit);
+		this->m_renderUnit->Initialize(m_system, m_commandUnit, m_swapChainUnit);
 	}
 	catch (...)
 	{
@@ -84,7 +84,7 @@ void Vulkan::KojinRenderer::ClearLight(Vulkan::Light * light, Vulkan::KojinRende
 
 std::shared_ptr<Vulkan::KojinCamera> Vulkan::KojinRenderer::CreateCamera(glm::vec3 initialPosition, bool perspective)
 {
-	auto camera = std::make_shared<KojinCamera>(KojinCamera(this,KojinRenderer::BindCamera,KojinRenderer::UnbindCamera,this->m_swapChainUnit->swapChainExtent2D,perspective));
+	auto camera = std::make_shared<KojinCamera>(KojinCamera(this,KojinRenderer::BindCamera,KojinRenderer::UnbindCamera,this->m_swapChainUnit->m_swapChainExtent2D,perspective));
 	camera->SetPosition(initialPosition);
 	camera->BindSelf();
 	return camera;

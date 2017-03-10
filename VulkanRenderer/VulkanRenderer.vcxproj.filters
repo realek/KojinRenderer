@@ -66,6 +66,9 @@
     <ClCompile Include="Camera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="VkManagedRenderPass.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Texture2D.h">
@@ -129,6 +132,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="VKWorldSpace.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="VulkanSystemEnums.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="VkManagedRenderPass.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

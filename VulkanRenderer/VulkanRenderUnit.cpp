@@ -17,7 +17,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 
-Vulkan::VkCamera Vulkan::VulkanRenderUnit::m_mainCamera;
 std::map<int, Vulkan::VkCamera> Vulkan::VulkanRenderUnit::m_cameras;
 
 Vulkan::VulkanRenderUnit::~VulkanRenderUnit()
@@ -25,7 +24,7 @@ Vulkan::VulkanRenderUnit::~VulkanRenderUnit()
 
 }
 
-void Vulkan::VulkanRenderUnit::Initialize(std::weak_ptr<Vulkan::VulkanSystem> vkSystem, std::shared_ptr<Vulkan::VulkanCommandUnit> vkCmdUnit, std::shared_ptr<Vulkan::VulkanImageUnit> vkImageUnit, std::shared_ptr<Vulkan::VulkanSwapchainUnit> vkSCUnit)
+void Vulkan::VulkanRenderUnit::Initialize(std::weak_ptr<Vulkan::VulkanSystem> vkSystem, std::shared_ptr<Vulkan::VulkanCommandUnit> vkCmdUnit, std::shared_ptr<Vulkan::VulkanSwapchainUnit> vkSCUnit)
 {
 	
 	auto sys = vkSystem.lock();
@@ -36,7 +35,6 @@ void Vulkan::VulkanRenderUnit::Initialize(std::weak_ptr<Vulkan::VulkanSystem> vk
 	this->m_deviceQueues = sys->GetQueues();
 	auto cmd = new Vulkan::VulkanCommandUnit();
 	m_commandUnit = vkCmdUnit;
-	m_imageUnit = vkImageUnit;
 	m_swapChainUnit = vkSCUnit;
 
 	//dummy shader object ---- to take out when GLSLlang is added to project
@@ -52,24 +50,24 @@ void Vulkan::VulkanRenderUnit::Initialize(std::weak_ptr<Vulkan::VulkanSystem> vk
 	//init semaphores containers
 	m_frameAvailableSemaphore = Vulkan::VulkanObjectContainer<VkSemaphore>{ m_deviceHandle,vkDestroySemaphore };
 	m_framePresentedSemaphore = Vulkan::VulkanObjectContainer<VkSemaphore>{ m_deviceHandle,vkDestroySemaphore };
+	m_offscreenSubmitSemaphore = Vulkan::VulkanObjectContainer<VkSemaphore>{ m_deviceHandle,vkDestroySemaphore };
 	m_descriptorPool = Vulkan::VulkanObjectContainer<VkDescriptorPool>{ m_deviceHandle, vkDestroyDescriptorPool };
-
+	
 
 	try
 	{
 		//default combined texture sampler can be created first
-		this->CreateTextureSampler(m_defaultSampler);
+		//this->CreateTextureSampler(m_defaultSampler);
 		//make semaphores as they dont require anything to be present
-		this->CreateSemaphores();
+		this->CreateSemaphore(m_frameAvailableSemaphore);
+		this->CreateSemaphore(m_framePresentedSemaphore);
+		this->CreateSemaphore(m_offscreenSubmitSemaphore);
 		//descriptor set layout is the same as the default shaders // TODO: needs GLSL lang implementation
 		this->CreateDescriptorSetLayout();
+		//setup main render passes using the swap chain
+		vkSCUnit->SetMainRenderPass(m_forwardRenderMain);
 		//create solid graphics pipeline
 		this->CreateSolidGraphicsPipeline({ m_descSetLayoutVertex,m_descSetLayoutFragment });
-		//this->CreateVertexUniformBuffer(); // TODO: rework after glsl lang implem
-		//this->CreateFragmentUniformBuffer(); // TODO: rework after glsl lang implem
-
-		//vertexDescriptorSet = this->CreateDescriptorSet({ m_descSetLayoutVertex }, 1);
-		//fragmentDescriptorSet = this->CreateDescriptorSet({ m_descSetLayoutFragment }, 1);
 
 	}
 	catch (...)
@@ -217,7 +215,7 @@ void Vulkan::VulkanRenderUnit::CreateSolidGraphicsPipeline(std::vector<VkDescrip
 	graphicsPipelineCI.pColorBlendState = &colorBlendingStateCI;
 	graphicsPipelineCI.pDynamicState = &dynamicStateCI;
 	graphicsPipelineCI.layout = m_pipelineLayout;
-	graphicsPipelineCI.renderPass = scU->RenderPass();
+	graphicsPipelineCI.renderPass = m_forwardRenderMain.GetPass();
 	graphicsPipelineCI.subpass = 0;
 	graphicsPipelineCI.basePipelineHandle = VK_NULL_HANDLE;
 
@@ -362,28 +360,28 @@ void Vulkan::VulkanRenderUnit::PresentFrame() {
 	vkQueueWaitIdle(m_deviceQueues.presentQueue);
 }
 
-void Vulkan::VulkanRenderUnit::CreateTextureSampler(VulkanObjectContainer<VkSampler>& textureSampler)
-{
-	textureSampler = VulkanObjectContainer<VkSampler>{ m_deviceHandle,vkDestroySampler };
-	VkSamplerCreateInfo samplerInfo = {};
-	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	samplerInfo.magFilter = VK_FILTER_LINEAR;
-	samplerInfo.minFilter = VK_FILTER_LINEAR;
-	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	samplerInfo.anisotropyEnable = VK_TRUE;
-	samplerInfo.maxAnisotropy = 16;
-	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-	samplerInfo.unnormalizedCoordinates = VK_FALSE;
-	samplerInfo.compareEnable = VK_FALSE;
-	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-
-	VkResult result = vkCreateSampler(m_deviceHandle, &samplerInfo, nullptr, ++textureSampler);
-	if (result != VK_SUCCESS)
-		throw std::runtime_error("Unable to create texture sampler. Reason: "+ Vulkan::VkResultToString(result));
-}
+//void Vulkan::VulkanRenderUnit::CreateTextureSampler(VulkanObjectContainer<VkSampler>& textureSampler)
+//{
+//	textureSampler = VulkanObjectContainer<VkSampler>{ m_deviceHandle,vkDestroySampler };
+//	VkSamplerCreateInfo samplerInfo = {};
+//	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+//	samplerInfo.magFilter = VK_FILTER_LINEAR;
+//	samplerInfo.minFilter = VK_FILTER_LINEAR;
+//	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+//	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+//	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+//	samplerInfo.anisotropyEnable = VK_TRUE;
+//	samplerInfo.maxAnisotropy = 16;
+//	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+//	samplerInfo.unnormalizedCoordinates = VK_FALSE;
+//	samplerInfo.compareEnable = VK_FALSE;
+//	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+//	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+//
+//	VkResult result = vkCreateSampler(m_deviceHandle, &samplerInfo, nullptr, ++textureSampler);
+//	if (result != VK_SUCCESS)
+//		throw std::runtime_error("Unable to create texture sampler. Reason: "+ Vulkan::VkResultToString(result));
+//}
 
 void Vulkan::VulkanRenderUnit::Render()
 {
@@ -394,7 +392,7 @@ void Vulkan::VulkanRenderUnit::Render()
 
 	auto scUnit = m_swapChainUnit.lock();
 	if(!scUnit)
-		throw std::runtime_error("Unable to lock weak ptr to Swap Chain unit.");
+		throw std::runtime_error("Unable to lock weak ptr to Swapchain unit object.");
 
 	auto recordBuffers = cmdUnit->SwapchainCommandBuffers();
 
@@ -406,14 +404,14 @@ void Vulkan::VulkanRenderUnit::Render()
 
 	VkRenderPassBeginInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassInfo.renderPass = scUnit->RenderPass();
+	renderPassInfo.renderPass = m_forwardRenderMain.GetPass();
 	std::array<VkClearValue, 2> clearValues = {};
 	clearValues[0].color = { 0.0f, 0.0f, 1.0f, 0.25f };
 	clearValues[1].depthStencil = { (uint32_t)1.0f, (uint32_t)0.0f };
 	renderPassInfo.clearValueCount = clearValues.size();
 	renderPassInfo.pClearValues = clearValues.data();
 	renderPassInfo.renderArea.offset = { 0, 0 };
-	renderPassInfo.renderArea.extent = scUnit->swapChainExtent2D;
+	renderPassInfo.renderArea.extent = scUnit->m_swapChainExtent2D;
 
 	for(auto camera : m_cameras)
 	{
@@ -426,7 +424,7 @@ void Vulkan::VulkanRenderUnit::Render()
 		
 		for (size_t i = 0; i < recordBuffers.size(); i++)
 		{
-			renderPassInfo.framebuffer = scUnit->FrameBuffer(i);
+			renderPassInfo.framebuffer = m_forwardRenderMain.GetBuffer(i);
 
 			vkBeginCommandBuffer(recordBuffers[i], &beginInfo);
 
@@ -733,7 +731,7 @@ void Vulkan::VulkanRenderUnit::WriteFragmentSets(VkImageView textureImageView, V
 	VkDescriptorImageInfo imageInfo = {};
 	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	imageInfo.imageView = textureImageView;
-	imageInfo.sampler = m_defaultSampler;
+	imageInfo.sampler = m_forwardRenderMain.GetSampler(m_forwardRenderMain.k_defaultSamplerName);
 
 	VkDescriptorBufferInfo lightsUniformBufferInfo = {};
 	lightsUniformBufferInfo.buffer = lightsUniformBuffer[index];
@@ -767,17 +765,14 @@ void Vulkan::VulkanRenderUnit::WriteFragmentSets(VkImageView textureImageView, V
 }
 
 //needs to be modified to create semaphores one by one
-void Vulkan::VulkanRenderUnit::CreateSemaphores()
+void Vulkan::VulkanRenderUnit::CreateSemaphore(Vulkan::VulkanObjectContainer<VkSemaphore>& semaphore)
 {
 	VkSemaphoreCreateInfo semaphoreInfo = {};
 	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-	VkResult result = vkCreateSemaphore(m_deviceHandle, &semaphoreInfo, nullptr, ++m_frameAvailableSemaphore);
+	VkResult result = vkCreateSemaphore(m_deviceHandle, &semaphoreInfo, nullptr, ++semaphore);
 	if (result != VK_SUCCESS)
 		throw std::runtime_error("Unable to create semaphore. Reason: "+Vulkan::VkResultToString(result));
-	result = vkCreateSemaphore(m_deviceHandle, &semaphoreInfo, nullptr, ++m_framePresentedSemaphore);
-	if (result != VK_SUCCESS)
-		throw std::runtime_error("Unable to create semaphore. Reason: " + Vulkan::VkResultToString(result));
 }
 
 //needs overhaul after creation of specialized uniform buffers
@@ -787,7 +782,7 @@ void Vulkan::VulkanRenderUnit::UpdateUniformBuffers(int objectIndex, glm::mat4 m
 	if (!scU)
 		throw std::runtime_error("Unable to lock Swapchain unit.");
 
-	auto extent = scU->swapChainExtent2D;
+	auto extent = scU->m_swapChainExtent2D;
 
 	Vulkan::UniformBufferObject ubo = {};
 	ubo.ComputeMatrices(*cam.view,*cam.proj,modelTransform);

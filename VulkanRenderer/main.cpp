@@ -189,7 +189,7 @@ int main()
 
 	//Light and camera Test
 	{
-		camera = renderer->CreateCamera({ 0, 1, -3 });
+		camera = renderer->CreateCamera({ 0, 1, -2 });
 		camera->SetRotation({0,0,0.0 });
 		//camera->LookAt({ 0,0,0 });
 		renderer->SetMainCamera(camera);

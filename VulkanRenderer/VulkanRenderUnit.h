@@ -8,9 +8,21 @@ mesh data. Contains render&present functionality.
 #pragma once
 #include <memory>
 #include <unordered_map>
+#include "VkManagedRenderPass.h"
+#undef CreateSemaphore
 
 namespace Vulkan 
 {
+//use defines for shadowmap early implementation
+#define SHADOWMAP_RESOLUTION_DEFAULT 2048
+#define SHADOWMAP_ATTACHMENT_DEFAULT k_depthFormats[0]
+#define SHADOWMAP_FILTER VK_FILTER_LINEAR
+//need to move these to light class so that lights generate the map -- shadow caster concept
+	const float depthBiasConstant = 1.25f;
+	// Slope depth bias factor, applied depending on polygon's slope
+	const float depthBiasSlope = 1.75f;
+	const float lightFOV = 45.0f;
+
 	class SPIRVShader;
 	class Texture2D;
 	class Mesh;
@@ -26,7 +38,7 @@ namespace Vulkan
 	
 	public:
 
-		void Initialize(std::weak_ptr<Vulkan::VulkanSystem> vkSystem, std::shared_ptr<Vulkan::VulkanCommandUnit> vkCmdUnit, std::shared_ptr<Vulkan::VulkanImageUnit> vkImageUnit, std::shared_ptr<Vulkan::VulkanSwapchainUnit> vkSCUnit);
+		void Initialize(std::weak_ptr<Vulkan::VulkanSystem> vkSystem, std::shared_ptr<Vulkan::VulkanCommandUnit> vkCmdUnit, std::shared_ptr<Vulkan::VulkanSwapchainUnit> vkSCUnit);
 		void Render();
 		void PresentFrame();
 		void UpdateUniformBuffers(int objectIndex, glm::mat4 modelTransform, Material * material, VkCamera& cam);
@@ -41,11 +53,14 @@ namespace Vulkan
 
 		SPIRVShader * m_defaultShader;
 		VkDevice m_deviceHandle;
+		VkQueueContainer m_deviceQueues;
 		VkPhysicalDevice m_currentPhysicalDevice;
 		std::weak_ptr<Vulkan::VulkanCommandUnit> m_commandUnit;
-		std::weak_ptr<Vulkan::VulkanImageUnit> m_imageUnit;
 		std::weak_ptr<Vulkan::VulkanSwapchainUnit> m_swapChainUnit;
 
+		//renderPasses
+		VkManagedRenderPass m_forwardRenderMain;
+		VkManagedRenderPass m_defferedRenderMain;
 		//meshData
 		VkManagedBuffer vertexBuffer;
 		VkManagedBuffer indiceBuffer;
@@ -59,11 +74,7 @@ namespace Vulkan
 		VulkanObjectContainer<VkDescriptorSetLayout> m_descSetLayoutFragment;
 		VulkanObjectContainer<VkPipelineLayout> m_pipelineLayout;
 		VulkanObjectContainer<VkPipeline> m_pipeline;
-		VulkanObjectContainer<VkImage> m_depthImage;
-		VulkanObjectContainer<VkDeviceMemory> m_depthImageMemory;
-		VulkanObjectContainer<VkImageView> m_depthImageView;
-		VulkanObjectContainer<VkSampler> m_defaultSampler;
-		VkQueueContainer m_deviceQueues;
+
 
 		//camera uniform buffers
 		VulkanObjectContainer<VkBuffer> cameraUniformStagingBuffer;
@@ -82,17 +93,17 @@ namespace Vulkan
 		std::vector<VulkanObjectContainer<VkBuffer>> lightsUniformBuffer;
 		std::vector<VulkanObjectContainer<VkDeviceMemory>> lightsUniformBufferMemory;
 		
+		//descriptor pool and sets
 		VulkanObjectContainer<VkDescriptorPool> m_descriptorPool;
-
-
-		VkDescriptorSet vertexDescriptorSet;
 		std::vector<VkDescriptorSet> fragmentDescriptorSets;
 		std::vector<VkDescriptorSet> vertexDescriptorSets;
-		//semaphores
+
+		//semaphores -- TODO: create SemaphoreUnit abstraction
 		VulkanObjectContainer<VkSemaphore> m_frameAvailableSemaphore;
 		VulkanObjectContainer<VkSemaphore> m_framePresentedSemaphore;
+		VulkanObjectContainer<VkSemaphore> m_offscreenSubmitSemaphore;
 
-		static VkCamera m_mainCamera;
+		//current cameras
 		static std::map<int, VkCamera> m_cameras;
 
 	private:
@@ -101,7 +112,7 @@ namespace Vulkan
 		void CreateDescriptorSetLayout();
 		void CreateSolidGraphicsPipeline(std::vector<VkDescriptorSetLayout> layouts);
 		void CreateShaderModule(std::vector<char>& code, VulkanObjectContainer<VkShaderModule>& shader);
-		void CreateTextureSampler(VulkanObjectContainer<VkSampler> & textureSampler);
+		//void CreateTextureSampler(VulkanObjectContainer<VkSampler> & textureSampler);
 
 		void CreateVertexUniformBuffers(uint32_t count);
 		void CreateFragmentUniformBuffers(uint32_t count);
@@ -109,7 +120,7 @@ namespace Vulkan
 		VkDescriptorSet CreateDescriptorSet(std::vector<VkDescriptorSetLayout> layouts, uint32_t setCount);
 		void WriteVertexSet(VkDescriptorSet vertSet, uint32_t index);
 		void WriteFragmentSets(VkImageView textureImageView, VkDescriptorSet fragSet, uint32_t index);
-		void CreateSemaphores();
+		void CreateSemaphore(Vulkan::VulkanObjectContainer<VkSemaphore>& semaphore);
 
 	};
 }
