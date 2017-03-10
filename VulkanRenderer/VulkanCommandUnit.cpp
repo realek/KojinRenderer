@@ -1,5 +1,6 @@
 #include "VulkanCommandUnit.h"
 #include "VulkanSystem.h"
+#include "VkManagedRenderPass.h"
 
 void Vulkan::VulkanCommandUnit::Initialize(std::weak_ptr<VulkanSystem> sys)
 {
@@ -19,8 +20,8 @@ void Vulkan::VulkanCommandUnit::Initialize(std::weak_ptr<VulkanSystem> sys)
 
 	this->m_graphicsQueue = vkSystem->GetQueues().graphicsQueue;
 	auto swpChainData = vkSystem->GetSwapChainSupportData();
-	int swapChainCmdBufferCount = swpChainData->capabilities.minImageCount+1 > swpChainData->capabilities.maxImageCount? swpChainData->capabilities.maxImageCount : swpChainData->capabilities.minImageCount + 1;
-	CreateSwapChainCommandBuffers(swapChainCmdBufferCount);
+	m_swapchainCmdCount = swpChainData->capabilities.minImageCount+1 > swpChainData->capabilities.maxImageCount? swpChainData->capabilities.maxImageCount : swpChainData->capabilities.minImageCount + 1;
+	CreateSwapChainCommandBuffers(m_swapchainCmdCount);
 }
 
 void Vulkan::VulkanCommandUnit::CreateSwapChainCommandBuffers(uint32_t count)
@@ -28,8 +29,6 @@ void Vulkan::VulkanCommandUnit::CreateSwapChainCommandBuffers(uint32_t count)
 	if (m_swapChainCommandBuffers.size() > 0) {
 		vkFreeCommandBuffers(m_device, m_commandPool, m_swapChainCommandBuffers.size(), m_swapChainCommandBuffers.data());
 	}
-
-
 
 	VkCommandBufferAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -43,13 +42,13 @@ void Vulkan::VulkanCommandUnit::CreateSwapChainCommandBuffers(uint32_t count)
 	}
 }
 
-void Vulkan::VulkanCommandUnit::CreateCommandBufferSet(int setID, uint32_t count,VkCommandBufferLevel bufferLevel)
+std::vector<VkCommandBuffer> Vulkan::VulkanCommandUnit::CreateCommandBufferSet(uint64_t setID, uint32_t count,VkCommandBufferLevel bufferLevel)
 {
 	if (m_cmdUnitBufferSets.size() != 0)
 	{
 		auto it = m_cmdUnitBufferSets.find(setID);
 		if (it != m_cmdUnitBufferSets.end())
-			return;
+			return m_cmdUnitBufferSets[setID];
 	}
 
 	VkCommandBufferAllocateInfo allocInfo = {};
@@ -64,14 +63,15 @@ void Vulkan::VulkanCommandUnit::CreateCommandBufferSet(int setID, uint32_t count
 		throw std::runtime_error("failed to allocate command buffers!");
 	}
 	m_cmdUnitBufferSets.insert(std::make_pair(setID,buffers));
+	return buffers;
 }
 
-std::vector<VkCommandBuffer>& Vulkan::VulkanCommandUnit::GetBufferSet(int setID)
+std::vector<VkCommandBuffer> Vulkan::VulkanCommandUnit::GetBufferSet(int setID)
 {
 	return m_cmdUnitBufferSets[setID];
 }
 
-std::vector<VkCommandBuffer>& Vulkan::VulkanCommandUnit::SwapchainCommandBuffers()
+std::vector<VkCommandBuffer> Vulkan::VulkanCommandUnit::SwapchainCommandBuffers()
 {
 	return m_swapChainCommandBuffers;
 }
@@ -119,3 +119,4 @@ void Vulkan::VulkanCommandUnit::EndOneTimeCommand(VkCommandBuffer & commandBuffe
 
 	vkFreeCommandBuffers(m_device, m_commandPool, 1, &commandBuffer);
 }
+

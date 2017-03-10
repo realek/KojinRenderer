@@ -96,7 +96,7 @@ int main()
 	InitSDL();
 
 	int appVer[3] = { 0,0,0 };
-	Vulkan::KojinRenderer * renderer = nullptr;
+	std::shared_ptr<Vulkan::KojinRenderer> renderer;
 	std::shared_ptr<Vulkan::KojinCamera> camera;
 	std::shared_ptr<Vulkan::KojinCamera> camera1;
 	std::shared_ptr<Vulkan::Light> light;
@@ -113,7 +113,7 @@ int main()
 	bool e = false;
 	try
 	{
-		renderer = new Vulkan::KojinRenderer{window,"Vulkan Tester",appVer};
+		renderer = std::make_shared<Vulkan::KojinRenderer>(Vulkan::KojinRenderer{window,"Vulkan Tester",appVer});
 		//testing stuff
 		whiteMaterial.diffuseTexture = Vulkan::Texture2D::GetWhiteTexture().lock()->ImageView();
 		whiteMaterial.specularity = 1000;
@@ -171,7 +171,6 @@ int main()
 		switch (msgboxID)
 		{
 		case IDOK:
-			delete(renderer);
 			IMG_Quit();
 			SDL_Quit();
 			return 0;
@@ -198,8 +197,8 @@ int main()
 		//camera->SetOrthographic();
 		//camera->LookAt({ 0,0.0,0.0 });
 		light = renderer->CreateLight({ 0.0, 2.0, 0.0 });
-		light->SetType(Vulkan::LightType::Spot);
-		light->range = 4.0f;
+		light->SetType(Vulkan::LightType::Point);
+		light->range = 6.0f;
 		light->intensity = 1.0f;
 		light->angle = 90;
 		light->rotation = {90,0,0 };
@@ -254,7 +253,6 @@ int main()
 
 
 	std::cout << "Vulkan resource cleanup." << std::endl;
-	//delete(renderer);
 	std::cout <<std::endl<< "Finished Vulkan resource cleanup." << std::endl;
 	IMG_Quit();
 	SDL_Quit();

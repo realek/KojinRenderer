@@ -110,8 +110,6 @@ void main()
 			else
 				atten = 0.0f;
 
-
-
 		}
 
 		
@@ -119,5 +117,6 @@ void main()
 		lightColor += atten*intensity*(diffuse + specular);
 	}
 	
-	outColor *=lightColor;
+		outColor *=lightColor;
+	
 }

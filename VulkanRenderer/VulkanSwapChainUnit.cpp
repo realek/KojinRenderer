@@ -2,6 +2,7 @@
 #include "VulkanSystem.h"
 #include "VulkanSwapChainUnit.h"
 #include "VulkanImageUnit.h"
+#include "VulkanCommandUnit.h"
 #include "VkManagedRenderPass.h"
 
 Vulkan::VulkanSwapchainUnit::VulkanSwapchainUnit()
@@ -28,7 +29,7 @@ void Vulkan::VulkanSwapchainUnit::Initialize(std::weak_ptr<VulkanSystem> vkSyste
 		GetExtent2D(&swapChainSupport->capabilities,width,height),
 		sys->GetQueueFamilies()
 		);
-	m_depthFormat = sys->GetDepthFormat();
+	depthFormat = sys->GetDepthFormat();
 	CreateSwapChainImageViews();
 	//CreateDepthImage();
 
@@ -65,13 +66,12 @@ VkSwapchainKHR Vulkan::VulkanSwapchainUnit::SwapChain()
 }
 
 //Sets up a render pass as the primary render pass used by the swap chain, render pass object is recreated
-void Vulkan::VulkanSwapchainUnit::SetMainRenderPass(Vulkan::VkManagedRenderPass & pass)
+void Vulkan::VulkanSwapchainUnit::SetMainRenderPass(Vulkan::VkManagedRenderPass & pass, std::weak_ptr<VulkanCommandUnit> cmdUnit)
 {
-	if (m_mainRenderPasses.count(pass.m_pass) > 0)
-		return;
-
-	pass.CreateAsMain(m_device, m_imageUnit,m_swapChainImageFormat, m_depthFormat, m_swapChainExtent2D,m_swapChainBuffers);
-	m_mainRenderPasses.insert(pass.m_pass);
+	if (m_mainPassCreated)
+		throw std::runtime_error("Main pass was already created");
+	pass.CreateAsSwapchainManaged(m_device, m_imageUnit, cmdUnit,swapChainImageFormat, depthFormat, swapChainExtent2D,m_swapChainBuffers);
+	m_mainPassCreated = true;
 }
 
 inline VkSurfaceFormatKHR Vulkan::VulkanSwapchainUnit::GetSupportedSurfaceFormat(const std::vector<VkSurfaceFormatKHR>* surfaceFormats)
@@ -161,8 +161,8 @@ void Vulkan::VulkanSwapchainUnit::CreateSwapChain(VkSurfaceKHR surface, uint32_t
 		m_swapChainBuffers[i].image = images[i];
 	}
 
-	m_swapChainImageFormat = format.format;
-	m_swapChainExtent2D = extent2D;
+	swapChainImageFormat = format.format;
+	swapChainExtent2D = extent2D;
 
 
 
@@ -180,7 +180,7 @@ inline void Vulkan::VulkanSwapchainUnit::CreateSwapChainImageViews()
 			imageUnit->CreateImageView
 			(
 				m_swapChainBuffers[i].image,
-				m_swapChainImageFormat,
+				swapChainImageFormat,
 				VK_IMAGE_VIEW_TYPE_2D,
 				m_swapChainBuffers[i].imageView
 			);

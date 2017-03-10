@@ -38,7 +38,7 @@ namespace Vulkan
 	
 	public:
 
-		void Initialize(std::weak_ptr<Vulkan::VulkanSystem> vkSystem, std::shared_ptr<Vulkan::VulkanCommandUnit> vkCmdUnit, std::shared_ptr<Vulkan::VulkanSwapchainUnit> vkSCUnit);
+		void Initialize(std::weak_ptr<Vulkan::VulkanSystem> vkSystem, std::shared_ptr<VulkanImageUnit> vkImageUnit, std::shared_ptr<Vulkan::VulkanCommandUnit> vkCmdUnit, std::shared_ptr<Vulkan::VulkanSwapchainUnit> vkSCUnit);
 		void Render();
 		void PresentFrame();
 		void UpdateUniformBuffers(int objectIndex, glm::mat4 modelTransform, Material * material, VkCamera& cam);
@@ -57,10 +57,12 @@ namespace Vulkan
 		VkPhysicalDevice m_currentPhysicalDevice;
 		std::weak_ptr<Vulkan::VulkanCommandUnit> m_commandUnit;
 		std::weak_ptr<Vulkan::VulkanSwapchainUnit> m_swapChainUnit;
+		std::weak_ptr<Vulkan::VulkanImageUnit> m_imageUnit;
 
 		//renderPasses
 		VkManagedRenderPass m_forwardRenderMain;
-		VkManagedRenderPass m_defferedRenderMain;
+		VkManagedRenderPass m_forwardRenderShadows;
+
 		//meshData
 		VkManagedBuffer vertexBuffer;
 		VkManagedBuffer indiceBuffer;
@@ -112,7 +114,6 @@ namespace Vulkan
 		void CreateDescriptorSetLayout();
 		void CreateSolidGraphicsPipeline(std::vector<VkDescriptorSetLayout> layouts);
 		void CreateShaderModule(std::vector<char>& code, VulkanObjectContainer<VkShaderModule>& shader);
-		//void CreateTextureSampler(VulkanObjectContainer<VkSampler> & textureSampler);
 
 		void CreateVertexUniformBuffers(uint32_t count);
 		void CreateFragmentUniformBuffers(uint32_t count);

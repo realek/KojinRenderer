@@ -24,7 +24,7 @@ Vulkan::VulkanRenderUnit::~VulkanRenderUnit()
 
 }
 
-void Vulkan::VulkanRenderUnit::Initialize(std::weak_ptr<Vulkan::VulkanSystem> vkSystem, std::shared_ptr<Vulkan::VulkanCommandUnit> vkCmdUnit, std::shared_ptr<Vulkan::VulkanSwapchainUnit> vkSCUnit)
+void Vulkan::VulkanRenderUnit::Initialize(std::weak_ptr<Vulkan::VulkanSystem> vkSystem, std::shared_ptr<VulkanImageUnit> vkImageUnit, std::shared_ptr<Vulkan::VulkanCommandUnit> vkCmdUnit, std::shared_ptr<Vulkan::VulkanSwapchainUnit> vkSCUnit)
 {
 	
 	auto sys = vkSystem.lock();
@@ -65,9 +65,18 @@ void Vulkan::VulkanRenderUnit::Initialize(std::weak_ptr<Vulkan::VulkanSystem> vk
 		//descriptor set layout is the same as the default shaders // TODO: needs GLSL lang implementation
 		this->CreateDescriptorSetLayout();
 		//setup main render passes using the swap chain
-		vkSCUnit->SetMainRenderPass(m_forwardRenderMain);
+		vkSCUnit->SetMainRenderPass(m_forwardRenderMain,vkCmdUnit);
 		//create solid graphics pipeline
 		this->CreateSolidGraphicsPipeline({ m_descSetLayoutVertex,m_descSetLayoutFragment });
+
+		//testing render passes
+		m_forwardRenderShadows.CreateAsForwardShadowmapPass(
+			m_deviceHandle,
+			vkSCUnit->swapChainExtent2D.width,
+			vkSCUnit->swapChainExtent2D.height,
+			vkImageUnit,
+			vkCmdUnit,
+			vkSCUnit->depthFormat);
 
 	}
 	catch (...)
@@ -323,9 +332,9 @@ void Vulkan::VulkanRenderUnit::PresentFrame() {
 	submitInfo.waitSemaphoreCount = 1;
 	submitInfo.pWaitSemaphores = waitSemaphores;
 	submitInfo.pWaitDstStageMask = waitStages;
-
+	auto cmdBuff = m_forwardRenderMain.GetCommandBuffer(imageIndex);
 	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &cmdUnit->SwapchainCommandBuffers()[imageIndex];
+	submitInfo.pCommandBuffers = &cmdBuff;
 
 	VkSemaphore signalSemaphores[] = { m_framePresentedSemaphore };
 	submitInfo.signalSemaphoreCount = 1;
@@ -385,16 +394,11 @@ void Vulkan::VulkanRenderUnit::PresentFrame() {
 
 void Vulkan::VulkanRenderUnit::Render()
 {
-
-	auto cmdUnit = m_commandUnit.lock();
-	if (!cmdUnit)
-		throw std::runtime_error("Unable to lock weak ptr to Command unit object.");
-
 	auto scUnit = m_swapChainUnit.lock();
 	if(!scUnit)
 		throw std::runtime_error("Unable to lock weak ptr to Swapchain unit object.");
 
-	auto recordBuffers = cmdUnit->SwapchainCommandBuffers();
+	auto recordBuffers = m_forwardRenderMain.GetCommandBuffers();
 
 	//write descriptor sets for all objects by updating the uniform buffer
 
@@ -411,7 +415,7 @@ void Vulkan::VulkanRenderUnit::Render()
 	renderPassInfo.clearValueCount = clearValues.size();
 	renderPassInfo.pClearValues = clearValues.data();
 	renderPassInfo.renderArea.offset = { 0, 0 };
-	renderPassInfo.renderArea.extent = scUnit->m_swapChainExtent2D;
+	renderPassInfo.renderArea.extent = scUnit->swapChainExtent2D;
 
 	for(auto camera : m_cameras)
 	{
@@ -424,7 +428,7 @@ void Vulkan::VulkanRenderUnit::Render()
 		
 		for (size_t i = 0; i < recordBuffers.size(); i++)
 		{
-			renderPassInfo.framebuffer = m_forwardRenderMain.GetBuffer(i);
+			renderPassInfo.framebuffer = m_forwardRenderMain.GetFrameBuffer(i);
 
 			vkBeginCommandBuffer(recordBuffers[i], &beginInfo);
 
@@ -782,7 +786,7 @@ void Vulkan::VulkanRenderUnit::UpdateUniformBuffers(int objectIndex, glm::mat4 m
 	if (!scU)
 		throw std::runtime_error("Unable to lock Swapchain unit.");
 
-	auto extent = scU->m_swapChainExtent2D;
+	auto extent = scU->swapChainExtent2D;
 
 	Vulkan::UniformBufferObject ubo = {};
 	ubo.ComputeMatrices(*cam.view,*cam.proj,modelTransform);
@@ -803,7 +807,7 @@ void Vulkan::VulkanRenderUnit::UpdateUniformBuffers(int objectIndex, glm::mat4 m
 	data = nullptr;
 
 	Vulkan::LightingUniformBuffer lightsUbo = {};
-	lightsUbo.ambientLightColor = glm::vec4(0.1, 0.1, 0.1, 0.1);
+	lightsUbo.ambientLightColor = glm::vec4(0.5, 0.5, 0.5, 0.1);
 	lightsUbo.materialDiffuse = material->diffuseColor;
 	lightsUbo.specularity = material->specularity;
 	//lightsUbo.cameraPos = glm::vec4(*cam.position*VkWorldSpace::REVERSE_AXES, 1.0);
