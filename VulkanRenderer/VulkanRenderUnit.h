@@ -39,7 +39,7 @@ namespace Vulkan
 	public:
 
 		void Initialize(std::weak_ptr<Vulkan::VulkanSystem> vkSystem, std::shared_ptr<VulkanImageUnit> vkImageUnit, std::shared_ptr<Vulkan::VulkanCommandUnit> vkCmdUnit, std::shared_ptr<Vulkan::VulkanSwapchainUnit> vkSCUnit);
-		void Render();
+		void RecordCommandBuffers();
 		void PresentFrame();
 		void UpdateUniformBuffers(int objectIndex, glm::mat4 modelTransform, Material * material, VkCamera& cam);
 		bool AddCamera(int id, VkViewport* viewport, VkRect2D* scissor, glm::mat4* view, glm::mat4* proj, glm::vec3* position);
@@ -52,6 +52,7 @@ namespace Vulkan
 	private:
 
 		SPIRVShader * m_defaultShader;
+		SPIRVShader * m_skeletonShader; //one UBO with MVP on vert
 		VkDevice m_deviceHandle;
 		VkQueueContainer m_deviceQueues;
 		VkPhysicalDevice m_currentPhysicalDevice;
@@ -74,24 +75,27 @@ namespace Vulkan
 		std::vector<VkLight> m_lights;
 		VulkanObjectContainer<VkDescriptorSetLayout> m_descSetLayoutVertex;
 		VulkanObjectContainer<VkDescriptorSetLayout> m_descSetLayoutFragment;
-		VulkanObjectContainer<VkPipelineLayout> m_pipelineLayout;
-		VulkanObjectContainer<VkPipeline> m_pipeline;
+
+		VulkanObjectContainer<VkPipelineLayout> m_solidPipelineLayout;
+		VulkanObjectContainer<VkPipeline> m_solidPipeline;
+		VulkanObjectContainer<VkPipelineLayout> m_forwardShadowPipelineLayout;
+		VulkanObjectContainer<VkPipeline> m_forwardShadowsPipeline;
 
 
-		//camera uniform buffers
-		VulkanObjectContainer<VkBuffer> cameraUniformStagingBuffer;
-		VulkanObjectContainer<VkDeviceMemory> cameraUniformStagingBufferMemory;
-		VulkanObjectContainer<VkBuffer> cameraUniformBuffer;
-		VulkanObjectContainer<VkDeviceMemory> cameraUniformBufferMemory;
+		//shadowmap uniform buffers
+		VulkanObjectContainer<VkBuffer> shadowmapUniformStagingBuffer;
+		VulkanObjectContainer<VkDeviceMemory> shadowmapUniformStagingBufferMemory;
+		VulkanObjectContainer<VkBuffer> shadowmapUniformBuffer;
+		VulkanObjectContainer<VkDeviceMemory> shadowmapUniformBufferMemory;
 
 
 		// TODO : switch to dynamic buffers ASAP.
-		std::vector<VulkanObjectContainer<VkBuffer>> uniformStagingBuffer;
-		std::vector<VulkanObjectContainer<VkDeviceMemory>> uniformStagingBufferMemory;
+		VulkanObjectContainer<VkBuffer> uniformStagingBuffer;
+		VulkanObjectContainer<VkDeviceMemory> uniformStagingBufferMemory;
 		std::vector<VulkanObjectContainer<VkBuffer>> uniformBuffer;
 		std::vector<VulkanObjectContainer<VkDeviceMemory>> uniformBufferMemory;
-		std::vector<VulkanObjectContainer<VkBuffer>> lightsUniformStagingBuffer;
-		std::vector<VulkanObjectContainer<VkDeviceMemory>> lightsUniformStagingBufferMemory;
+		VulkanObjectContainer<VkBuffer> lightsUniformStagingBuffer;
+		VulkanObjectContainer<VkDeviceMemory> lightsUniformStagingBufferMemory;
 		std::vector<VulkanObjectContainer<VkBuffer>> lightsUniformBuffer;
 		std::vector<VulkanObjectContainer<VkDeviceMemory>> lightsUniformBufferMemory;
 		
@@ -101,7 +105,7 @@ namespace Vulkan
 		std::vector<VkDescriptorSet> vertexDescriptorSets;
 
 		//semaphores -- TODO: create SemaphoreUnit abstraction
-		VulkanObjectContainer<VkSemaphore> m_frameAvailableSemaphore;
+		VulkanObjectContainer<VkSemaphore> m_frameRenderedSemaphore;
 		VulkanObjectContainer<VkSemaphore> m_framePresentedSemaphore;
 		VulkanObjectContainer<VkSemaphore> m_offscreenSubmitSemaphore;
 
@@ -113,15 +117,18 @@ namespace Vulkan
 		void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 		void CreateDescriptorSetLayout();
 		void CreateSolidGraphicsPipeline(std::vector<VkDescriptorSetLayout> layouts);
+		void CreateShadowsGraphicsPipeline(std::vector<VkDescriptorSetLayout> layouts);
 		void CreateShaderModule(std::vector<char>& code, VulkanObjectContainer<VkShaderModule>& shader);
 
 		void CreateVertexUniformBuffers(uint32_t count);
 		void CreateFragmentUniformBuffers(uint32_t count);
+		void CreateShadowmapUniformBuffer();
 		void CreateDescriptorPool(uint32_t descriptorCount);
 		VkDescriptorSet CreateDescriptorSet(std::vector<VkDescriptorSetLayout> layouts, uint32_t setCount);
 		void WriteVertexSet(VkDescriptorSet vertSet, uint32_t index);
+		void WriteShadowmapVertexSet(VkDescriptorSet descSet);
 		void WriteFragmentSets(VkImageView textureImageView, VkDescriptorSet fragSet, uint32_t index);
 		void CreateSemaphore(Vulkan::VulkanObjectContainer<VkSemaphore>& semaphore);
-
+		void UpdateShadowMapUniformBuffer();
 	};
 }

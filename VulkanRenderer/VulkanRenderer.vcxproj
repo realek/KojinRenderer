@@ -165,6 +165,7 @@
     <ClCompile Include="Mesh.cpp" />
     <ClCompile Include="VkManagedBuffer.cpp" />
     <ClCompile Include="VkManagedImage.cpp" />
+    <ClCompile Include="VkManagedPipeline.cpp" />
     <ClCompile Include="VkManagedRenderPass.cpp" />
     <ClCompile Include="VkSwapChainBuffer.cpp" />
     <ClCompile Include="VulkanCommandUnit.cpp" />
@@ -186,6 +187,7 @@
     <ClInclude Include="Texture2D.h" />
     <ClInclude Include="VkManagedBuffer.h" />
     <ClInclude Include="VkManagedImage.h" />
+    <ClInclude Include="VkManagedPipeline.h" />
     <ClInclude Include="VkManagedRenderPass.h" />
     <ClInclude Include="VkSwapChainBuffer.h" />
     <ClInclude Include="VKWorldSpace.h" />

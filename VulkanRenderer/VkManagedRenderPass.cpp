@@ -13,8 +13,8 @@ void Vulkan::VkManagedRenderPass::CreateAsForwardPass(VkDevice device, int32_t w
 	m_device = device;
 	m_type = RenderPassType::Secondary_OnScreen_Forward;
 	m_pass = VulkanObjectContainer<VkRenderPass>{ device, vkDestroyRenderPass };
-	m_width = width;
-	m_height = height;
+	m_extent.width = width;
+	m_extent.height = height;
 	m_colorformat = imageFormat;
 	m_depthFormat = depthFormat;
 	m_imageUnit = imageUnit;
@@ -97,8 +97,8 @@ void Vulkan::VkManagedRenderPass::CreateAsForwardShadowmapPass(VkDevice device, 
 	m_device = device;
 	m_type = RenderPassType::Secondary_Offscreen_Forward_Shadows;
 	m_pass = VulkanObjectContainer<VkRenderPass>{ device, vkDestroyRenderPass };
-	m_width = width;
-	m_height = height;
+	m_extent.width = width;
+	m_extent.height = height;
 	m_depthFormat = depthFormat;
 	m_colorformat = VK_FORMAT_UNDEFINED;
 	m_imageUnit = imageUnit;
@@ -155,6 +155,7 @@ void Vulkan::VkManagedRenderPass::CreateAsForwardShadowmapPass(VkDevice device, 
 	if (result != VK_SUCCESS)
 		throw std::runtime_error("Unable to create render pass. Reason: " + Vulkan::VkResultToString(result));
 
+	this->CreateTextureSampler(k_defaultSamplerName, VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE, k_defaultAnisotrophy);
 }
 
 void Vulkan::VkManagedRenderPass::AddBuffers(int32_t count) 
@@ -165,7 +166,10 @@ void Vulkan::VkManagedRenderPass::AddBuffers(int32_t count)
 		return;
 	}
 
-	CreateDepthAttachmentImage(count, m_width, m_height, m_depthFormat, true);
+	if(m_type == RenderPassType::Secondary_OnScreen_Forward && m_depthImages.size() == 0)
+		CreateDepthAttachmentImage(1, m_extent.width, m_extent.height, m_depthFormat, false);
+	else
+		CreateDepthAttachmentImage(count, m_extent.width, m_extent.height, m_depthFormat, true);
 
 	uint32_t size = m_frameBuffers.size();
 	if (m_frameBuffers.capacity() < size + count)
@@ -181,8 +185,7 @@ void Vulkan::VkManagedRenderPass::AddBuffers(int32_t count)
 		}
 		else
 		{
-			attachments.push_back(m_depthImages[0].imageView); //use normal depth image as default
-			//TODO: add code for non shadow passes here
+			attachments.push_back(m_depthImages[0].imageView);
 		}
 		
 
@@ -192,8 +195,8 @@ void Vulkan::VkManagedRenderPass::AddBuffers(int32_t count)
 		framebufferInfo.renderPass = m_pass;
 		framebufferInfo.attachmentCount = attachments.size();
 		framebufferInfo.pAttachments = attachments.data();
-		framebufferInfo.width = m_width;
-		framebufferInfo.height = m_height;
+		framebufferInfo.width = m_extent.width;
+		framebufferInfo.height = m_extent.height;
 		framebufferInfo.layers = 1;
 
 		m_frameBuffers.push_back({ m_device,vkDestroyFramebuffer });
@@ -243,6 +246,11 @@ VkRenderPass Vulkan::VkManagedRenderPass::GetPass()
 	return m_pass;
 }
 
+VkExtent2D Vulkan::VkManagedRenderPass::GetExtent()
+{
+	return m_extent;
+}
+
 int32_t Vulkan::VkManagedRenderPass::FramebufferCount()
 {
 	return m_frameBuffers.size();
@@ -258,6 +266,11 @@ VkCommandBuffer Vulkan::VkManagedRenderPass::GetCommandBuffer(int index)
 	return m_commandBuffers[index];
 }
 
+VkImageView Vulkan::VkManagedRenderPass::GetDepthImageView(int index)
+{
+	return m_depthImages[index].imageView;
+}
+
 std::vector<VkCommandBuffer> Vulkan::VkManagedRenderPass::GetCommandBuffers()
 {
 	return m_commandBuffers;
@@ -271,8 +284,7 @@ void Vulkan::VkManagedRenderPass::CreateAsSwapchainManaged(VkDevice device, std:
 	m_pass = VulkanObjectContainer<VkRenderPass>{ device, vkDestroyRenderPass };
 	m_imageUnit = imageUnit;
 	m_cmdUnit = cmdUnit;
-	m_width = swapChainExtent.width;
-	m_height = swapChainExtent.height;
+	m_extent = swapChainExtent;
 	VkResult result;
 
 	VkAttachmentDescription colorAttachmentDesc = {};

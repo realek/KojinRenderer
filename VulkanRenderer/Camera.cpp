@@ -25,9 +25,9 @@ Vulkan::KojinCamera::KojinCamera(KojinRenderer* rend, std::function<void(KojinRe
 	m_cameraScissor.extent = swapChainExtent;
 	m_cameraScissor.offset = { 0,0 };
 
-	m_fov = FOV_DEFAULT;
-	m_zNear = ZNEAR_DEFAULT;
-	m_zFar = ZFAR_DEFAULT;
+	m_fov = VkViewportDefaultSettings::k_Fov;
+	m_zNear = VkViewportDefaultSettings::k_zNear;
+	m_zFar = VkViewportDefaultSettings::k_zFar;
 
 
 

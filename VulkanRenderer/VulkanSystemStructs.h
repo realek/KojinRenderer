@@ -139,7 +139,6 @@ namespace Vulkan
 		glm::vec3* position;
 	};
 
-
 	struct VkLightProps
 	{
 		int32_t lightType;
@@ -160,13 +159,30 @@ namespace Vulkan
 
 	};
 
+	struct VkDepthUniformBuffer 
+	{
+		glm::mat4 depthMVP;
+	};
+
+	struct VkViewportDefaultSettings
+	{
+		static const float k_zFar;
+		static const float k_zNear;
+		static const float k_Fov;
+		static const float k_OrthoSize;
+		VkViewportDefaultSettings() = delete;
+		VkViewportDefaultSettings(const VkViewportDefaultSettings& other) = delete;
+	};
+
 	struct UniformBufferObject
 	{
+		glm::mat4 model;
 		glm::mat4 modelView;
 		glm::mat4 modelViewProjection;
 		glm::mat4 normal;
+		glm::mat4 depthBiasMVP;
 
-		inline void ComputeMatrices(glm::mat4& view, glm::mat4& proj, glm::mat4& model)
+		inline void ComputeMatrices(glm::mat4& view, glm::mat4& proj)
 		{
 			modelView = view*model;
 			normal = glm::transpose(glm::inverse(modelView));

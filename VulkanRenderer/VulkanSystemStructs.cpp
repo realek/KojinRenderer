@@ -25,3 +25,8 @@ bool Vulkan::VkSwapChainSupportData::Validate()
 {
 	return formats.size() > 0 && presentModes.size() > 0;
 }
+
+const float Vulkan::VkViewportDefaultSettings::k_zFar = 100.0f;
+const float Vulkan::VkViewportDefaultSettings::k_zNear = 0.1f;
+const float Vulkan::VkViewportDefaultSettings::k_Fov = 60.0f;
+const float Vulkan::VkViewportDefaultSettings::k_OrthoSize = 8.0f;

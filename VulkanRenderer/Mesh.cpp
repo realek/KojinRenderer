@@ -146,13 +146,13 @@ std::shared_ptr<Vulkan::Mesh> Vulkan::Mesh::GetPlane()
 	else
 	{
 		auto iMesh = std::make_shared<Vulkan::Mesh>(Mesh());
-
+		float planeUnit = VkWorldSpace::UNIT * 10;
 		std::vector<VkVertex> verts
 		{
-			{ glm::vec3(VkWorldSpace::UNIT,0,VkWorldSpace::UNIT), glm::vec3(0,1,0), glm::vec3(1,1,1), glm::vec2(1,1) }, //v0
-			{ glm::vec3(-VkWorldSpace::UNIT,0,VkWorldSpace::UNIT), glm::vec3(0,1,0), glm::vec3(1,1,1), glm::vec2(0,1) }, //v1
-			{ glm::vec3(-VkWorldSpace::UNIT,0,-VkWorldSpace::UNIT), glm::vec3(0,1,0), glm::vec3(1,1,1), glm::vec2(0,0) }, //v2
-			{ glm::vec3(VkWorldSpace::UNIT,0,-VkWorldSpace::UNIT), glm::vec3(0,1,0), glm::vec3(1,1,1), glm::vec2(1,0) } //v3
+			{ glm::vec3(planeUnit,0,planeUnit), glm::vec3(0,1,0), glm::vec3(1,1,1), glm::vec2(1,1) }, //v0
+			{ glm::vec3(-planeUnit,0,planeUnit), glm::vec3(0,1,0), glm::vec3(1,1,1), glm::vec2(0,1) }, //v1
+			{ glm::vec3(-planeUnit,0,-planeUnit), glm::vec3(0,1,0), glm::vec3(1,1,1), glm::vec2(0,0) }, //v2
+			{ glm::vec3(planeUnit,0,-planeUnit), glm::vec3(0,1,0), glm::vec3(1,1,1), glm::vec2(1,0) } //v3
 		};
 		std::vector<uint32_t> indices{ 0,2,1,0,3,2 };
 

@@ -114,7 +114,7 @@ void Vulkan::KojinRenderer::Render()
 		m_objectCount);
 	m_renderUnit->SetTransformsAndMaterials(m_meshPartTransforms, m_meshPartMaterials);
 	m_renderUnit->SetLights(m_lights);
-	m_renderUnit->Render();
+	m_renderUnit->RecordCommandBuffers();
 	m_meshDraws.clear();
 	m_meshPartTransforms.clear();
 	m_meshPartMaterials.clear();

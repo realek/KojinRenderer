@@ -7,7 +7,7 @@ layout(location = 0) in vec3 fragColor;
 layout(location = 1) in vec2 fragTexCoord;
 layout(location = 2) in vec3 fragNormal;
 layout(location = 3) in vec3 fragPos;
-
+layout(location = 4) in vec4 shadowFragPos;
 
 struct VkLightProps
 {
@@ -28,7 +28,8 @@ struct VkLight
 };
 
 layout(set = 1, binding = 0) uniform sampler2D texSampler;
-layout(set = 1, binding = 1) uniform FragUbo {
+layout(set = 1, binding = 1) uniform sampler2DShadow depthSampler;
+layout(set = 1, binding = 2) uniform FragUbo {
 
 	//vec4 cameraPos;
 	VkLight lights[4];
@@ -39,12 +40,53 @@ layout(set = 1, binding = 1) uniform FragUbo {
 
 layout(location = 0) out vec4 outColor;
 
+const float gamma = 2.2f;
+
+float textureProj(vec4 P, vec2 off)
+{
+	float shadow = 1.0;
+	vec4 shadowCoord = P / P.w;
+	if ( shadowCoord.z > -1.0 && shadowCoord.z < 1.0 ) 
+	{
+		float dist = texture( depthSampler, vec3(shadowCoord.xy + off,shadowCoord.z/shadowCoord.w) );
+		if ( shadowCoord.w > 0.0 && dist < shadowCoord.z ) 
+		{
+			shadow = 0.1f;
+		}
+	}
+	return shadow;
+}
+
+float filterPCF(vec4 sc)
+{
+	ivec2 texDim = textureSize(depthSampler, 0);
+	float scale = 1.5;
+	float dx = scale * 1.0 / float(texDim.x);
+	float dy = scale * 1.0 / float(texDim.y);
+
+	float shadowFactor = 0.0;
+	int count = 0;
+	int range = 1;
+	
+	for (int x = -range; x <= range; x++)
+	{
+		for (int y = -range; y <= range; y++)
+		{
+			shadowFactor += textureProj(sc, vec2(dx*x, dy*y));
+			count++;
+		}
+	
+	}
+	return shadowFactor / count;
+}
+
+
 void main() 
 {
 
 
     outColor = vec4(fragColor,1.0) * (ubo.materialDiffuse*texture(texSampler, fragTexCoord));
-	vec4 lightColor = vec4(ubo.ambientLightColor.xyz,1.0f);
+	vec4 lightColor = vec4(0.0f,0.0f,0.0f,0.0f);
 	float diffuseFrac = 1.0 - ubo.ambientLightColor.w;
 	vec4 specular = vec4(0.0,0.0,0.0,0.0);
 	vec4 diffuse = vec4(0.0,0.0,0.0,0.0);
@@ -53,6 +95,8 @@ void main()
 	vec3 L; // fragment light dir
 	vec3 V; // fragment eye 
 	vec3 D; // light forward from rotation
+	float shadow = filterPCF(shadowFragPos);
+	
 	for(int i = 0;i < 4;i++)
 	{
 		D = normalize(-ubo.lights[i].direction.xyz);
@@ -114,9 +158,10 @@ void main()
 
 		
 		
-		lightColor += atten*intensity*(diffuse + specular);
+		lightColor += atten*(intensity*(diffuse + specular));
 	}
-	
-		outColor *=lightColor;
+		outColor *=shadow*(vec4(ubo.ambientLightColor.xyz,0.0f)+vec4(lightColor.xyz,1.0f));
+		//outColor = texture(depthSampler, fragTexCoord)*shadow;
+		outColor.rgb = pow(outColor.rgb,vec3(1.0f/gamma));
 	
 }

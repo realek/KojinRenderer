@@ -24,9 +24,11 @@ namespace Vulkan
 		void EditSampler(std::string name, float anisotrophy, VkBorderColor borderColor, bool depthSampler);
 		VkSampler GetSampler(std::string name);
 		VkRenderPass GetPass();
+		VkExtent2D GetExtent();
 		int32_t FramebufferCount();
 		VkFramebuffer GetFrameBuffer(int index);
 		VkCommandBuffer GetCommandBuffer(int index);
+		VkImageView GetDepthImageView(int index);
 		std::vector<VkCommandBuffer> GetCommandBuffers();
 		const std::string k_defaultSamplerName ="vk_implem_default_sampler";
 		const float k_defaultAnisotrophy = 16;
@@ -42,7 +44,7 @@ namespace Vulkan
 		RenderPassType m_type;
 		VkFormat m_colorformat;
 		VkFormat m_depthFormat;
-		int32_t m_height, m_width;
+		VkExtent2D m_extent;
 		VulkanObjectContainer<VkRenderPass> m_pass;
 		std::weak_ptr<VulkanImageUnit> m_imageUnit;
 		std::weak_ptr<VulkanCommandUnit> m_cmdUnit;

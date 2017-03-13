@@ -66,6 +66,67 @@ bool SDLExitInput()
 
 }
 
+bool w = false; //fwd
+bool s = false; //bk
+bool a = false; //left
+bool d = false; //right
+bool q = false; // up
+bool z = false; // down
+void SDL_INPUT()
+{
+	SDL_Event evt;
+	SDL_PollEvent(&evt);
+
+	switch (evt.type)
+	{
+	case SDL_EventType::SDL_KEYDOWN:
+	{
+		switch (evt.key.keysym.sym)
+		{
+		case SDLK_w:
+		{
+			w = true;
+			break;
+		}
+		case SDLK_a:
+		{
+			a = true;
+			break;
+		}
+		case SDLK_s:
+		{
+			s = true;
+			break;
+		}
+		case SDLK_d:
+		{
+			d = true;
+			break;
+		}
+		case SDLK_z:
+		{
+			z = true;
+			break;
+		}
+		case SDLK_q:
+		{
+			q = true;
+			break;
+		}
+
+
+
+		}
+		break;
+
+	}
+	}
+
+}
+void RESET_INPUT()
+{
+	w = a = s = d = z = q = false;
+}
 void InitSDL()
 {
 	int width = 1280;
@@ -120,7 +181,7 @@ int main()
 		cubeMesh = Vulkan::Mesh::GetCube();
 		planeMaterial.diffuseColor = { 0.4f,0.3f,0.0f,1.0f };
 		planeMaterial.diffuseTexture = Vulkan::Texture2D::GetWhiteTexture().lock()->ImageView();
-		planeMaterial.specularity = 1500;
+		planeMaterial.specularity = 0;
 		planeMesh = Vulkan::Mesh::GetPlane();
 		sphereMesh = Vulkan::Mesh::GetSphere();
 		mesh = Vulkan::Mesh::LoadMesh("models/Stormtrooper.obj");
@@ -188,7 +249,7 @@ int main()
 
 	//Light and camera Test
 	{
-		camera = renderer->CreateCamera({ 0, 1, -2 });
+		camera = renderer->CreateCamera({ 0, 1, -6 });
 		camera->SetRotation({0,0,0.0 });
 		//camera->LookAt({ 0,0,0 });
 		renderer->SetMainCamera(camera);
@@ -196,13 +257,13 @@ int main()
 		//camera1->SetRotation({ 0.0,0.0,0.0 });
 		//camera->SetOrthographic();
 		//camera->LookAt({ 0,0.0,0.0 });
-		light = renderer->CreateLight({ 0.0, 2.0, 0.0 });
-		light->SetType(Vulkan::LightType::Point);
-		light->range = 6.0f;
+		light = renderer->CreateLight({ 2.0,4.5, 0.0 });
+		light->SetType(Vulkan::LightType::Spot);
+		light->range = 8.0f;
 		light->intensity = 1.0f;
-		light->angle = 90;
-		light->rotation = {90,0,0 };
-		light->diffuseColor = glm::vec4(0.0, 0.5, 0.75, 1.0);
+		light->angle = 60;
+		light->rotation = {90,-45,0 };
+		light->diffuseColor = glm::vec4(0.0, 0.65, 0.85, 1.0);
 
 	}
 	//!Light Test
@@ -211,23 +272,31 @@ int main()
 	{
 		auto currentTime = std::chrono::high_resolution_clock::now();
 		float frameDeltaTime = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0f;
-		currentDelta += frameDeltaTime;
 
 		//input read
-		running = SDLExitInput();
-		//do updates with delta time here
-		while(currentDelta>=fixedTimeStep)
-		{
-			//update objects here
-			rotmod += 5* currentDelta;
-			//renderer->Update(currentDelta);
-			//if (currentDelta == fixedTimeStep)
-			//{
-			//	//update physics
-			//}
-			currentDelta -= fixedTimeStep;
-		}
 
+		SDL_INPUT();
+		if (w)
+			light->position.z += frameDeltaTime*2;
+		else if (s)
+			light->position.z -= frameDeltaTime*2;
+		else if (a)
+			light->position.x -= frameDeltaTime*2;
+		else if (d)
+			light->position.x += frameDeltaTime*2;
+		else if (q)
+			light->position.y += frameDeltaTime*2;
+		else if (z)
+			light->position.y -= frameDeltaTime*2;
+		//update objects here
+		rotmod += 5 * frameDeltaTime;
+		//renderer->Update(currentDelta);
+		//if (currentDelta == fixedTimeStep)
+		//{
+		//	//update physics
+		//}
+		RESET_INPUT();
+		running = SDLExitInput();
 		if(currentDelta>0 && currentDelta < fixedTimeStep)
 			SDL_Delay((uint32_t)currentDelta);
 		
@@ -235,10 +304,10 @@ int main()
 		renderer->Load(mesh, &material);
 		planeMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 0,0,0 }, { 0, 0, 0 }, { 2,2,2 });
 		renderer->Load(planeMesh, &planeMaterial);
-		cubeMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 2,1,2 }, { 45, rotmod, 0 }, { 1,1,1 });
-		renderer->Load(cubeMesh, &whiteMaterial);
-		sphereMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ -2,1,1 }, { 0,rotmod,0 }, { 1,1,1 });
-		renderer->Load(sphereMesh, &whiteMaterial);
+	//	cubeMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 2,1,2 }, { 45, rotmod, 0 }, { 1,1,1 });
+	//	renderer->Load(cubeMesh, &whiteMaterial);
+	//	sphereMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ -2,1,1 }, { 0,rotmod,0 }, { 1,1,1 });
+	//	renderer->Load(sphereMesh, &whiteMaterial);
 		//!load up objects
 
 		//present
