@@ -129,6 +129,6 @@ namespace Vulkan
 		void WriteShadowmapVertexSet(VkDescriptorSet descSet);
 		void WriteFragmentSets(VkImageView textureImageView, VkDescriptorSet fragSet, uint32_t index);
 		void CreateSemaphore(Vulkan::VulkanObjectContainer<VkSemaphore>& semaphore);
-		void UpdateShadowMapUniformBuffer();
+
 	};
 }

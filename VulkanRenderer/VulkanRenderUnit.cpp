@@ -540,7 +540,6 @@ void Vulkan::VulkanRenderUnit::RecordCommandBuffers()
 	renderPassInfo.clearValueCount = clearValues.size();
 	renderPassInfo.pClearValues = clearValues.data();
 
-	UpdateShadowMapUniformBuffer();
 	WriteShadowmapVertexSet(vertexDescriptorSets.back());
 	renderPassInfo.renderPass = m_forwardRenderShadows.GetPass();
 	renderPassInfo.renderArea.offset = { 0, 0 };
@@ -1036,24 +1035,43 @@ void Vulkan::VulkanRenderUnit::UpdateUniformBuffers(int objectIndex, glm::mat4 m
 
 	auto extent = scU->swapChainExtent2D;
 
+	//USING THIS TO TEST PROJECTED SHADOWS
 
+	VkDepthUniformBuffer depthUBO = {};
 	VkLight dirLight = {};
 	if (m_lights.size() > 0)
 		dirLight = m_lights[0];
 
 	//glm::mat4 depthProjectionMatrix = glm::ortho<float>(-20, 20, -20, 20, VkViewportDefaultSettings::k_zNear, VkViewportDefaultSettings::k_zFar);
 	glm::mat4 depthProjectionMatrix = glm::perspective(glm::radians(dirLight.lightProps.angle), 1.0f, VkViewportDefaultSettings::k_zNear, VkViewportDefaultSettings::k_zFar);
-	glm::mat4 depthViewMatrix = glm::lookAt(glm::vec3(dirLight.position),glm::vec3(0,0,0), VkWorldSpace::WORLD_UP);
-	glm::mat4 depthModelMatrix = glm::mat4();
+	glm::mat4 depthViewMatrix = glm::lookAt(glm::vec3(dirLight.position), glm::vec3(0, 0, 0), VkWorldSpace::WORLD_UP);
 
+	glm::mat4 depthModelMatrix = glm::mat4();
+	depthUBO.depthMVP = depthProjectionMatrix * depthViewMatrix * depthModelMatrix;
+
+	void* data;
+	vkMapMemory(m_deviceHandle, shadowmapUniformStagingBufferMemory, 0, sizeof(depthUBO), 0, &data);
+	memcpy(data, &depthUBO, sizeof(depthUBO));
+	vkUnmapMemory(m_deviceHandle, shadowmapUniformStagingBufferMemory);
+
+	try
+	{
+		CopyBuffer(shadowmapUniformStagingBuffer, shadowmapUniformBuffer, sizeof(depthUBO));
+	}
+	catch (...)
+	{
+		throw;
+	}
+
+	data = nullptr;
 
 	Vulkan::UniformBufferObject ubo = {};
 	ubo.model = glm::mat4();
 	ubo.ComputeMatrices(*cam.view,*cam.proj);
 	//ubo.ComputeMatrices(depthViewMatrix, depthProjectionMatrix);
-	ubo.depthMVP = depthProjectionMatrix * depthViewMatrix * depthModelMatrix;
+	ubo.depthMVP = depthUBO.depthMVP;
 	
-	void* data;
+
 	vkMapMemory(m_deviceHandle, uniformStagingBufferMemory, 0, sizeof(ubo), 0, &data);
 	memcpy(data, &ubo, sizeof(ubo));
 	vkUnmapMemory(m_deviceHandle, uniformStagingBufferMemory);
@@ -1102,39 +1120,6 @@ void Vulkan::VulkanRenderUnit::UpdateUniformBuffers(int objectIndex, glm::mat4 m
 	{
 		throw;
 	}
-
-}
-
-void Vulkan::VulkanRenderUnit::UpdateShadowMapUniformBuffer() 
-{
-	//USING THIS TO TEST PROJECTED SHADOWS
-
-	VkDepthUniformBuffer depthUBO = {};
-	VkLight dirLight = {};
-	if(m_lights.size() > 0)
-		dirLight = m_lights[0];
-
-	//glm::mat4 depthProjectionMatrix = glm::ortho<float>(-20, 20, -20, 20, VkViewportDefaultSettings::k_zNear, VkViewportDefaultSettings::k_zFar);
-	glm::mat4 depthProjectionMatrix = glm::perspective(glm::radians(dirLight.lightProps.angle), 1.0f, VkViewportDefaultSettings::k_zNear, VkViewportDefaultSettings::k_zFar);
-	glm::mat4 depthViewMatrix = glm::lookAt(glm::vec3(dirLight.position), glm::vec3(0,0,0), VkWorldSpace::WORLD_UP);
-
-	glm::mat4 depthModelMatrix = glm::mat4();
-	depthUBO.depthMVP = depthProjectionMatrix * depthViewMatrix * depthModelMatrix;
-
-	void* data;
-	vkMapMemory(m_deviceHandle, shadowmapUniformStagingBufferMemory, 0, sizeof(depthUBO), 0, &data);
-	memcpy(data, &depthUBO, sizeof(depthUBO));
-	vkUnmapMemory(m_deviceHandle, shadowmapUniformStagingBufferMemory);
-
-	try
-	{
-		CopyBuffer(shadowmapUniformStagingBuffer, shadowmapUniformBuffer, sizeof(depthUBO));
-	}
-	catch (...)
-	{
-		throw;
-	}
-
 
 }
 
