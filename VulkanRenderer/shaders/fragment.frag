@@ -28,7 +28,7 @@ struct VkLight
 };
 
 layout(set = 1, binding = 0) uniform sampler2D texSampler;
-layout(set = 1, binding = 1) uniform sampler2DShadow depthSampler;
+layout(set = 1, binding = 1) uniform sampler2D depthSampler;
 layout(set = 1, binding = 2) uniform FragUbo {
 
 	//vec4 cameraPos;
@@ -48,7 +48,7 @@ float textureProj(vec4 P, vec2 off)
 	vec4 shadowCoord = P / P.w;
 	if ( shadowCoord.z > -1.0 && shadowCoord.z < 1.0 ) 
 	{
-		float dist = texture( depthSampler, vec3(shadowCoord.xy + off,shadowCoord.z/shadowCoord.w) );
+		float dist = texture( depthSampler, shadowCoord.st + off ).r;
 		if ( shadowCoord.w > 0.0 && dist < shadowCoord.z ) 
 		{
 			shadow = 0.1f;
@@ -95,7 +95,7 @@ void main()
 	vec3 L; // fragment light dir
 	vec3 V; // fragment eye 
 	vec3 D; // light forward from rotation
-	float shadow = filterPCF(shadowFragPos);
+	float shadow = filterPCF(shadowFragPos/shadowFragPos.w);
 	
 	for(int i = 0;i < 4;i++)
 	{

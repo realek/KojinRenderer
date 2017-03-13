@@ -1033,8 +1033,9 @@ void Vulkan::VulkanRenderUnit::UpdateUniformBuffers(int objectIndex, glm::mat4 m
 	if (m_lights.size() > 0)
 		dirLight = m_lights[0];
 
-	glm::mat4 depthProjectionMatrix = glm::perspective(glm::radians(dirLight.lightProps.angle), 1.0f, VkViewportDefaultSettings::k_zNear, VkViewportDefaultSettings::k_zFar);
-	glm::mat4 depthViewMatrix = glm::lookAt(glm::vec3(dirLight.position), glm::vec3(-dirLight.direction), VkWorldSpace::WORLD_UP);
+	glm::mat4 depthProjectionMatrix = glm::ortho<float>(-20, 20, -20, 20, VkViewportDefaultSettings::k_zNear, VkViewportDefaultSettings::k_zFar);
+	//glm::mat4 depthProjectionMatrix = glm::perspective(glm::radians(dirLight.lightProps.angle), 1.0f, VkViewportDefaultSettings::k_zNear, VkViewportDefaultSettings::k_zFar);
+	glm::mat4 depthViewMatrix = glm::lookAt(glm::vec3(-dirLight.direction),glm::vec3(0,0,0), VkWorldSpace::WORLD_UP);
 	glm::mat4 depthModelMatrix = glm::mat4();
 
 
@@ -1102,8 +1103,9 @@ void Vulkan::VulkanRenderUnit::UpdateShadowMapUniformBuffer()
 	if(m_lights.size() > 0)
 		dirLight = m_lights[0];
 
-	glm::mat4 depthProjectionMatrix = glm::perspective(glm::radians(dirLight.lightProps.angle), 1.0f, VkViewportDefaultSettings::k_zNear, VkViewportDefaultSettings::k_zFar);
-	glm::mat4 depthViewMatrix = glm::lookAt(glm::vec3(dirLight.position), glm::vec3(-dirLight.direction), VkWorldSpace::WORLD_UP);
+	glm::mat4 depthProjectionMatrix = glm::ortho<float>(-20, 20, -20, 20, VkViewportDefaultSettings::k_zNear, VkViewportDefaultSettings::k_zFar);
+	//glm::mat4 depthProjectionMatrix = glm::perspective(glm::radians(dirLight.lightProps.angle), 1.0f, VkViewportDefaultSettings::k_zNear, VkViewportDefaultSettings::k_zFar);
+	glm::mat4 depthViewMatrix = glm::lookAt(glm::vec3(-dirLight.direction),glm::vec3(0,0,0), VkWorldSpace::WORLD_UP);
 
 	glm::mat4 depthModelMatrix = glm::mat4();
 	depthUBO.depthMVP = depthProjectionMatrix * depthViewMatrix * depthModelMatrix;
