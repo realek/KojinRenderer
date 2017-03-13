@@ -180,7 +180,7 @@ namespace Vulkan
 		glm::mat4 modelView;
 		glm::mat4 modelViewProjection;
 		glm::mat4 normal;
-		glm::mat4 depthBiasMVP;
+		glm::mat4 depthMVP;
 
 		inline void ComputeMatrices(glm::mat4& view, glm::mat4& proj)
 		{

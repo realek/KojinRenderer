@@ -106,7 +106,7 @@ void Vulkan::VkManagedRenderPass::CreateAsForwardShadowmapPass(VkDevice device, 
 	VkResult result;
 
 	VkAttachmentDescription depthAttachmentDesc = {};
-	depthAttachmentDesc.format = depthFormat;
+	depthAttachmentDesc.format = m_depthFormat;
 	depthAttachmentDesc.samples = VK_SAMPLE_COUNT_1_BIT;
 	depthAttachmentDesc.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	depthAttachmentDesc.storeOp = VK_ATTACHMENT_STORE_OP_STORE;

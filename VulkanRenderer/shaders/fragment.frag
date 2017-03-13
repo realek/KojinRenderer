@@ -80,6 +80,13 @@ float filterPCF(vec4 sc)
 	return shadowFactor / count;
 }
 
+float LinearizeDepth(float depth)
+{
+  float n = 1.0; // camera z near
+  float f = 128.0; // camera z far
+  float z = depth;
+  return (2.0 * n) / (f + n - z * (f - n));	
+}
 
 void main() 
 {
@@ -160,8 +167,8 @@ void main()
 		
 		lightColor += atten*(intensity*(diffuse + specular));
 	}
-		outColor *=shadow*(vec4(ubo.ambientLightColor.xyz,0.0f)+vec4(lightColor.xyz,1.0f));
-		//outColor = texture(depthSampler, fragTexCoord)*shadow;
-		outColor.rgb = pow(outColor.rgb,vec3(1.0f/gamma));
+		outColor *=vec4(ubo.ambientLightColor.xyz,0.0f)+vec4(shadow*lightColor.xyz,1.0f);
+		//outColor = vec4(vec3(1.0-LinearizeDepth(texture(depthSampler, shadowFragPos.xy).x)), 1.0);
+		//outColor.rgb = pow(outColor.rgb,vec3(1.0f/gamma));
 	
 }

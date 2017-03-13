@@ -257,12 +257,12 @@ int main()
 		//camera1->SetRotation({ 0.0,0.0,0.0 });
 		//camera->SetOrthographic();
 		//camera->LookAt({ 0,0.0,0.0 });
-		light = renderer->CreateLight({ 2.0,4.5, 0.0 });
-		light->SetType(Vulkan::LightType::Directional);
+		light = renderer->CreateLight({ 2.0,4.0, 0.0 });
+		light->SetType(Vulkan::LightType::Point);
 		light->range = 8.0f;
 		light->intensity = 1.0f;
 		light->angle = 60;
-		light->rotation = {50,-30,0 };
+		light->rotation = {90,-30,0 };
 		light->diffuseColor = glm::vec4(0.0, 0.65, 0.85, 1.0);
 
 	}

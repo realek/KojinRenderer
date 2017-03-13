@@ -445,7 +445,7 @@ void Vulkan::VulkanRenderUnit::PresentFrame() {
 		throw std::runtime_error("Unable to lock weak ptr to Swap Chain unit.");
 	auto sc = scU->SwapChain();
 
-	VkResult result = vkAcquireNextImageKHR(m_deviceHandle, sc, std::numeric_limits<uint64_t>::max(), m_frameRenderedSemaphore, VK_NULL_HANDLE, &imageIndex);
+	VkResult result = vkAcquireNextImageKHR(m_deviceHandle, sc, std::numeric_limits<uint64_t>::max(), m_framePresentedSemaphore, VK_NULL_HANDLE, &imageIndex);
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
 		//recreate swap chain
@@ -460,7 +460,7 @@ void Vulkan::VulkanRenderUnit::PresentFrame() {
 	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-	VkSemaphore shadowWaitSemaphores[] = { m_frameRenderedSemaphore };
+	VkSemaphore shadowWaitSemaphores[] = { m_framePresentedSemaphore };
 	VkSemaphore shadowSignalSemaphores[] = { m_offscreenSubmitSemaphore };
 	
 	submitInfo.waitSemaphoreCount = 1;
@@ -474,16 +474,16 @@ void Vulkan::VulkanRenderUnit::PresentFrame() {
 
 
 	cmdBuff = m_forwardRenderMain.GetCommandBuffer(imageIndex);
-	VkSemaphore mainWaitSemaphores[] = { m_offscreenSubmitSemaphore };
-	VkSemaphore mainSignalSemaphores[] = { m_frameRenderedSemaphore };
+	VkSemaphore waitSemaphores[] = { m_offscreenSubmitSemaphore };
+	VkSemaphore signalSemaphores[] = { m_frameRenderedSemaphore };
 
 	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = mainWaitSemaphores;
+	submitInfo.pWaitSemaphores = waitSemaphores;
 	submitInfo.pWaitDstStageMask = waitStages;
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &cmdBuff;
 	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = mainSignalSemaphores;
+	submitInfo.pSignalSemaphores = signalSemaphores;
 
 	result = vkQueueSubmit(m_deviceQueues.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
 
@@ -494,7 +494,7 @@ void Vulkan::VulkanRenderUnit::PresentFrame() {
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
 	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = mainSignalSemaphores;
+	presentInfo.pWaitSemaphores = signalSemaphores;
 	VkSwapchainKHR swapChains[] = { sc };
 	presentInfo.swapchainCount = 1;
 	presentInfo.pSwapchains = swapChains;
@@ -510,7 +510,13 @@ void Vulkan::VulkanRenderUnit::PresentFrame() {
 		throw std::runtime_error("Unable to present swap chain image. Reason: " + Vulkan::VkResultToString(result));
 	
 	//wait for the present queue to finish
+	VkSemaphore presentSemaphore = m_framePresentedSemaphore;
 	vkQueueWaitIdle(m_deviceQueues.presentQueue);
+	submitInfo.waitSemaphoreCount = 1;
+	submitInfo.pWaitSemaphores = signalSemaphores;
+	submitInfo.pWaitDstStageMask = waitStages;
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = &presentSemaphore;
 }
 
 void Vulkan::VulkanRenderUnit::RecordCommandBuffers()
@@ -553,7 +559,9 @@ void Vulkan::VulkanRenderUnit::RecordCommandBuffers()
 	vkCmdBindVertexBuffers(cmdBuff, 0, 1, vertexBuffers, offsets);
 	vkCmdBindIndexBuffer(cmdBuff, indiceBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 	vkCmdBindPipeline(cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_forwardShadowsPipeline);
-
+	std::array<VkDescriptorSet, 1U> descSets = {};
+	descSets[0] = vertexDescriptorSets[vertexDescriptorSets.size()-1];
+	vkCmdBindDescriptorSets(cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_forwardShadowPipelineLayout, 0, descSets.size(), descSets.data(), 0, nullptr);
 	VkViewport lightVP = {};
 	lightVP.height = (float)renderPassInfo.renderArea.extent.height;
 	lightVP.width = (float)renderPassInfo.renderArea.extent.width;
@@ -579,8 +587,8 @@ void Vulkan::VulkanRenderUnit::RecordCommandBuffers()
 			}
 
 			IMeshData * meshData = Mesh::GetMeshData(mesh.first);
-			std::array<VkDescriptorSet, 1U> descSets{ vertexDescriptorSets.back() };
-			vkCmdBindDescriptorSets(cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_forwardShadowPipelineLayout, 0, descSets.size(), descSets.data(), 0, nullptr);
+			
+			
 
 			vkCmdSetDepthBias(cmdBuff, depthBiasConstant, 0.0f, depthBiasSlope);
 			vkCmdSetScissor(cmdBuff, 0, 1, &lightScissor);
@@ -1033,9 +1041,9 @@ void Vulkan::VulkanRenderUnit::UpdateUniformBuffers(int objectIndex, glm::mat4 m
 	if (m_lights.size() > 0)
 		dirLight = m_lights[0];
 
-	glm::mat4 depthProjectionMatrix = glm::ortho<float>(-20, 20, -20, 20, VkViewportDefaultSettings::k_zNear, VkViewportDefaultSettings::k_zFar);
-	//glm::mat4 depthProjectionMatrix = glm::perspective(glm::radians(dirLight.lightProps.angle), 1.0f, VkViewportDefaultSettings::k_zNear, VkViewportDefaultSettings::k_zFar);
-	glm::mat4 depthViewMatrix = glm::lookAt(glm::vec3(-dirLight.direction),glm::vec3(0,0,0), VkWorldSpace::WORLD_UP);
+	//glm::mat4 depthProjectionMatrix = glm::ortho<float>(-20, 20, -20, 20, VkViewportDefaultSettings::k_zNear, VkViewportDefaultSettings::k_zFar);
+	glm::mat4 depthProjectionMatrix = glm::perspective(glm::radians(dirLight.lightProps.angle), 1.0f, VkViewportDefaultSettings::k_zNear, VkViewportDefaultSettings::k_zFar);
+	glm::mat4 depthViewMatrix = glm::lookAt(glm::vec3(dirLight.position),glm::vec3(0,0,0), VkWorldSpace::WORLD_UP);
 	glm::mat4 depthModelMatrix = glm::mat4();
 
 
@@ -1043,7 +1051,7 @@ void Vulkan::VulkanRenderUnit::UpdateUniformBuffers(int objectIndex, glm::mat4 m
 	ubo.model = glm::mat4();
 	ubo.ComputeMatrices(*cam.view,*cam.proj);
 	//ubo.ComputeMatrices(depthViewMatrix, depthProjectionMatrix);
-	ubo.depthBiasMVP = depthProjectionMatrix * depthViewMatrix * depthModelMatrix;
+	ubo.depthMVP = depthProjectionMatrix * depthViewMatrix * depthModelMatrix;
 	
 	void* data;
 	vkMapMemory(m_deviceHandle, uniformStagingBufferMemory, 0, sizeof(ubo), 0, &data);
@@ -1064,7 +1072,7 @@ void Vulkan::VulkanRenderUnit::UpdateUniformBuffers(int objectIndex, glm::mat4 m
 	lightsUbo.ambientLightColor = glm::vec4(0.1, 0.1, 0.1, 0.1);
 	lightsUbo.materialDiffuse = material->diffuseColor;
 	lightsUbo.specularity = material->specularity;
-	//lightsUbo.cameraPos = glm::vec4(*cam.position*VkWorldSpace::REVERSE_AXES, 1.0);
+	
 	int size = m_lights.size();
 	for (int i = 0; i < MAX_LIGHTS_PER_FRAGMENT;i++) 
 	{
@@ -1073,6 +1081,9 @@ void Vulkan::VulkanRenderUnit::UpdateUniformBuffers(int objectIndex, glm::mat4 m
 			lightsUbo.lights[i] = m_lights[i];
 			lightsUbo.lights[i].direction = *cam.view*lightsUbo.lights[i].direction;
 			lightsUbo.lights[i].position = *cam.view*lightsUbo.lights[i].position;
+			//lightsUbo.lights[i].direction = ubo.depthBiasMVP*lightsUbo.lights[i].direction;
+			//lightsUbo.lights[i].position = ubo.depthBiasMVP*lightsUbo.lights[i].position;
+
 		}
 		else
 			break;
@@ -1103,9 +1114,9 @@ void Vulkan::VulkanRenderUnit::UpdateShadowMapUniformBuffer()
 	if(m_lights.size() > 0)
 		dirLight = m_lights[0];
 
-	glm::mat4 depthProjectionMatrix = glm::ortho<float>(-20, 20, -20, 20, VkViewportDefaultSettings::k_zNear, VkViewportDefaultSettings::k_zFar);
-	//glm::mat4 depthProjectionMatrix = glm::perspective(glm::radians(dirLight.lightProps.angle), 1.0f, VkViewportDefaultSettings::k_zNear, VkViewportDefaultSettings::k_zFar);
-	glm::mat4 depthViewMatrix = glm::lookAt(glm::vec3(-dirLight.direction),glm::vec3(0,0,0), VkWorldSpace::WORLD_UP);
+	//glm::mat4 depthProjectionMatrix = glm::ortho<float>(-20, 20, -20, 20, VkViewportDefaultSettings::k_zNear, VkViewportDefaultSettings::k_zFar);
+	glm::mat4 depthProjectionMatrix = glm::perspective(glm::radians(dirLight.lightProps.angle), 1.0f, VkViewportDefaultSettings::k_zNear, VkViewportDefaultSettings::k_zFar);
+	glm::mat4 depthViewMatrix = glm::lookAt(glm::vec3(dirLight.position), glm::vec3(0,0,0), VkWorldSpace::WORLD_UP);
 
 	glm::mat4 depthModelMatrix = glm::mat4();
 	depthUBO.depthMVP = depthProjectionMatrix * depthViewMatrix * depthModelMatrix;
