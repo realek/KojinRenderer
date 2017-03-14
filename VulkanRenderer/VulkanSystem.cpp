@@ -155,10 +155,10 @@ void Vulkan::VulkanSystem::CreateVulkanInstance(const VkApplicationInfo * appInf
 	instanceCI.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	instanceCI.pApplicationInfo = appInfo;
 	auto extensions = GetExtensions();
-	instanceCI.enabledExtensionCount = extensions.size();
+	instanceCI.enabledExtensionCount = (uint32_t)extensions.size();
 	instanceCI.ppEnabledExtensionNames = extensions.data();
 	if (enableValidationLayers) {
-		instanceCI.enabledLayerCount = validationLayers.size();
+		instanceCI.enabledLayerCount = (uint32_t)validationLayers.size();
 		instanceCI.ppEnabledLayerNames = validationLayers.data();
 	}
 	else
@@ -343,7 +343,7 @@ inline void Vulkan::VulkanSystem::CreateLogicalDeviceFromSelectedPhysicalDevice(
 
 		deviceCI.pEnabledFeatures = &features;
 
-		deviceCI.enabledExtensionCount = deviceExtensions.size();
+		deviceCI.enabledExtensionCount = (uint32_t)deviceExtensions.size();
 		deviceCI.ppEnabledExtensionNames = deviceExtensions.data();
 		deviceCI.enabledLayerCount = 0;
 

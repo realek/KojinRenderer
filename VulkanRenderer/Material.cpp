@@ -1,5 +1,5 @@
-#include "Material.h"
 #include <vulkan\vulkan.h>
+#include "Material.h"
 
 Vulkan::Material::Material()
 {

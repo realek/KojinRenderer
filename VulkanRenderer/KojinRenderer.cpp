@@ -1,4 +1,4 @@
-#include "KojinRenderer.h"
+
 #include "SPIRVShader.h"
 #include "VulkanSystem.h"
 #include "VulkanCommandUnit.h"
@@ -9,6 +9,7 @@
 #include "Light.h"
 #include "Mesh.h"
 #include "Material.h"
+#include "KojinRenderer.h"
 #include "SDL2\SDL_syswm.h"
 #include <algorithm>
 

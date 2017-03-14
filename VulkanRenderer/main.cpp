@@ -216,7 +216,7 @@ int main()
 
 	if(e)
 	{
-		int length = strlen(err.c_str());
+		int length = (int)strlen(err.c_str());
 		wchar_t errorText[4096] = { 0 };
 		MultiByteToWideChar(0, 0, err.c_str(), length, errorText, length);
 

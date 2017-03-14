@@ -26,7 +26,7 @@ wrapers.
 #endif // !RENDER_ENGINE_MAJOR_VERSION
 
 struct SDL_Window;
-typedef uint64_t VkImageView;
+//typedef uint64_t VkImageView;
 namespace Vulkan
 {
 	class VulkanSystem;

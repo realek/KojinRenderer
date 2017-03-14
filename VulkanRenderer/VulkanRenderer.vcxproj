@@ -86,7 +86,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions);GLM_FORCE_LEFT_HANDED;GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(SolutionDir)\Dependencies\Development\assimp-3.3.1\include;$(SolutionDir)\Dependencies\Development\SDL_image 2.0.1\include;$(SolutionDir)\VulkanRenderer;$(VULKAN_SDK)\Include;C:\Users\Alex\Documents\Visual Studio 2015\Projects\VulkanRenderer\VulkanRenderer\stb-master;$(VULKAN_SDK)\Third-Party\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\Dependencies\Development\assimp-3.3.1\include;$(SolutionDir)\Dependencies\Development\SDL_image 2.0.1\include;$(SolutionDir)\VulkanRenderer;$(VULKAN_SDK)\Include;$(VULKAN_SDK)\Third-Party\Include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -103,13 +103,13 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions);GLM_FORCE_LEFT_HANDED;GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(SolutionDir)\Dependencies\Development\assimp-3.3.1\include;$(VULKAN_SDK)\Include;$(VULKAN_SDK)\Third-Party\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\Dependencies\Development\SDL_image 2.0.1\include;$(SolutionDir)\Dependencies\Development\assimp-3.3.1\include;$(SolutionDir)\VulkanRenderer;$(VULKAN_SDK)\Include;$(VULKAN_SDK)\Third-Party\Include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>vulkan-1.lib;SDL2.lib;%(AdditionalDependencies);assimp-vc140-mt.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(VULKAN_SDK)\Bin;$(VULKAN_SDK)\Third-Party\Bin;%(AdditionalLibraryDirectories);$(SolutionDir)\Dependencies\Development\assimp-3.3.1\lib\x86</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib;SDL2.lib;SDL2_image.lib;%(AdditionalDependencies);assimp-vc140-mt.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(VULKAN_SDK)\Lib;$(VULKAN_SDK)\Third-Party\Bin;%(AdditionalLibraryDirectories);$(SolutionDir)\Dependencies\Development\SDL_image 2.0.1\lib\x64;$(SolutionDir)\Dependencies\Development\assimp-3.3.1\lib\x64</AdditionalLibraryDirectories>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
     </Link>
   </ItemDefinitionGroup>

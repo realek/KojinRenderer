@@ -7,8 +7,8 @@ shader uniforms to vulkan uniform buffers
 #include <glm\vec4.hpp>
 #include <memory>
 #include <atomic>
-
-typedef uint64_t VkImageView;
+#include <vulkan\vulkan.h>
+//typedef uint64_t VkImageView;
 namespace Vulkan
 {
 	class Material

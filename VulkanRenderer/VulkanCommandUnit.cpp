@@ -1,6 +1,7 @@
 #include "VulkanCommandUnit.h"
 #include "VulkanSystem.h"
 #include "VkManagedRenderPass.h"
+#include <vulkan\vulkan.h>
 
 void Vulkan::VulkanCommandUnit::Initialize(std::weak_ptr<VulkanSystem> sys)
 {
@@ -42,7 +43,7 @@ void Vulkan::VulkanCommandUnit::CreateSwapChainCommandBuffers(uint32_t count)
 	}
 }
 
-std::vector<VkCommandBuffer> Vulkan::VulkanCommandUnit::CreateCommandBufferSet(uint64_t setID, uint32_t count,VkCommandBufferLevel bufferLevel)
+std::vector<VkCommandBuffer> Vulkan::VulkanCommandUnit::CreateCommandBufferSet(VkRenderPass setID, uint32_t count,VkCommandBufferLevel bufferLevel)
 {
 	if (m_cmdUnitBufferSets.size() != 0)
 	{
@@ -66,7 +67,7 @@ std::vector<VkCommandBuffer> Vulkan::VulkanCommandUnit::CreateCommandBufferSet(u
 	return buffers;
 }
 
-std::vector<VkCommandBuffer> Vulkan::VulkanCommandUnit::GetBufferSet(int setID)
+std::vector<VkCommandBuffer> Vulkan::VulkanCommandUnit::GetBufferSet(VkRenderPass setID)
 {
 	return m_cmdUnitBufferSets[setID];
 }
@@ -76,7 +77,7 @@ std::vector<VkCommandBuffer> Vulkan::VulkanCommandUnit::SwapchainCommandBuffers(
 	return m_swapChainCommandBuffers;
 }
 
-void Vulkan::VulkanCommandUnit::FreeCommandBufferSet(int setID)
+void Vulkan::VulkanCommandUnit::FreeCommandBufferSet(VkRenderPass setID)
 {
 	vkFreeCommandBuffers(m_device, m_commandPool, m_cmdUnitBufferSets[setID].size(), m_cmdUnitBufferSets[setID].data());
 	m_cmdUnitBufferSets.erase(setID);

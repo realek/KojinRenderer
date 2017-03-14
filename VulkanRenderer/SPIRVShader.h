@@ -7,12 +7,14 @@ integrated before implementation.
 #pragma once
 #include <vector>
 #include <fstream>
+#include <vulkan\vulkan.h>
+
 namespace Vulkan 
 {
 	template<typename>
 	class VulkanObjectContainer;
 
-	typedef uint64_t VkShaderModule;
+
 
 	class SPIRVShader
 	{
