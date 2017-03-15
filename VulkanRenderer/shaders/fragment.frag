@@ -167,8 +167,10 @@ void main()
 		
 		lightColor += atten*(intensity*(diffuse + specular));
 	}
-		outColor *=vec4(ubo.ambientLightColor.xyz,0.0f)+vec4(shadow*lightColor.xyz,1.0f);
-		//outColor = vec4(vec3(1.0-LinearizeDepth(texture(depthSampler, shadowFragPos.xy).x)), 1.0);
+		outColor *=vec4(ubo.ambientLightColor.xyz,0.0f)+vec4(lightColor.xyz,1.0f);
+		//outColor *=vec4(ubo.ambientLightColor.xyz,0.0f)+vec4(shadow*lightColor.xyz,1.0f);
+		//SHADOWMAP VISUAL
+		//outColor = vec4(vec3(1.0-LinearizeDepth(texture(depthSampler, (shadowFragPos/shadowFragPos.w).xy).x)), 1.0);
 		//outColor.rgb = pow(outColor.rgb,vec3(1.0f/gamma));
 	
 }

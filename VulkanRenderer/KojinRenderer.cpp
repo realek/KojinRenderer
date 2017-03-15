@@ -106,15 +106,15 @@ void Vulkan::KojinRenderer::UnbindCamera(KojinRenderer* rend, KojinCamera* cam)
 void Vulkan::KojinRenderer::Render()
 {
 
+	m_renderUnit->SetLights(m_lights);
 	m_renderUnit->ConsumeMesh(
 		Mesh::m_iMeshVertices.data(),
-		Mesh::m_iMeshVertices.size(),
+		static_cast<uint32_t>(Mesh::m_iMeshVertices.size()),
 		Mesh::m_iMeshIndices.data(),
-		Mesh::m_iMeshIndices.size(),
+		static_cast<uint32_t>(Mesh::m_iMeshIndices.size()),
 		m_meshDraws,
 		m_objectCount);
 	m_renderUnit->SetTransformsAndMaterials(m_meshPartTransforms, m_meshPartMaterials);
-	m_renderUnit->SetLights(m_lights);
 	m_renderUnit->RecordCommandBuffers();
 	m_meshDraws.clear();
 	m_meshPartTransforms.clear();

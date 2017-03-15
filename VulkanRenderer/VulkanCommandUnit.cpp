@@ -28,7 +28,7 @@ void Vulkan::VulkanCommandUnit::Initialize(std::weak_ptr<VulkanSystem> sys)
 void Vulkan::VulkanCommandUnit::CreateSwapChainCommandBuffers(uint32_t count)
 {
 	if (m_swapChainCommandBuffers.size() > 0) {
-		vkFreeCommandBuffers(m_device, m_commandPool, m_swapChainCommandBuffers.size(), m_swapChainCommandBuffers.data());
+		vkFreeCommandBuffers(m_device, m_commandPool, static_cast<uint32_t>(m_swapChainCommandBuffers.size()), m_swapChainCommandBuffers.data());
 	}
 
 	VkCommandBufferAllocateInfo allocInfo = {};
@@ -79,7 +79,7 @@ std::vector<VkCommandBuffer> Vulkan::VulkanCommandUnit::SwapchainCommandBuffers(
 
 void Vulkan::VulkanCommandUnit::FreeCommandBufferSet(VkRenderPass setID)
 {
-	vkFreeCommandBuffers(m_device, m_commandPool, m_cmdUnitBufferSets[setID].size(), m_cmdUnitBufferSets[setID].data());
+	vkFreeCommandBuffers(m_device, m_commandPool, static_cast<uint32_t>(m_cmdUnitBufferSets[setID].size()), m_cmdUnitBufferSets[setID].data());
 	m_cmdUnitBufferSets.erase(setID);
 }
 

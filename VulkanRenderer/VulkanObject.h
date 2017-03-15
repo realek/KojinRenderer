@@ -52,10 +52,15 @@ namespace Vulkan
 		}
 
 
-		//prefix increment operator overloaded for use with vulkan api
+		//prefix increment operator overloaded for use with vulkan api, in order to write on the object
 		T* operator ++()
 		{
 			Clean();
+			return &object;
+		}
+		//prefix decrement operator overloaded to get internal object reference
+		const T* operator --()
+		{
 			return &object;
 		}
 
@@ -72,15 +77,18 @@ namespace Vulkan
 		}
 
 		template <typename C>
-		bool operator ==(C other)
+		bool operator ==(C& other)
 		{
-			return this->object == (T)other;
+			T* objPtr = &object;
+			C* otherPtr = other;
+			return objPtr == reinterpret_cast<T*>(otherPtr);
 		}
 
 		inline T Get() const
 		{
 			return object;
 		}
+
 
 	private:
 

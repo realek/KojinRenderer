@@ -96,7 +96,7 @@ std::shared_ptr<Vulkan::Mesh> Vulkan::Mesh::LoadMesh(const char * filename,int f
 
 					if (uVertices.count(vertex) == 0)
 					{
-						uVertices[vertex] = readVerts.size();
+						uVertices[vertex] = static_cast<uint32_t>(readVerts.size());
 						readVerts.push_back(vertex);
 					}
 
@@ -281,8 +281,8 @@ std::shared_ptr<Vulkan::Mesh> Vulkan::Mesh::GetSphere()
 void Vulkan::Mesh::WriteToInternalMesh(const char* filepath,std::vector<Vulkan::VkVertex>& verts, std::vector<uint32_t>& indices, std::shared_ptr<Vulkan::Mesh>& mesh)
 {
 	IMeshData meshData = {};
-	meshData.vertexRange.start = m_iMeshVertices.size();
-	meshData.indiceRange.start = m_iMeshIndices.size();
+	meshData.vertexRange.start = static_cast<uint32_t>(m_iMeshVertices.size());
+	meshData.indiceRange.start = static_cast<uint32_t>(m_iMeshIndices.size());
 
 	size_t currentSize = m_iMeshVertices.size();
 	size_t neededSize = currentSize + verts.size();
@@ -300,10 +300,10 @@ void Vulkan::Mesh::WriteToInternalMesh(const char* filepath,std::vector<Vulkan::
 
 	std::move(indices.begin(), indices.end(), m_iMeshIndices.begin() + currentSize);
 
-	meshData.indiceRange.end = m_iMeshIndices.size();
-	meshData.vertexRange.end = m_iMeshVertices.size();
-	meshData.vertexCount = verts.size();
-	meshData.indiceCount = indices.size();
+	meshData.indiceRange.end = static_cast<uint32_t>(m_iMeshIndices.size());
+	meshData.vertexRange.end = static_cast<uint32_t>(m_iMeshVertices.size());
+	meshData.vertexCount = static_cast<uint32_t>(verts.size());
+	meshData.indiceCount = static_cast<uint32_t>(indices.size());
 	m_iMeshData.insert(std::make_pair(mesh->m_meshID, meshData));
 	m_loadedIMeshes.insert(std::make_pair(filepath, mesh->m_meshID));
 

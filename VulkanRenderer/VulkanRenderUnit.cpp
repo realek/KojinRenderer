@@ -131,7 +131,7 @@ void Vulkan::VulkanRenderUnit::CreateSolidGraphicsPipeline(std::vector<VkDescrip
 	auto attributeDescriptions = VkVertex::getAttributeDescriptions();
 
 	vertexInputCI.vertexBindingDescriptionCount = 1;
-	vertexInputCI.vertexAttributeDescriptionCount = attributeDescriptions.size();
+	vertexInputCI.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
 	vertexInputCI.pVertexBindingDescriptions = &bindingDescription;
 	vertexInputCI.pVertexAttributeDescriptions = attributeDescriptions.data();
 
@@ -182,7 +182,7 @@ void Vulkan::VulkanRenderUnit::CreateSolidGraphicsPipeline(std::vector<VkDescrip
 
 	VkPipelineLayoutCreateInfo pipelineLayoutCI = {};
 	pipelineLayoutCI.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutCI.setLayoutCount = layouts.size();
+	pipelineLayoutCI.setLayoutCount = static_cast<uint32_t>(layouts.size());
 	pipelineLayoutCI.pSetLayouts = layouts.data();
 
 	m_solidPipelineLayout = VulkanObjectContainer<VkPipelineLayout>{ m_deviceHandle,vkDestroyPipelineLayout };
@@ -198,7 +198,7 @@ void Vulkan::VulkanRenderUnit::CreateSolidGraphicsPipeline(std::vector<VkDescrip
 	};
 	VkPipelineDynamicStateCreateInfo dynamicStateCI = {};
 	dynamicStateCI.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-	dynamicStateCI.dynamicStateCount = dynamicStateEnables.size();
+	dynamicStateCI.dynamicStateCount = static_cast<uint32_t>(dynamicStateEnables.size());
 	dynamicStateCI.pDynamicStates = dynamicStateEnables.data();
 	dynamicStateCI.flags = 0;
 
@@ -270,7 +270,7 @@ void Vulkan::VulkanRenderUnit::CreateShadowsGraphicsPipeline(std::vector<VkDescr
 	auto attributeDescriptions = VkVertex::getAttributeDescriptions();
 
 	vertexInputCI.vertexBindingDescriptionCount = 1;
-	vertexInputCI.vertexAttributeDescriptionCount = attributeDescriptions.size();
+	vertexInputCI.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
 	vertexInputCI.pVertexBindingDescriptions = &bindingDescription;
 	vertexInputCI.pVertexAttributeDescriptions = attributeDescriptions.data();
 
@@ -318,7 +318,7 @@ void Vulkan::VulkanRenderUnit::CreateShadowsGraphicsPipeline(std::vector<VkDescr
 	
 	VkPipelineLayoutCreateInfo pipelineLayoutCI = {};
 	pipelineLayoutCI.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutCI.setLayoutCount = layouts.size();
+	pipelineLayoutCI.setLayoutCount = static_cast<uint32_t>(layouts.size());
 	pipelineLayoutCI.pSetLayouts = layouts.data();
 
 	m_forwardShadowPipelineLayout = VulkanObjectContainer<VkPipelineLayout>{ m_deviceHandle,vkDestroyPipelineLayout };
@@ -336,7 +336,7 @@ void Vulkan::VulkanRenderUnit::CreateShadowsGraphicsPipeline(std::vector<VkDescr
 
 	VkPipelineDynamicStateCreateInfo dynamicStateCI = {};
 	dynamicStateCI.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-	dynamicStateCI.dynamicStateCount = dynamicStateEnables.size();
+	dynamicStateCI.dynamicStateCount = static_cast<uint32_t>(dynamicStateEnables.size());
 	dynamicStateCI.pDynamicStates = dynamicStateEnables.data();
 	dynamicStateCI.flags = 0;
 
@@ -516,7 +516,7 @@ void Vulkan::VulkanRenderUnit::PresentFrame() {
 	submitInfo.pWaitSemaphores = signalSemaphores;
 	submitInfo.pWaitDstStageMask = waitStages;
 	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = &presentSemaphore;
+	submitInfo.pSignalSemaphores = --m_framePresentedSemaphore;
 }
 
 void Vulkan::VulkanRenderUnit::RecordCommandBuffers()
@@ -525,19 +525,19 @@ void Vulkan::VulkanRenderUnit::RecordCommandBuffers()
 	if(!scUnit)
 		throw std::runtime_error("Unable to lock weak ptr to Swapchain unit object.");
 
-	auto recordBuffers = m_forwardRenderMain.GetCommandBuffers();
+
 
 
 	VkCommandBufferBeginInfo beginInfo = {};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+	//beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 
 	VkRenderPassBeginInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	std::array<VkClearValue, 2> clearValues = {};
 	clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
 	clearValues[1].depthStencil = { (uint32_t)1.0f, (uint32_t)0.0f };
-	renderPassInfo.clearValueCount = clearValues.size();
+	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassInfo.pClearValues = clearValues.data();
 
 	WriteShadowmapVertexSet(vertexDescriptorSets.back());
@@ -558,9 +558,10 @@ void Vulkan::VulkanRenderUnit::RecordCommandBuffers()
 	vkCmdBindVertexBuffers(cmdBuff, 0, 1, vertexBuffers, offsets);
 	vkCmdBindIndexBuffer(cmdBuff, indiceBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 	vkCmdBindPipeline(cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_forwardShadowsPipeline);
+
 	std::array<VkDescriptorSet, 1U> descSets = {};
-	descSets[0] = vertexDescriptorSets[vertexDescriptorSets.size()-1];
-	vkCmdBindDescriptorSets(cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_forwardShadowPipelineLayout, 0, descSets.size(), descSets.data(), 0, nullptr);
+	descSets[0] = vertexDescriptorSets.back();
+	vkCmdBindDescriptorSets(cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_forwardShadowPipelineLayout, 0, static_cast<uint32_t>(descSets.size()), descSets.data(), 0, nullptr);
 	VkViewport lightVP = {};
 	lightVP.height = (float)renderPassInfo.renderArea.extent.height;
 	lightVP.width = (float)renderPassInfo.renderArea.extent.width;
@@ -606,7 +607,7 @@ void Vulkan::VulkanRenderUnit::RecordCommandBuffers()
 
 	//================================================= MAIN PASS ==================================== //
 
-
+	auto recordBuffers = m_forwardRenderMain.GetCommandBuffers();
 	renderPassInfo.renderPass = m_forwardRenderMain.GetPass();
 	renderPassInfo.renderArea.offset = { 0, 0 };
 	renderPassInfo.renderArea.extent = m_forwardRenderMain.GetExtent();
@@ -622,7 +623,7 @@ void Vulkan::VulkanRenderUnit::RecordCommandBuffers()
 				
 		for (size_t i = 0; i < recordBuffers.size(); i++)
 		{
-			renderPassInfo.framebuffer = m_forwardRenderMain.GetFrameBuffer(i);
+			renderPassInfo.framebuffer = m_forwardRenderMain.GetFrameBuffer(static_cast<int>(i));
 
 			vkBeginCommandBuffer(recordBuffers[i], &beginInfo);
 
@@ -651,7 +652,7 @@ void Vulkan::VulkanRenderUnit::RecordCommandBuffers()
 
 					IMeshData * meshData = Mesh::GetMeshData(mesh.first);
 					std::array<VkDescriptorSet, 2U> descSets{ vertexDescriptorSets[j], fragmentDescriptorSets[j] };
-					vkCmdBindDescriptorSets(recordBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_solidPipelineLayout, 0, descSets.size(), descSets.data(), 0, nullptr);
+					vkCmdBindDescriptorSets(recordBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_solidPipelineLayout, 0, static_cast<uint32_t>(descSets.size()), descSets.data(), 0, nullptr);
 
 					vkCmdSetScissor(recordBuffers[i], 0, 1, camera.second.scissor);
 					vkCmdSetViewport(recordBuffers[i], 0, 1, camera.second.viewport);
@@ -848,7 +849,7 @@ void Vulkan::VulkanRenderUnit::CreateDescriptorPool(uint32_t descriptorCount)
 
 	VkDescriptorPoolCreateInfo poolCI = {};
 	poolCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	poolCI.poolSizeCount = poolSizes.size();
+	poolCI.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
 	poolCI.pPoolSizes = poolSizes.data();
 	poolCI.maxSets = descriptorCount*2;
 
@@ -901,7 +902,7 @@ void Vulkan::VulkanRenderUnit::CreateDescriptorSetLayout()
 	fragmentLightUBLB.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
 	std::vector<VkDescriptorSetLayoutBinding> bindings = { fragmentSamplerLB, shadowDepthSamplerLB, fragmentLightUBLB };
-	descSetLayoutCI.bindingCount = bindings.size();
+	descSetLayoutCI.bindingCount = static_cast<uint32_t>(bindings.size());
 	descSetLayoutCI.pBindings = bindings.data();
 
 	result = vkCreateDescriptorSetLayout(m_deviceHandle, &descSetLayoutCI, nullptr, ++m_descSetLayoutFragment);
@@ -1014,7 +1015,7 @@ void Vulkan::VulkanRenderUnit::WriteFragmentSets(VkImageView textureImageView, V
 	}
 	
 
-	vkUpdateDescriptorSets(m_deviceHandle, fragmentDescriptorWrites.size(), fragmentDescriptorWrites.data(), 0, nullptr);
+	vkUpdateDescriptorSets(m_deviceHandle, static_cast<uint32_t>(fragmentDescriptorWrites.size()), fragmentDescriptorWrites.data(), 0, nullptr);
 }
 
 void Vulkan::VulkanRenderUnit::CreateSemaphore(Vulkan::VulkanObjectContainer<VkSemaphore>& semaphore)
@@ -1042,9 +1043,9 @@ void Vulkan::VulkanRenderUnit::UpdateUniformBuffers(int objectIndex, glm::mat4 m
 	if (m_lights.size() > 0)
 		dirLight = m_lights[0];
 
-	//glm::mat4 depthProjectionMatrix = glm::ortho<float>(-20, 20, -20, 20, VkViewportDefaultSettings::k_zNear, VkViewportDefaultSettings::k_zFar);
-	glm::mat4 depthProjectionMatrix = glm::perspective(glm::radians(dirLight.lightProps.angle), 1.0f, VkViewportDefaultSettings::k_zNear, VkViewportDefaultSettings::k_zFar);
-	glm::mat4 depthViewMatrix = glm::lookAt(glm::vec3(dirLight.position), glm::vec3(0, 0, 0), VkWorldSpace::WORLD_UP);
+	glm::mat4 depthProjectionMatrix = glm::ortho<float>(-20, 20, -20, 20, -20, VkViewportDefaultSettings::k_zFar);
+	//glm::mat4 depthProjectionMatrix = glm::perspective(glm::radians(dirLight.lightProps.angle), 1.0f, VkViewportDefaultSettings::k_zNear, VkViewportDefaultSettings::k_zFar);
+	glm::mat4 depthViewMatrix = glm::lookAt(glm::vec3(0,0,0), glm::vec3(dirLight.direction), VkWorldSpace::WORLD_UP);
 
 	glm::mat4 depthModelMatrix = glm::mat4();
 	depthUBO.depthMVP = depthProjectionMatrix * depthViewMatrix * depthModelMatrix;
@@ -1091,8 +1092,8 @@ void Vulkan::VulkanRenderUnit::UpdateUniformBuffers(int objectIndex, glm::mat4 m
 	lightsUbo.materialDiffuse = material->diffuseColor;
 	lightsUbo.specularity = material->specularity;
 	
-	int size = m_lights.size();
-	for (int i = 0; i < MAX_LIGHTS_PER_FRAGMENT;i++) 
+	uint32_t size = static_cast<uint32_t>(m_lights.size());
+	for (uint32_t i = 0; i < MAX_LIGHTS_PER_FRAGMENT;i++)
 	{
 		if (size > i)
 		{

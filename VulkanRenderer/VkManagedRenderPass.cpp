@@ -78,11 +78,11 @@ void Vulkan::VkManagedRenderPass::CreateAsForwardPass(VkDevice device, int32_t w
 
 	VkRenderPassCreateInfo renderPassCI = {};
 	renderPassCI.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	renderPassCI.attachmentCount = attachments.size();
+	renderPassCI.attachmentCount = static_cast<uint32_t>(attachments.size());
 	renderPassCI.pAttachments = attachments.data();
 	renderPassCI.subpassCount = 1;
 	renderPassCI.pSubpasses = &subPassDesc;
-	renderPassCI.dependencyCount = subPassDeps.size();
+	renderPassCI.dependencyCount = static_cast<uint32_t>(subPassDeps.size());
 	renderPassCI.pDependencies = subPassDeps.data();
 
 
@@ -148,7 +148,7 @@ void Vulkan::VkManagedRenderPass::CreateAsForwardShadowmapPass(VkDevice device, 
 	renderPassCI.pAttachments = &depthAttachmentDesc;
 	renderPassCI.subpassCount = 1;
 	renderPassCI.pSubpasses = &subPassDesc;
-	renderPassCI.dependencyCount = subPassDeps.size();
+	renderPassCI.dependencyCount = static_cast<uint32_t>(subPassDeps.size());
 	renderPassCI.pDependencies = subPassDeps.data();
 
 	result = vkCreateRenderPass(m_device, &renderPassCI, nullptr, ++m_pass);
@@ -171,7 +171,7 @@ void Vulkan::VkManagedRenderPass::AddBuffers(int32_t count)
 	else
 		CreateDepthAttachmentImage(count, m_extent.width, m_extent.height, m_depthFormat, true);
 
-	uint32_t size = m_frameBuffers.size();
+	uint32_t size = static_cast<uint32_t>(m_frameBuffers.size());
 	if (m_frameBuffers.capacity() < size + count)
 		m_frameBuffers.reserve(size + count);
 
@@ -193,7 +193,7 @@ void Vulkan::VkManagedRenderPass::AddBuffers(int32_t count)
 		VkFramebufferCreateInfo framebufferInfo = {};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 		framebufferInfo.renderPass = m_pass;
-		framebufferInfo.attachmentCount = attachments.size();
+		framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
 		framebufferInfo.pAttachments = attachments.data();
 		framebufferInfo.width = m_extent.width;
 		framebufferInfo.height = m_extent.height;
@@ -217,7 +217,7 @@ void Vulkan::VkManagedRenderPass::RemoveBuffers(int32_t count)
 		return;
 	}
 
-	int32_t size = m_frameBuffers.size();
+	int32_t size = static_cast<uint32_t>(m_frameBuffers.size());
 	if (size == 0)
 		return;
 	else if (size < count)
@@ -253,7 +253,7 @@ VkExtent2D Vulkan::VkManagedRenderPass::GetExtent()
 
 int32_t Vulkan::VkManagedRenderPass::FramebufferCount()
 {
-	return m_frameBuffers.size();
+	return static_cast<int32_t>(m_frameBuffers.size());
 }
 
 VkFramebuffer Vulkan::VkManagedRenderPass::GetFrameBuffer(int index)
@@ -344,11 +344,11 @@ void Vulkan::VkManagedRenderPass::CreateAsSwapchainManaged(VkDevice device, std:
 
 	VkRenderPassCreateInfo renderPassCI = {};
 	renderPassCI.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	renderPassCI.attachmentCount = attachments.size();
+	renderPassCI.attachmentCount = static_cast<uint32_t>(attachments.size());
 	renderPassCI.pAttachments = attachments.data();
 	renderPassCI.subpassCount = 1;
 	renderPassCI.pSubpasses = &subPassDesc;
-	renderPassCI.dependencyCount = subPassDeps.size();
+	renderPassCI.dependencyCount = static_cast<uint32_t>(subPassDeps.size());
 	renderPassCI.pDependencies = subPassDeps.data();
 
 
@@ -370,7 +370,7 @@ void Vulkan::VkManagedRenderPass::CreateAsSwapchainManaged(VkDevice device, std:
 		VkFramebufferCreateInfo framebufferInfo = {};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 		framebufferInfo.renderPass = m_pass;
-		framebufferInfo.attachmentCount = attachments.size();
+		framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
 		framebufferInfo.pAttachments = attachments.data();
 		framebufferInfo.width = swapChainExtent.width;
 		framebufferInfo.height = swapChainExtent.height;
@@ -385,7 +385,7 @@ void Vulkan::VkManagedRenderPass::CreateAsSwapchainManaged(VkDevice device, std:
 	if (cmd == nullptr)
 		throw std::runtime_error("Unable to lock weak ptr to Vulkan Command Unit object.");
 
-	m_commandBuffers = cmd->CreateCommandBufferSet(m_pass, m_frameBuffers.size(), VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+	m_commandBuffers = cmd->CreateCommandBufferSet(m_pass, static_cast<uint32_t>(m_frameBuffers.size()), VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
 }
 
@@ -396,7 +396,7 @@ void Vulkan::VkManagedRenderPass::CreateDepthAttachmentImage(int32_t count, int3
 	if (!imageUnit)
 		throw std::runtime_error("Unable to lock weak ptr to Image unit object");
 
-	uint32_t size = m_depthImages.size();
+	uint32_t size = static_cast<uint32_t>(m_depthImages.size());
 	if (m_depthImages.capacity() < size + count)
 		m_depthImages.reserve(size + count);
 
