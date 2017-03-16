@@ -73,6 +73,7 @@ namespace Vulkan
 		
 		//light uniforms
 		std::vector<VkLight> m_lights;
+		std::vector<glm::mat4> m_lightViews;
 		VulkanObjectContainer<VkDescriptorSetLayout> m_descSetLayoutVertex;
 		VulkanObjectContainer<VkDescriptorSetLayout> m_descSetLayoutFragment;
 

@@ -58,12 +58,13 @@ void Vulkan::KojinCamera::BindSelf()
 
 void Vulkan::KojinCamera::ComputeViewMatrix(glm::vec3 position, glm::vec3 rotation, glm::mat4 & viewMatrix)
 {
-	position.x *= -1;
-	auto target = position + VkWorldSpace::WORLD_FORWARD;
+	//position.x *= -1;
+	//auto target = position + VkWorldSpace::WORLD_FORWARD;
 	auto rotZ = glm::eulerAngleZ(glm::radians(-rotation.z));
 	auto rotY = glm::eulerAngleY(glm::radians(-rotation.y));
 	auto rotX = glm::eulerAngleX(glm::radians(rotation.x));
-	glm::mat4 look = glm::lookAt(position, target, VkWorldSpace::WORLD_UP);
+	//glm::mat4 look = glm::lookAt(position, target, VkWorldSpace::WORLD_UP);
+	auto look = glm::translate(-position)*glm::scale(VkWorldSpace::AXES_WITH_LH_CORRECTION);
 
 	viewMatrix = (rotX*rotY*rotZ)*look;
 }

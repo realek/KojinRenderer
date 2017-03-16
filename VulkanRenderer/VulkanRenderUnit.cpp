@@ -535,7 +535,7 @@ void Vulkan::VulkanRenderUnit::RecordCommandBuffers()
 	VkRenderPassBeginInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	std::array<VkClearValue, 2> clearValues = {};
-	clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
+	clearValues[0].depthStencil = { (uint32_t)1.0f, (uint32_t)0.0f };
 	clearValues[1].depthStencil = { (uint32_t)1.0f, (uint32_t)0.0f };
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassInfo.pClearValues = clearValues.data();
@@ -607,6 +607,9 @@ void Vulkan::VulkanRenderUnit::RecordCommandBuffers()
 
 	//================================================= MAIN PASS ==================================== //
 
+	clearValues[0].color = { 0,0,0.25f,1.0 };
+	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+	renderPassInfo.pClearValues = clearValues.data();
 	auto recordBuffers = m_forwardRenderMain.GetCommandBuffers();
 	renderPassInfo.renderPass = m_forwardRenderMain.GetPass();
 	renderPassInfo.renderArea.offset = { 0, 0 };
@@ -669,7 +672,6 @@ void Vulkan::VulkanRenderUnit::RecordCommandBuffers()
 
 		}
 	}
-
 }
 
 void Vulkan::VulkanRenderUnit::ConsumeMesh(VkVertex * vertexData, uint32_t vertexCount, uint32_t * indiceData, uint32_t indiceCount, std::unordered_map<int, int> meshDrawCounts, uint32_t objectCount)
@@ -759,7 +761,9 @@ void Vulkan::VulkanRenderUnit::SetTransformsAndMaterials(std::vector<glm::mat4>&
 void Vulkan::VulkanRenderUnit::SetLights(std::vector<Light*>& lights)
 {
 	m_lights.clear();
+	m_lightViews.clear();
 	m_lights.reserve(lights.size());
+	m_lightViews.reserve(lights.size());
 	for(uint32_t i = 0 ; i < lights.size();i++)
 	{
 		VkLight light = {};
@@ -775,6 +779,7 @@ void Vulkan::VulkanRenderUnit::SetLights(std::vector<Light*>& lights)
 		//light.range = lights[i]->range;
 		//light.specularColor = lights[i]->specularColor;
 		m_lights.push_back(light);
+		m_lightViews.push_back(lights[i]->GetLightViewMatrix());
 	}
 }
 
@@ -1039,13 +1044,13 @@ void Vulkan::VulkanRenderUnit::UpdateUniformBuffers(int objectIndex, glm::mat4 m
 	//USING THIS TO TEST PROJECTED SHADOWS
 
 	VkDepthUniformBuffer depthUBO = {};
-	VkLight dirLight = {};
+	glm::mat4 depthViewMatrix = {};
 	if (m_lights.size() > 0)
-		dirLight = m_lights[0];
+		depthViewMatrix = m_lightViews[0];
 
-	glm::mat4 depthProjectionMatrix = glm::ortho<float>(-20, 20, -20, 20, -20, VkViewportDefaultSettings::k_zFar);
-	//glm::mat4 depthProjectionMatrix = glm::perspective(glm::radians(dirLight.lightProps.angle), 1.0f, VkViewportDefaultSettings::k_zNear, VkViewportDefaultSettings::k_zFar);
-	glm::mat4 depthViewMatrix = glm::lookAt(glm::vec3(0,0,0), glm::vec3(dirLight.direction), VkWorldSpace::WORLD_UP);
+	glm::mat4 depthProjectionMatrix = glm::ortho<float>(-15, 15, -15, 15, -30, VkViewportDefaultSettings::k_zFar);
+	//glm::mat4 depthProjectionMatrix = glm::perspective(glm::radians(lightFOV), 1.0f, VkViewportDefaultSettings::k_zNear, VkViewportDefaultSettings::k_zFar);
+	//glm::mat4 depthViewMatrix = glm::lookAt(glm::vec3(dirLight.position), glm::vec3(0,0,0), VkWorldSpace::WORLD_UP);
 
 	glm::mat4 depthModelMatrix = glm::mat4();
 	depthUBO.depthMVP = depthProjectionMatrix * depthViewMatrix * depthModelMatrix;

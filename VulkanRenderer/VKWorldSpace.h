@@ -11,6 +11,7 @@ namespace VkWorldSpace
 	static const glm::vec3 WORLD_RIGHT(1.0f, 0.0f, 0.0f);
 	static const glm::vec3 REVERSE_AXES(-1.0f, 1.0f, -1.0f);
 	static const glm::vec3 AXES(1.0f, -1.0f, 1.0f);
+	static const glm::vec3 AXES_WITH_LH_CORRECTION(-1.0f, -1.0f, 1.0f);
 	static const float UNIT = 1.0f;
 
 	static glm::mat4 ComputeModelMatrix(glm::vec3 position, glm::vec3 eulerRotation, glm::vec3 scale)

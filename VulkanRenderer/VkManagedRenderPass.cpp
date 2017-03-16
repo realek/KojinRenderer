@@ -369,6 +369,7 @@ void Vulkan::VkManagedRenderPass::CreateAsSwapchainManaged(VkDevice device, std:
 
 		VkFramebufferCreateInfo framebufferInfo = {};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		
 		framebufferInfo.renderPass = m_pass;
 		framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
 		framebufferInfo.pAttachments = attachments.data();

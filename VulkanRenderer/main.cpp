@@ -249,7 +249,7 @@ int main()
 
 	//Light and camera Test
 	{
-		camera = renderer->CreateCamera({ 0, 1, -6 });
+		camera = renderer->CreateCamera({ 0, -1, -8 });
 		camera->SetRotation({0,0,0.0 });
 		//camera->LookAt({ 0,0,0 });
 		renderer->SetMainCamera(camera);
@@ -262,7 +262,7 @@ int main()
 		light->range = 8.0f;
 		light->intensity = 1.0f;
 		light->angle = 60;
-		light->rotation = {50,-30,0 };
+		light->rotation = {45,0,0 };
 		light->diffuseColor = glm::vec4(0.0, 0.65, 0.85, 1.0);
 
 	}
@@ -300,7 +300,7 @@ int main()
 		if(currentDelta>0 && currentDelta < fixedTimeStep)
 			SDL_Delay((uint32_t)currentDelta);
 		
-		mesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 0,0,0 }, { 0,rotmod,0 }, {0.5,0.5,0.5});
+		mesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 0,-1,0 }, { 0,rotmod,0 }, {0.5,0.5,0.5});
 		renderer->Load(mesh, &material);
 		planeMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 0,0,0 }, { 0, 0, 0 }, { 2,2,2 });
 		renderer->Load(planeMesh, &planeMaterial);

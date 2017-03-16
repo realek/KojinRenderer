@@ -1,6 +1,7 @@
 #pragma once
 #include <glm\vec3.hpp>
 #include <glm\vec4.hpp>
+#include <glm\matrix.hpp>
 #include <functional>
 
 namespace Vulkan
@@ -27,6 +28,7 @@ namespace Vulkan
 		LightType GetType();
 		void SetType(LightType type);
 		glm::vec4 GetLightForward();
+		glm::mat4 GetLightViewMatrix();
 	private:
 
 		Light(KojinRenderer * rend, std::function<void(Light*, KojinRenderer*)> deleter, glm::vec3 initialPosition);
