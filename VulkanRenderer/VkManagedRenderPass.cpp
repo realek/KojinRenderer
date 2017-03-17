@@ -482,8 +482,17 @@ void Vulkan::VkManagedRenderPass::CreateTextureSampler(std::string name, VkBorde
 
 	samplerInfo.borderColor = border;
 	samplerInfo.unnormalizedCoordinates = VK_FALSE;
-	samplerInfo.compareEnable = VK_FALSE;
-	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+	if (depthSampler)
+	{
+		samplerInfo.compareEnable = VK_TRUE;
+		samplerInfo.compareOp = VK_COMPARE_OP_LESS;
+	}
+	else
+	{
+		samplerInfo.compareEnable = VK_FALSE;
+		samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+	}
+
 
 	VkResult result = vkCreateSampler(m_device, &samplerInfo, nullptr, ++m_samplers[name]);
 	if (result != VK_SUCCESS)

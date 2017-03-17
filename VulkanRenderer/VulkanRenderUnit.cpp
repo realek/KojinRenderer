@@ -292,7 +292,7 @@ void Vulkan::VulkanRenderUnit::CreateShadowsGraphicsPipeline(std::vector<VkDescr
 	rasterizerStateCI.rasterizerDiscardEnable = VK_FALSE;
 	rasterizerStateCI.polygonMode = VK_POLYGON_MODE_FILL;
 	rasterizerStateCI.lineWidth = 1.0f;
-	rasterizerStateCI.cullMode = VK_CULL_MODE_BACK_BIT;
+	rasterizerStateCI.cullMode = VK_CULL_MODE_FRONT_BIT;
 	rasterizerStateCI.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	rasterizerStateCI.depthBiasEnable = VK_TRUE;
 	//rasterizerStateCI.depthBiasConstantFactor = depthBiasConstant;
@@ -1044,13 +1044,19 @@ void Vulkan::VulkanRenderUnit::UpdateUniformBuffers(int objectIndex, glm::mat4 m
 	//USING THIS TO TEST PROJECTED SHADOWS
 
 	VkDepthUniformBuffer depthUBO = {};
-	glm::mat4 depthViewMatrix = {};
+	glm::mat4 depthViewMatrix = glm::mat4();
 	if (m_lights.size() > 0)
 		depthViewMatrix = m_lightViews[0];
 
-	glm::mat4 depthProjectionMatrix = glm::ortho<float>(-15, 15, -15, 15, -30, VkViewportDefaultSettings::k_zFar);
-	//glm::mat4 depthProjectionMatrix = glm::perspective(glm::radians(lightFOV), 1.0f, VkViewportDefaultSettings::k_zNear, VkViewportDefaultSettings::k_zFar);
-	//glm::mat4 depthViewMatrix = glm::lookAt(glm::vec3(dirLight.position), glm::vec3(0,0,0), VkWorldSpace::WORLD_UP);
+	glm::mat4 depthProjectionMatrix = glm::mat4();
+	if(m_lights[0].lightProps.lightType == LightType::Directional)
+	{
+		depthProjectionMatrix = glm::ortho<float>(-15, 15, -15, 15, -30, VkViewportDefaultSettings::k_zFar);
+	}
+	else if(m_lights[0].lightProps.lightType==LightType::Spot)
+	{
+		depthProjectionMatrix = glm::perspective(glm::radians(m_lights[0].lightProps.angle), 1.0f, VkViewportDefaultSettings::k_zNear, VkViewportDefaultSettings::k_zFar);
+	}
 
 	glm::mat4 depthModelMatrix = glm::mat4();
 	depthUBO.depthMVP = depthProjectionMatrix * depthViewMatrix * depthModelMatrix;

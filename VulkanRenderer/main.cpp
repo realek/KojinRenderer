@@ -249,20 +249,20 @@ int main()
 
 	//Light and camera Test
 	{
-		camera = renderer->CreateCamera({ 0, -1, -8 });
-		camera->SetRotation({0,0,0.0 });
+		camera = renderer->CreateCamera({ 0, 1, -4 });
+		camera->SetRotation({0,0,0 });
 		//camera->LookAt({ 0,0,0 });
 		renderer->SetMainCamera(camera);
 		//camera1 = renderer->CreateCamera({ 0, -1, 3 });
 		//camera1->SetRotation({ 0.0,0.0,0.0 });
 		//camera->SetOrthographic();
 		//camera->LookAt({ 0,0.0,0.0 });
-		light = renderer->CreateLight({ 2.0,4.0, 0.0 });
+		light = renderer->CreateLight({ 0.0,2.0, -3.0 });
 		light->SetType(Vulkan::LightType::Directional);
-		light->range = 8.0f;
+		light->range = 6.0f;
 		light->intensity = 1.0f;
 		light->angle = 60;
-		light->rotation = {45,0,0 };
+		light->rotation = {50,0,0 };
 		light->diffuseColor = glm::vec4(0.0, 0.65, 0.85, 1.0);
 
 	}

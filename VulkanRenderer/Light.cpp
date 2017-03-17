@@ -28,14 +28,14 @@ glm::mat4 Vulkan::Light::GetLightViewMatrix()
 	switch(m_lightType)
 	{
 	case Directional:
-		look = glm::translate(glm::vec3(0))*glm::scale(VkWorldSpace::AXES_WITH_LH_CORRECTION);
+		look = glm::translate(glm::vec3(VkWorldSpace::WORLD_FORWARD))*glm::scale(VkWorldSpace::AXES_WITH_LH_CORRECTION);
 		break;
 	case Spot:
 		look = glm::translate(-position)*glm::scale(VkWorldSpace::AXES_WITH_LH_CORRECTION);
 	}
 
 
-	return look*(rotY*rotX);
+	return (rotY*rotX)*look;
 }
 
 /*
