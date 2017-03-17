@@ -21,7 +21,8 @@ namespace Vulkan
 	const float depthBiasConstant = 1.25f;
 	// Slope depth bias factor, applied depending on polygon's slope
 	const float depthBiasSlope = 1.75f;
-	const float lightFOV = 45.0f;
+	const float lightFOV = 60.0f;
+	const float lightzNear = 1.0f;
 
 	class SPIRVShader;
 	class Texture2D;

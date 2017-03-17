@@ -16,7 +16,7 @@ namespace Vulkan
 	public:
 
 		~KojinCamera();
-		void SetOrthographic(float orthoSize = VkViewportDefaultSettings::k_OrthoSize);
+		void SetOrthographic(float orthoSize = VkViewportDefaults::k_CameraOrthoSize);
 		void SetPerspective();
 		void SetPosition(glm::vec3 position);
 		void SetRotation(glm::vec3 rotation);

@@ -164,14 +164,18 @@ namespace Vulkan
 		glm::mat4 depthMVP;
 	};
 
-	struct VkViewportDefaultSettings
+	struct VkViewportDefaults
 	{
-		static const float k_zFar;
-		static const float k_zNear;
-		static const float k_Fov;
-		static const float k_OrthoSize;
-		VkViewportDefaultSettings() = delete;
-		VkViewportDefaultSettings(const VkViewportDefaultSettings& other) = delete;
+		static const float k_CameraZFar;
+		static const float k_CameraZNear;
+		static const float k_CameraFov;
+		static const float k_CameraMaxFov;
+		static const float k_CameraOrthoSize;
+		static const float k_LightZFar;
+		static const float k_lightZNear;
+		static const float k_lightFOVOffset;
+		VkViewportDefaults() = delete;
+		VkViewportDefaults(const VkViewportDefaults& other) = delete;
 	};
 
 	struct UniformBufferObject

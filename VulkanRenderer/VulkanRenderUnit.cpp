@@ -1051,11 +1051,17 @@ void Vulkan::VulkanRenderUnit::UpdateUniformBuffers(int objectIndex, glm::mat4 m
 	glm::mat4 depthProjectionMatrix = glm::mat4();
 	if(m_lights[0].lightProps.lightType == LightType::Directional)
 	{
-		depthProjectionMatrix = glm::ortho<float>(-15, 15, -15, 15, -30, VkViewportDefaultSettings::k_zFar);
+		depthProjectionMatrix = glm::ortho<float>(-15, 15, -15, 15, -30, 
+			VkViewportDefaults::k_CameraZFar);
 	}
 	else if(m_lights[0].lightProps.lightType==LightType::Spot)
 	{
-		depthProjectionMatrix = glm::perspective(glm::radians(m_lights[0].lightProps.angle), 1.0f, VkViewportDefaultSettings::k_zNear, VkViewportDefaultSettings::k_zFar);
+		auto fov = glm::clamp(m_lights[0].lightProps.angle + 
+			VkViewportDefaults::k_lightFOVOffset, VkViewportDefaults::k_lightFOVOffset, 
+			VkViewportDefaults::k_CameraMaxFov);
+
+		depthProjectionMatrix = glm::perspective(glm::radians(fov), 
+			1.0f, VkViewportDefaults::k_lightZNear, m_lights[0].lightProps.falloff);
 	}
 
 	glm::mat4 depthModelMatrix = glm::mat4();

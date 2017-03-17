@@ -60,7 +60,7 @@ float textureProj(vec4 P, vec2 off)
 float filterPCF(vec4 sc)
 {
 	ivec2 texDim = textureSize(depthSampler, 0);
-	float scale = 1.5;
+	float scale = 2.0;
 	float dx = scale * 1.0 / float(texDim.x);
 	float dy = scale * 1.0 / float(texDim.y);
 
@@ -78,6 +78,16 @@ float filterPCF(vec4 sc)
 	
 	}
 	return shadowFactor / count;
+}
+
+float ComputeShadow(vec4 ShadowCoord)
+{
+	float bias = 0.005;
+	float visibility = 1.0;
+	if ( texture( depthSampler, (ShadowCoord.xy/ShadowCoord.w) ).z < (ShadowCoord.z-bias)/ShadowCoord.w ){
+		visibility = 0.1;
+	}
+	return visibility;
 }
 
 float LinearizeDepth(float depth)
@@ -103,7 +113,7 @@ void main()
 	vec3 V; // fragment eye 
 	vec3 D; // light forward from rotation
 	float shadow = filterPCF(shadowFragPos/shadowFragPos.w);
-	
+	//float shadow = ComputeShadow(shadowFragPos/shadowFragPos.w);
 	for(int i = 0;i < 4;i++)
 	{
 		D = normalize(-ubo.lights[i].direction.xyz);
@@ -146,16 +156,16 @@ void main()
 			float dist = length(ubo.lights[i].position.xyz - fragPos);
 			if(dist <= ubo.lights[i].lightProps.falloff)
 			{
-				atten = clamp(1.0 - pow(dist,2)/pow(ubo.lights[i].lightProps.falloff,2), 0.0, 1.0);
+				atten = clamp(1.0 - (dist*dist)/pow(ubo.lights[i].lightProps.falloff,2), 0.0, 1.0);
 				if(ubo.lights[i].lightProps.lightType == 1) // is spot thus extra per fragment testing
 				{
 					float coneAngle = degrees(acos(dot(L, D)));
-					if(coneAngle > ubo.lights[i].lightProps.angle)
+					if(coneAngle >= ubo.lights[i].lightProps.angle)
 					{
 						atten = 0.0f;
 					}
 					else
-						atten = clamp(atten - pow(coneAngle,2)/pow(ubo.lights[i].lightProps.angle,2),0.0,1.0);
+						atten = clamp(atten - coneAngle/ubo.lights[i].lightProps.angle,0.0,1.0);
 				}
 			}
 			else

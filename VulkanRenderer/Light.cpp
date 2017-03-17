@@ -20,22 +20,20 @@ glm::vec4 Vulkan::Light::GetLightForward()
 
 glm::mat4 Vulkan::Light::GetLightViewMatrix()
 {
-	//auto rotZ = glm::eulerAngleZ(glm::radians(-rotation.z));
 	auto rotY = glm::eulerAngleY(glm::radians(-rotation.y));
 	auto rotX = glm::eulerAngleX(glm::radians(rotation.x));
-	//glm::mat4 look = glm::lookAt(position, target, VkWorldSpace::WORLD_UP);
 	glm::mat4 look;
 	switch(m_lightType)
 	{
 	case Directional:
-		look = glm::translate(glm::vec3(VkWorldSpace::WORLD_FORWARD))*glm::scale(VkWorldSpace::AXES_WITH_LH_CORRECTION);
-		break;
+		look = glm::translate(VkWorldSpace::WORLD_FORWARD)*glm::scale(VkWorldSpace::AXES_WITH_LH_CORRECTION);
+		return (rotX*rotY)*look;
 	case Spot:
-		look = glm::translate(-position)*glm::scale(VkWorldSpace::AXES_WITH_LH_CORRECTION);
+		auto fPos = -position;
+		fPos.y *= -1;
+		look = glm::translate(fPos)*glm::scale(VkWorldSpace::AXES_WITH_LH_CORRECTION);
+		return (rotX*rotY)*look;
 	}
-
-
-	return (rotY*rotX)*look;
 }
 
 /*

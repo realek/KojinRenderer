@@ -26,7 +26,11 @@ bool Vulkan::VkSwapChainSupportData::Validate()
 	return formats.size() > 0 && presentModes.size() > 0;
 }
 
-const float Vulkan::VkViewportDefaultSettings::k_zFar = 100.0f;
-const float Vulkan::VkViewportDefaultSettings::k_zNear = 0.1f;
-const float Vulkan::VkViewportDefaultSettings::k_Fov = 60.0f;
-const float Vulkan::VkViewportDefaultSettings::k_OrthoSize = 8.0f;
+const float Vulkan::VkViewportDefaults::k_CameraZFar = 100.0f;
+const float Vulkan::VkViewportDefaults::k_CameraZNear = 0.1f;
+const float Vulkan::VkViewportDefaults::k_CameraFov = 60.0f;
+const float Vulkan::VkViewportDefaults::k_CameraMaxFov = 175.0f;
+const float Vulkan::VkViewportDefaults::k_CameraOrthoSize = 8.0f;
+const float Vulkan::VkViewportDefaults::k_LightZFar = 100.0f;
+const float Vulkan::VkViewportDefaults::k_lightZNear = 0.3f;
+const float Vulkan::VkViewportDefaults::k_lightFOVOffset = 15.0f;
