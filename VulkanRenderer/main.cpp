@@ -261,7 +261,7 @@ int main()
 		light->SetType(Vulkan::LightType::Spot);
 		light->range = 10.0f;
 		light->intensity = 1.0f;
-		light->angle = 30.0f;
+		light->angle = 80.0f;
 		light->rotation = {30,0,0 };
 		light->diffuseColor = glm::vec4(0.0, 0.65, 0.85, 1.0);
 
@@ -276,8 +276,10 @@ int main()
 		//input read
 
 		SDL_INPUT();
-		if (w)
-			light->position.z += frameDeltaTime*2;
+		if (w) {
+			light->position.z += frameDeltaTime * 2;
+			std::cout << light->position.z;
+		}
 		else if (s)
 			light->position.z -= frameDeltaTime*2;
 		else if (a)

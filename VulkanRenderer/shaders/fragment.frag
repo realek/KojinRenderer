@@ -48,11 +48,15 @@ float textureProj(vec4 P, vec2 off)
 	vec4 shadowCoord = P / P.w;
 	if ( shadowCoord.z > -1.0 && shadowCoord.z < 1.0 ) 
 	{
-		float dist = texture( depthSampler, shadowCoord.st + off ).r;
-		if ( shadowCoord.w > 0.0 && dist < shadowCoord.z ) 
+		if((shadowCoord.x >= 0.0) && (shadowCoord.x <= 1.0f) && (shadowCoord.y >= 0.0) && (shadowCoord.y <= 1.0f) )
 		{
-			shadow = 0.1f;
+			float dist = texture( depthSampler, shadowCoord.xy + off ).r;
+			if ( shadowCoord.w > 0.0 && dist < shadowCoord.z ) 
+			{
+				shadow = 0.1f;
+			}
 		}
+
 	}
 	return shadow;
 }
@@ -60,7 +64,7 @@ float textureProj(vec4 P, vec2 off)
 float filterPCF(vec4 sc)
 {
 	ivec2 texDim = textureSize(depthSampler, 0);
-	float scale = 2.0;
+	float scale = 1.5;
 	float dx = scale * 1.0 / float(texDim.x);
 	float dy = scale * 1.0 / float(texDim.y);
 

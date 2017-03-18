@@ -1056,9 +1056,14 @@ void Vulkan::VulkanRenderUnit::UpdateUniformBuffers(int objectIndex, glm::mat4 m
 	}
 	else if(m_lights[0].lightProps.lightType==LightType::Spot)
 	{
-		auto fov = glm::clamp(m_lights[0].lightProps.angle + 
-			VkViewportDefaults::k_lightFOVOffset, VkViewportDefaults::k_lightFOVOffset, 
-			VkViewportDefaults::k_CameraMaxFov);
+		auto fov = m_lights[0].lightProps.angle +
+			VkViewportDefaults::k_lightFOVOffset;
+		if(fov > VkViewportDefaults::k_CameraMaxFov)
+		{
+			fov = glm::clamp(fov, VkViewportDefaults::k_lightFOVOffset,
+				VkViewportDefaults::k_CameraMaxFov);
+		}
+
 
 		depthProjectionMatrix = glm::perspective(glm::radians(fov), 
 			1.0f, VkViewportDefaults::k_lightZNear, m_lights[0].lightProps.falloff);

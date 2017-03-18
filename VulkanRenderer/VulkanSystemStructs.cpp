@@ -32,5 +32,5 @@ const float Vulkan::VkViewportDefaults::k_CameraFov = 60.0f;
 const float Vulkan::VkViewportDefaults::k_CameraMaxFov = 175.0f;
 const float Vulkan::VkViewportDefaults::k_CameraOrthoSize = 8.0f;
 const float Vulkan::VkViewportDefaults::k_LightZFar = 100.0f;
-const float Vulkan::VkViewportDefaults::k_lightZNear = 0.3f;
-const float Vulkan::VkViewportDefaults::k_lightFOVOffset = 15.0f;
+const float Vulkan::VkViewportDefaults::k_lightZNear = 1.0f;
+const float Vulkan::VkViewportDefaults::k_lightFOVOffset = 30.0f;
