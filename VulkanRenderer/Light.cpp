@@ -23,16 +23,27 @@ glm::mat4 Vulkan::Light::GetLightViewMatrix()
 	auto rotY = glm::eulerAngleY(glm::radians(-rotation.y));
 	auto rotX = glm::eulerAngleX(glm::radians(rotation.x));
 	glm::mat4 look;
+	auto fPos = -position;
 	switch(m_lightType)
 	{
 	case Directional:
+	{
 		look = glm::translate(VkWorldSpace::WORLD_FORWARD)*glm::scale(VkWorldSpace::AXES_WITH_LH_CORRECTION);
 		return (rotX*rotY)*look;
+	}
 	case Spot:
-		auto fPos = -position;
+	{
+
 		fPos.y *= -1;
 		look = glm::translate(fPos)*glm::scale(VkWorldSpace::AXES_WITH_LH_CORRECTION);
 		return (rotX*rotY)*look;
+	}
+	case Point:
+	{
+		return glm::mat4();
+	}
+	default:
+		return glm::mat4();
 	}
 }
 

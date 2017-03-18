@@ -261,7 +261,7 @@ int main()
 		light->SetType(Vulkan::LightType::Spot);
 		light->range = 10.0f;
 		light->intensity = 1.0f;
-		light->angle = 80.0f;
+		light->angle = 30;
 		light->rotation = {30,0,0 };
 		light->diffuseColor = glm::vec4(0.0, 0.65, 0.85, 1.0);
 
