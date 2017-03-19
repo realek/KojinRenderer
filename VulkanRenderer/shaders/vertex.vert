@@ -40,5 +40,5 @@ void main() {
 	fragNormal = vec3(ubo.normal * vec4(inNormal,1.0));
 	vec4 vPos = ubo.modelView*position;
 	fragPos = vec3(vPos)/vPos.w;
-	shadowFragPos = (biasMat * ubo.depthMVP) * position;
+	shadowFragPos = ubo.depthMVP * position;
 }

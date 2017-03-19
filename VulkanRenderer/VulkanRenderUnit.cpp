@@ -74,11 +74,11 @@ void Vulkan::VulkanRenderUnit::Initialize(std::weak_ptr<Vulkan::VulkanSystem> vk
 		//testing render passes
 		m_forwardRenderShadows.CreateAsForwardShadowmapPass(
 			m_deviceHandle,
-			SHADOWMAP_RESOLUTION_DEFAULT,
-			SHADOWMAP_RESOLUTION_DEFAULT,
+			VkShadowmapDefaults::k_defaultShadowmapResolution,
+			VkShadowmapDefaults::k_defaultShadowmapResolution,
 			vkImageUnit,
 			vkCmdUnit,
-			vkSCUnit->depthFormat);
+			VkShadowmapDefaults::k_shadowmapAttachmentFormat);
 		CreateShadowsGraphicsPipeline({ m_descSetLayoutVertex, m_descSetLayoutFragment });
 		m_forwardRenderShadows.AddBuffers(1);
 		m_forwardRenderShadows.AcquireCommandBuffers(1);
@@ -538,7 +538,7 @@ void Vulkan::VulkanRenderUnit::RecordCommandBuffers()
 			std::array<VkDescriptorSet, 1U> descSets = { m_shadowPasVertDescSets[j] };
 			vkCmdBindDescriptorSets(cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_forwardShadowPipelineLayout, 0, static_cast<uint32_t>(descSets.size()), descSets.data(), 0, nullptr);
 
-			vkCmdSetDepthBias(cmdBuff, depthBiasConstant, 0.0f, depthBiasSlope);
+			vkCmdSetDepthBias(cmdBuff, VkShadowmapDefaults::k_depthBias, 0.0f, VkShadowmapDefaults::k_depthBiasSlope);
 			vkCmdSetScissor(cmdBuff, 0, 1, &lightScissor);
 			vkCmdSetViewport(cmdBuff, 0, 1, &lightVP);
 			vkCmdDrawIndexed(cmdBuff, meshData->indiceCount, 1, meshData->indiceRange.start, vertexOffset, 0);
@@ -766,7 +766,7 @@ void Vulkan::VulkanRenderUnit::CreateFragmentUniformBuffers(uint32_t count) {
 
 void Vulkan::VulkanRenderUnit::CreateShadowmapUniformBuffers(uint32_t count)
 {
-	VkDeviceSize bufferSize = sizeof(Vulkan::VkDepthUniformBuffer);
+	VkDeviceSize bufferSize = sizeof(Vulkan::VertexDepthMVP);
 	shadowmapUniformBuffers.resize(count, { m_deviceHandle,bufferSize });
 	shadowmapUniformStagingBuffer = { m_deviceHandle, bufferSize };
 
@@ -899,7 +899,7 @@ void Vulkan::VulkanRenderUnit::WriteShadowmapVertexSet(VkDescriptorSet descSet,u
 	VkDescriptorBufferInfo vertexUniformBufferInfo = {};
 	vertexUniformBufferInfo.buffer = shadowmapUniformBuffers[index].buffer;
 	vertexUniformBufferInfo.offset = 0;
-	vertexUniformBufferInfo.range = sizeof(VkDepthUniformBuffer);
+	vertexUniformBufferInfo.range = sizeof(VertexDepthMVP);
 
 	VkWriteDescriptorSet descriptorVertexWrite = {};
 	{
@@ -980,7 +980,7 @@ void Vulkan::VulkanRenderUnit::UpdateShadowPassUniformbuffers(int objectIndex, g
 {
 	//USING THIS TO TEST PROJECTED SHADOWS
 
-	VkDepthUniformBuffer depthUBO = {};
+	VertexDepthMVP depthUBO = {};
 	glm::mat4 depthViewMatrix = glm::mat4();
 	if (m_lights.size() > 0)
 		depthViewMatrix = m_lightViews[0];
@@ -994,20 +994,20 @@ void Vulkan::VulkanRenderUnit::UpdateShadowPassUniformbuffers(int objectIndex, g
 	else if (m_lights[0].lightProps.lightType == LightType::Spot)
 	{
 		auto fov = m_lights[0].lightProps.angle +
-			VkViewportDefaults::k_lightFOVOffset;
+			VkShadowmapDefaults::k_lightFOVOffset;
 		if (fov > VkViewportDefaults::k_CameraMaxFov)
 		{
-			fov = glm::clamp(fov, VkViewportDefaults::k_lightFOVOffset,
+			fov = glm::clamp(fov, VkShadowmapDefaults::k_lightFOVOffset,
 				VkViewportDefaults::k_CameraMaxFov);
 		}
 
 
 		depthProjectionMatrix = glm::perspective(glm::radians(fov),
-			1.0f, VkViewportDefaults::k_lightZNear, m_lights[0].lightProps.falloff);
+			1.0f, VkShadowmapDefaults::k_lightZNear, m_lights[0].lightProps.falloff);
 	}
 
 	depthUBO.depthMVP = depthProjectionMatrix * depthViewMatrix * modelMatrix;
-	depthMVPs[objectIndex] = depthUBO.depthMVP;
+	depthMVPs[objectIndex] = VkShadowmapDefaults::k_shadowBiasMatrix*depthUBO.depthMVP;
 	auto dataSize = sizeof(depthUBO);
 	shadowmapUniformStagingBuffer.Write(0, 0, dataSize, &depthUBO);
 

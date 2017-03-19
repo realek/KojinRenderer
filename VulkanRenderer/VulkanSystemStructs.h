@@ -159,10 +159,7 @@ namespace Vulkan
 
 	};
 
-	struct VkDepthUniformBuffer 
-	{
-		glm::mat4 depthMVP;
-	};
+
 
 	struct VkViewportDefaults
 	{
@@ -171,11 +168,28 @@ namespace Vulkan
 		static const float k_CameraFov;
 		static const float k_CameraMaxFov;
 		static const float k_CameraOrthoSize;
+		VkViewportDefaults() = delete;
+		VkViewportDefaults(const VkViewportDefaults& other) = delete;
+	};
+
+	struct VkShadowmapDefaults
+	{
 		static const float k_LightZFar;
 		static const float k_lightZNear;
 		static const float k_lightFOVOffset;
-		VkViewportDefaults() = delete;
-		VkViewportDefaults(const VkViewportDefaults& other) = delete;
+		static const glm::mat4 k_shadowBiasMatrix;
+		static const float k_depthBias;
+		static const float k_depthBiasSlope;
+		static const uint32_t k_defaultShadowmapResolution;
+		static const VkFormat k_shadowmapAttachmentFormat;
+		VkShadowmapDefaults() = delete;
+		VkShadowmapDefaults(const VkShadowmapDefaults& other) = delete;
+	};
+
+	struct VertexDepthMVP
+	{
+		glm::mat4 depthMVP;
+		VertexDepthMVP(const VertexDepthMVP& other) = delete;
 	};
 
 	struct VertexShaderMVP
@@ -192,6 +206,7 @@ namespace Vulkan
 			normal = glm::transpose(glm::inverse(modelView));
 			modelViewProjection = proj*modelView;
 		}
+		VertexShaderMVP(const VertexShaderMVP& other) = delete;
 	};
 
 	struct LightingUniformBuffer
@@ -201,28 +216,10 @@ namespace Vulkan
 		glm::vec4 ambientLightColor;
 		glm::vec4 materialDiffuse;
 		float specularity;
+		LightingUniformBuffer(const LightingUniformBuffer& other) = delete;
+
 	};
 
-	//dynamic uniform buffers - unused
-	struct DynamicUniformBuffer
-	{
-		glm::mat4 * model;
-	};
-
-	struct DynamicCameraUniformBufferObject
-	{
-		glm::mat4* view;
-		glm::mat4* projection;
-		glm::mat4* viewProjection;
-	};
-
-	struct DynamicLightingUniformBuffer
-	{
-		glm::vec4* ambientLightColor;
-		glm::vec4* perFragmentLightPos;
-		glm::vec4* perFragmentLightColor;
-		glm::vec4* perFragmentLightIntensity;
-	};
 }
 
 

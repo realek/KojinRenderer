@@ -10,4 +10,12 @@ namespace Vulkan
 		Secondary_Offscreen_Deffered_Shadows = 5,
 		RenderPassCount = 6
 	};
+
+	enum ShadowmapResolutions
+	{
+		e512 = 512,
+		e1024 = 1024,
+		e2048 = 2028,
+		e4096 = 4096
+	};
 }

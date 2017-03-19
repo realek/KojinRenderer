@@ -13,14 +13,6 @@ mesh data. Contains render&present functionality.
 
 namespace Vulkan 
 {
-//use defines for shadowmap early implementation
-#define SHADOWMAP_RESOLUTION_DEFAULT 1024
-#define SHADOWMAP_ATTACHMENT_DEFAULT k_depthFormats[0]
-#define SHADOWMAP_FILTER VK_FILTER_LINEAR
-//need to move these to light class so that lights generate the map -- shadow caster concept
-	const float depthBiasConstant = 1.25f;
-	// Slope depth bias factor, applied depending on polygon's slope
-	const float depthBiasSlope = 1.75f;
 
 	class SPIRVShader;
 	class Texture2D;
