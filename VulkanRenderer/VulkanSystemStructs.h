@@ -178,7 +178,7 @@ namespace Vulkan
 		VkViewportDefaults(const VkViewportDefaults& other) = delete;
 	};
 
-	struct UniformBufferObject
+	struct VertexShaderMVP
 	{
 		glm::mat4 model;
 		glm::mat4 modelView;
@@ -186,7 +186,7 @@ namespace Vulkan
 		glm::mat4 normal;
 		glm::mat4 depthMVP;
 
-		inline void ComputeMatrices(glm::mat4& view, glm::mat4& proj)
+		inline void ComputeMVP(glm::mat4& view, glm::mat4& proj)
 		{
 			modelView = view*model;
 			normal = glm::transpose(glm::inverse(modelView));

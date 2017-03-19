@@ -84,13 +84,17 @@ float filterPCF(vec4 sc)
 	return shadowFactor / count;
 }
 
-float ComputeShadow(vec4 ShadowCoord)
+float ComputeShadow(vec4 shadowCoord)
 {
 	float bias = 0.005;
 	float visibility = 1.0;
-	if ( texture( depthSampler, (ShadowCoord.xy/ShadowCoord.w) ).z < (ShadowCoord.z-bias)/ShadowCoord.w ){
-		visibility = 0.1;
-	}
+	
+	if((shadowCoord.x >= 0.0) && (shadowCoord.x <= 1.0f) && (shadowCoord.y >= 0.0) && (shadowCoord.y <= 1.0f) )
+		{
+				if ( texture( depthSampler, (shadowCoord.xy/shadowCoord.w) ).z < (shadowCoord.z-bias)/shadowCoord.w ){
+					visibility = 0.1;
+				}
+		}
 	return visibility;
 }
 
@@ -179,10 +183,10 @@ void main()
 
 		
 		
-		lightColor += atten*(intensity*(diffuse + specular));
+		lightColor += shadow*(atten*(intensity*(diffuse + specular)));
 	}
 		//outColor *=vec4(ubo.ambientLightColor.xyz,0.0f)+vec4(lightColor.xyz,1.0f);
-		outColor *=vec4(ubo.ambientLightColor.xyz,0.0f)+vec4(shadow*lightColor.xyz,1.0f);
+		outColor *=vec4(ubo.ambientLightColor.xyz,0.0f)+vec4(lightColor.xyz,1.0f);
 		//SHADOWMAP VISUAL
 		//outColor = vec4(1.0-vec3(LinearizeDepth(texture(depthSampler, fragTexCoord).x)), 1.0);
 		//outColor.rgb = pow(outColor.rgb,vec3(1.0f/gamma));

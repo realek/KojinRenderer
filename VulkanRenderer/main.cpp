@@ -262,7 +262,7 @@ int main()
 		light->range = 10.0f;
 		light->intensity = 1.0f;
 		light->angle = 30;
-		light->rotation = {30,0,0 };
+		light->rotation = {45,0,0 };
 		light->diffuseColor = glm::vec4(0.0, 0.65, 0.85, 1.0);
 
 	}
@@ -302,7 +302,7 @@ int main()
 		if(currentDelta>0 && currentDelta < fixedTimeStep)
 			SDL_Delay((uint32_t)currentDelta);
 		
-		mesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 0,-1,0 }, { 0,rotmod,0 }, {0.5,0.5,0.5});
+		mesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 0,0,0 }, { 0,rotmod,0 }, {0.5,0.5,0.5});
 		renderer->Load(mesh, &material);
 		planeMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 0,0,0 }, { 0, 0, 0 }, { 2,2,2 });
 		renderer->Load(planeMesh, &planeMaterial);
