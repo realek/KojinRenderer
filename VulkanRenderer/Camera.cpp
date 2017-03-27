@@ -43,13 +43,13 @@ Vulkan::Camera::Camera(VkExtent2D extent, bool perspective, VulkanRenderUnit * r
 
 void Vulkan::Camera::ComputeViewMatrix(glm::vec3 position, glm::vec3 rotation, glm::mat4 & viewMatrix)
 {
-	m_position.y *= -1;
+	position.y *= -1;
 	//auto target = position + VkWorldSpace::WORLD_FORWARD;
-	auto rotZ = glm::eulerAngleZ(glm::radians(-m_rotation.z));
-	auto rotY = glm::eulerAngleY(glm::radians(-m_rotation.y));
-	auto rotX = glm::eulerAngleX(glm::radians(m_rotation.x));
+	auto rotZ = glm::eulerAngleZ(glm::radians(-rotation.z));
+	auto rotY = glm::eulerAngleY(glm::radians(-rotation.y));
+	auto rotX = glm::eulerAngleX(glm::radians(rotation.x));
 	//glm::mat4 look = glm::lookAt(position, target, VkWorldSpace::WORLD_UP);
-	auto look = glm::translate(-m_position)*glm::scale(VkWorldSpace::AXES_WITH_LH_CORRECTION);
+	auto look = glm::translate(-position)*glm::scale(VkWorldSpace::AXES_WITH_LH_CORRECTION);
 
 	viewMatrix = (rotX*rotY*rotZ)*look;
 }
@@ -97,20 +97,11 @@ void Vulkan::Camera::SetViewport(glm::vec2 screenCoords, glm::vec2 scale)
 
 void Vulkan::Camera::LookAt(glm::vec3 target)
 {
+	target.x *= -1; //flipped Y
 	m_viewMatrix = glm::lookAt(m_position, target, VkWorldSpace::WORLD_UP);
 
-	if (m_viewMatrix[1][1] == 1.0f || m_viewMatrix[1][1] == -1.0f)
-	{
-		m_rotation.y = glm::degrees(glm::atan(m_viewMatrix[1][3], m_viewMatrix[3][4])); //might be broken
-		m_rotation.x = 0;
-		m_rotation.z = 0;
-
-	}
-	else
-	{
-
-		m_rotation.y = glm::degrees(glm::atan(-m_viewMatrix[3][1], -m_viewMatrix[1][1]));
-		m_rotation.x = glm::degrees(glm::asin(-m_viewMatrix[2][1]));
-		m_rotation.z = 0;//glm::degrees(glm::atan(m_viewMatrix[2][3], m_viewMatrix[2][2]));
-	}
+	auto cosY = glm::sqrt(1 + (m_viewMatrix[0][2] / 2.0f)); //half z
+	m_rotation.y = glm::degrees(-atan2(m_viewMatrix[0][2], cosY));
+	m_rotation.x = glm::degrees(glm::atan(-m_viewMatrix[1][2], m_viewMatrix[2][2]));
+	m_rotation.z = 0;//glm::degrees(glm::atan(m_viewMatrix[2][3], m_viewMatrix[2][2]));
 }
