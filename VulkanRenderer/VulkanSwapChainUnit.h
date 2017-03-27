@@ -29,7 +29,7 @@ namespace Vulkan
 		VkDevice m_device;
 		std::weak_ptr<VulkanImageUnit> m_imageUnit;
 		VulkanObjectContainer<VkSwapchainKHR> m_swapChain;
-		std::vector<VkSwapchainBuffer> m_swapChainBuffers;
+		std::vector<VkManagedImage> m_swapChainBuffers;
 
 	private:
 

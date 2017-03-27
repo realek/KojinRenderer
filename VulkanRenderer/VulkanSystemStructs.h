@@ -11,13 +11,12 @@ use them.
 #include <array>
 #include <map>
 #include "VkManagedBuffer.h"
-#include "VkSwapChainBuffer.h"
 #include "VkManagedImage.h"
 #include <glm\vec2.hpp>
 #include <glm\vec3.hpp>
 #include <glm\vec4.hpp>
 #include <glm\matrix.hpp>
-#define MAX_LIGHTS_PER_FRAGMENT 4
+#define MAX_LIGHTS_PER_FRAGMENT 6
 namespace Vulkan
 {
 
@@ -130,36 +129,22 @@ namespace Vulkan
 		}
 	};
 
-	struct VkCamera
-	{
-		VkViewport* viewport;
-		VkRect2D* scissor;
-		glm::mat4* view;
-		glm::mat4* proj;
-		glm::vec3* position;
-	};
-
-	struct VkLightProps
-	{
-		int32_t lightType;
-		float intensity;
-		float falloff;
-		float angle;
-
-	};
-
 	struct VkLight
 	{
 
 		glm::vec4 color;
-		glm::vec4 position;
+		glm::vec4 m_position;
 		glm::vec4 direction;
-		VkLightProps lightProps; //type,angle,range, 1.0f pad
-		//float range;
+		struct
+		{
+			int32_t lightType;
+			float intensity;
+			float falloff;
+			float angle;
+
+		}lightProps;
 
 	};
-
-
 
 	struct VkViewportDefaults
 	{
@@ -180,8 +165,11 @@ namespace Vulkan
 		static const glm::mat4 k_shadowBiasMatrix;
 		static const float k_depthBias;
 		static const float k_depthBiasSlope;
-		static const uint32_t k_defaultShadowmapResolution;
-		static const VkFormat k_shadowmapAttachmentFormat;
+		static const uint32_t k_resolution;
+		static const VkFormat k_attachmentRGBFormat;
+		static const VkFormat k_attachmentDepthFormat;
+
+	private:
 		VkShadowmapDefaults() = delete;
 		VkShadowmapDefaults(const VkShadowmapDefaults& other) = delete;
 	};

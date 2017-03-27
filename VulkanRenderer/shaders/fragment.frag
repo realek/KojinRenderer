@@ -32,7 +32,7 @@ layout(set = 1, binding = 1) uniform sampler2D depthSampler;
 layout(set = 1, binding = 2) uniform FragUbo {
 
 	//vec4 cameraPos;
-	VkLight lights[4];
+	VkLight lights[6];
 	vec4 ambientLightColor;
 	vec4 materialDiffuse;
 	float specularity;
@@ -122,7 +122,7 @@ void main()
 	vec3 D; // light forward from rotation
 	float shadow = filterPCF(shadowFragPos/shadowFragPos.w);
 	//float shadow = ComputeShadow(shadowFragPos/shadowFragPos.w);
-	for(int i = 0;i < 4;i++)
+	for(int i = 0;i < 6;i++)
 	{
 		D = normalize(-ubo.lights[i].direction.xyz);
 		if(ubo.lights[i].lightProps.lightType == 2)

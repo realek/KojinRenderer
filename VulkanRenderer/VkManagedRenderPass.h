@@ -1,13 +1,12 @@
 #pragma once
 #include "VulkanObject.h"
-#include "VulkanSystemEnums.h"
-#include "VkManagedImage.h"
 #include <memory>
 #include <vector>
 #include <map>
 namespace Vulkan
 {
-	class VkSwapchainBuffer;
+
+	class VkManagedImage;
 	class VulkanImageUnit;
 	class VulkanCommandUnit;
 	class VkManagedRenderPass
@@ -17,6 +16,7 @@ namespace Vulkan
 		VkManagedRenderPass();
 		void CreateAsForwardPass(VkDevice device, int32_t width, int32_t height, std::shared_ptr<VulkanImageUnit> imageUnit, std::shared_ptr<VulkanCommandUnit> cmdUnit, VkFormat imageFormat, VkFormat depthFormat, bool hasColorAttachment = true, bool hasDepthAttachment = true);
 		void CreateAsForwardShadowmapPass(VkDevice device, int32_t width, int32_t height, std::shared_ptr<VulkanImageUnit> imageUnit, std::shared_ptr<VulkanCommandUnit> cmdUnit, VkFormat depthFormat);
+		void AddCubeBuffers(int32_t count);
 		void AddBuffers(int32_t count);
 		void RemoveBuffers(int32_t count);
 		void AcquireCommandBuffers(int32_t count);
@@ -34,7 +34,27 @@ namespace Vulkan
 		const float k_defaultAnisotrophy = 16;
 
 	private:
-		void CreateAsSwapchainManaged(VkDevice device, std::weak_ptr<VulkanImageUnit> imageUnit, std::weak_ptr<VulkanCommandUnit> cmdUnit,VkFormat imageFormat, VkFormat depthFormat, VkExtent2D swapChainExtent, std::vector<VkSwapchainBuffer>& swapChainBuffers);
+
+		enum ColorAttachmentType
+		{
+			SingleLayer = 0,
+			MultiLayer = 1,
+			Cube = 2
+		};
+
+		enum RenderPassType
+		{
+			SwapchainManaged = 0,
+			Secondary_OnScreen_Forward = 1,
+			Secondary_Offscreen_Forward_Shadows = 2,
+			Secondary_Offscreen_Deffered_Lights = 3,
+			Secondary_Offscreen_Deffered_Normal = 4,
+			Secondary_Offscreen_Deffered_Shadows = 5,
+			RenderPassCount = 6
+		};
+
+	private:
+		void CreateAsSwapchainManaged(VkDevice device, std::weak_ptr<VulkanImageUnit> imageUnit, std::weak_ptr<VulkanCommandUnit> cmdUnit,VkFormat imageFormat, VkFormat depthFormat, VkExtent2D swapChainExtent, std::vector<VkManagedImage>& swapChainBuffers);
 		void CreateDepthAttachmentImage(int32_t count, int32_t width, int32_t height, VkFormat depthFormat, bool canSample=false);
 		void CreateColorAttachmentImage(int32_t width, int32_t height, VkFormat colorFormat);
 		

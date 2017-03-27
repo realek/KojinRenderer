@@ -152,7 +152,7 @@ void Vulkan::VulkanSwapchainUnit::CreateSwapChain(VkSurfaceKHR surface, uint32_t
 		throw std::runtime_error("Unable to create Vulkan swap chain!");
 
 
-	m_swapChainBuffers.resize(minImageCount, VkSwapchainBuffer{m_device});
+	m_swapChainBuffers.resize(minImageCount, VkManagedImage{m_device,VkManagedImageFlag::DontClear,VkManagedImageFlag::Disabled,VkManagedImageFlag::Clear });
 	std::vector<VkImage> images;
 	images.resize(minImageCount);
 	vkGetSwapchainImagesKHR(m_device, m_swapChain, &minImageCount, images.data());
@@ -179,6 +179,7 @@ inline void Vulkan::VulkanSwapchainUnit::CreateSwapChainImageViews()
 		{
 			imageUnit->CreateImageView
 			(
+				1,
 				m_swapChainBuffers[i].image,
 				swapChainImageFormat,
 				VK_IMAGE_VIEW_TYPE_2D,

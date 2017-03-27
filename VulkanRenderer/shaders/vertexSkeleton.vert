@@ -4,7 +4,6 @@
 #extension GL_ARB_shading_language_420pack : enable
 
 layout (location = 0) in vec3 inPosition;
-
 layout (binding = 0) uniform UniformBufferObject 
 {
 	mat4 depthMVP;

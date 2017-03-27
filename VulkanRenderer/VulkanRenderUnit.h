@@ -23,6 +23,7 @@ namespace Vulkan
 	class VulkanCommandUnit;
 	class Material;
 	class Light;
+	class Camera;
 	struct IMeshData;
 	class VulkanRenderUnit
 	{
@@ -33,12 +34,13 @@ namespace Vulkan
 		void RecordCommandBuffers();
 		void PresentFrame();
 		void UpdateShadowPassUniformbuffers(int objectIndex, glm::mat4 modelMatrix);
-		void UpdateMainPassUniformBuffers(int objectIndex, glm::mat4 modelTransform, Material * material, VkCamera& cam);
-		bool AddCamera(int id, VkViewport* viewport, VkRect2D* scissor, glm::mat4* view, glm::mat4* proj, glm::vec3* position);
-		void RemoveCamera(int id);
-		void ConsumeMesh(VkVertex * vertexData, uint32_t vertexCount, uint32_t * indiceData, uint32_t indiceCount, std::unordered_map<int, int> meshDrawCounts, uint32_t objectCount);
+		void UpdateMainPassUniformBuffers(int objectIndex, glm::mat4 modelMatrix, Material * material, glm::mat4& view, glm::mat4& proj);
+		void AddCamera(Camera* cam);
+		static void RemoveCamera(Vulkan::VulkanRenderUnit* renderUnit, uint32_t id);
+		void AddLight(Vulkan::Light* light);
+		static void RemoveLight(Vulkan::VulkanRenderUnit* renderUnit, uint32_t id);
+		void ConsumeMesh(VkVertex * vertexData, uint32_t vertexCount, uint32_t * indiceData, uint32_t indiceCount, std::unordered_map<uint32_t, int> meshDrawCounts, uint32_t objectCount);
 		void SetTransformsAndMaterials(std::vector<glm::mat4>& transforms, std::vector<Material*>& materials);
-		void SetLights(std::vector<Light*>& lights);
 		~VulkanRenderUnit();
 	
 	private:
@@ -59,14 +61,12 @@ namespace Vulkan
 		//meshData
 		VkManagedBuffer vertexBuffer;
 		VkManagedBuffer indiceBuffer;
-		std::unordered_map<int, int> meshPartDraws;
+		std::unordered_map<uint32_t, int> meshPartDraws;
 		std::vector<glm::mat4> meshTransforms;
 		std::vector<glm::mat4> depthMVPs;
 		std::vector<Material*> meshMaterials;
 		
-		//light uniforms
-		std::vector<VkLight> m_lights;
-		std::vector<glm::mat4> m_lightViews;
+		
 		VulkanObjectContainer<VkDescriptorSetLayout> m_descSetLayoutVertex;
 		VulkanObjectContainer<VkDescriptorSetLayout> m_descSetLayoutFragment;
 
@@ -100,8 +100,9 @@ namespace Vulkan
 		VulkanObjectContainer<VkSemaphore> m_offscreenSubmitSemaphore;
 
 		//current cameras
-		static std::map<int, VkCamera> m_cameras;
-
+		std::unordered_map<uint32_t, Camera*> m_cCameras;
+		//current lights
+		std::unordered_map<uint32_t, Light*> m_cLights;
 	private:
 
 		void CreateDescriptorSetLayout();

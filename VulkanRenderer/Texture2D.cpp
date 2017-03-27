@@ -20,7 +20,7 @@ std::weak_ptr<Vulkan::Texture2D> Vulkan::Texture2D::CreateFromFile(const char * 
 
 	 if(surf==nullptr)
 		 throw std::runtime_error("Unable to load texture image.");
-	 Texture2D::imageUnit->CreateVulkanImage(surf->w, surf->h, surf->pixels, tex->m_image);
+	 Texture2D::imageUnit->CreateVulkanManagedImage(surf->w, surf->h, surf->pixels, tex->m_image);
 	 
 	 if (storePixelData)
 		 memcpy(tex->pixels, surf->pixels, (uint32_t)(surf->w*surf->h * 4));
@@ -43,7 +43,7 @@ std::weak_ptr<Vulkan::Texture2D> Vulkan::Texture2D::GetWhiteTexture()
 	{
 		char one = (char)0xff;
 		std::vector<unsigned char> pixels(k_defaultTexturesWidth * k_defaultTexturesHeight * 4, one);
-		Texture2D::imageUnit->CreateVulkanImage(k_defaultTexturesWidth, k_defaultTexturesHeight, pixels.data(), m_whiteTexture->m_image);
+		Texture2D::imageUnit->CreateVulkanManagedImage(k_defaultTexturesWidth, k_defaultTexturesHeight, pixels.data(), m_whiteTexture->m_image);
 		textures.insert(std::make_pair(Texture2D::k_WhiteTextureNoAlphaPath.c_str(), m_whiteTexture));
 	}
 	catch(...)

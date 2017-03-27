@@ -2,7 +2,15 @@
 #include "VulkanCommandUnit.h"
 #include "VulkanSystem.h"
 #include "Texture2D.h"
+#include "VkManagedImage.h"
 
+const VkImageCopy Vulkan::VulkanImageUnit::defaultCopySettings = {
+	{ VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
+	{ 0, 0, 0 },
+	{ VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
+	{ 0, 0, 0 },
+	{ 0, 0,	1 }
+};
 Vulkan::VulkanImageUnit::VulkanImageUnit()
 {
 	Texture2D::imageUnit = this;
@@ -25,7 +33,7 @@ void Vulkan::VulkanImageUnit::Initialize(std::weak_ptr<Vulkan::VulkanSystem> sys
 	this->m_pDeviceHandle = vkSystem->GetCurrentPhysical();
 }
 
-void Vulkan::VulkanImageUnit::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, Vulkan::VulkanObjectContainer<VkImageView>& imageView)
+void Vulkan::VulkanImageUnit::CreateImageView(uint32_t layerCount, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, Vulkan::VulkanObjectContainer<VkImageView>& imageView)
 {
 	VkResult result;
 
@@ -38,14 +46,48 @@ void Vulkan::VulkanImageUnit::CreateImageView(VkImage image, VkFormat format, Vk
 	viewCI.subresourceRange.baseMipLevel = 0;
 	viewCI.subresourceRange.levelCount = 1;
 	viewCI.subresourceRange.baseArrayLayer = 0;
-	viewCI.subresourceRange.layerCount = 1;
+	viewCI.subresourceRange.layerCount = layerCount;
 
 	result = vkCreateImageView(m_deviceHandle, &viewCI, nullptr, ++imageView);
 	if (result != VK_SUCCESS)
 		throw std::runtime_error("Unable to create texture image view. Reason: " + Vulkan::VkResultToString(result));
 }
 
-void Vulkan::VulkanImageUnit::CreateImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, Vulkan::VulkanObjectContainer<VkImage>& image, Vulkan::VulkanObjectContainer<VkDeviceMemory>& imageMemory)
+void Vulkan::VulkanImageUnit::CopyImage(VkManagedImage & source, VkManagedImage & dest, uint32_t sourceWidth, uint32_t sourceHeight, uint32_t sourceDepth = 1, VkOffset3D sourceOffset = {0,0,0}, VkOffset3D destOffset = {0,0,0}, VkImageSubresourceLayers sourceLayers = {}, VkImageSubresourceLayers destLayers = {})
+{
+	VkExtent3D ext;
+	ext.width = sourceWidth;
+	ext.height = sourceHeight;
+	ext.depth = sourceDepth;
+
+	VkImageCopy copyData = defaultCopySettings;
+	copyData.extent = ext;
+	sourceLayers.aspectMask = 0;
+	if (sourceLayers.layerCount != 0 && sourceLayers.aspectMask != 0)
+		copyData.srcSubresource = sourceLayers;
+	if (sourceOffset.x != 0 || sourceOffset.y != 0 || sourceOffset.z != 0)
+		copyData.srcOffset = sourceOffset;
+	if (destLayers.layerCount != 0 && destLayers.aspectMask != 0)
+		copyData.dstSubresource = destLayers;
+	if (destOffset.x != 0 || destOffset.y != 0 || destOffset.z != 0)
+		copyData.dstOffset = destOffset;
+
+	try
+	{
+		LayoutTransition(source.image, source.format, source.layout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+		LayoutTransition(dest.image, dest.format, dest.layout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		BlitImage(source.image, dest.image, copyData);
+		LayoutTransition(source.image, source.format, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, source.layout);
+		LayoutTransition(dest.image, dest.format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dest.layout);
+	}
+	catch(...)
+	{
+		throw;
+	}
+}
+
+
+void Vulkan::VulkanImageUnit::CreateImage(uint32_t width, uint32_t height, uint32_t layerCount, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, Vulkan::VulkanObjectContainer<VkImage>& image, Vulkan::VulkanObjectContainer<VkDeviceMemory>& imageMemory)
 {
 	VkResult result;
 	VkImageCreateInfo imageCI = {};
@@ -87,7 +129,7 @@ void Vulkan::VulkanImageUnit::CreateImage(uint32_t width, uint32_t height, VkFor
 		throw std::runtime_error("Unable to bind image memory. Reason: " + Vulkan::VkResultToString(result));
 }
 
-void Vulkan::VulkanImageUnit::TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout)
+void Vulkan::VulkanImageUnit::LayoutTransition(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout)
 {
 
 	auto cmd = m_commandUnit.lock();
@@ -153,7 +195,7 @@ void Vulkan::VulkanImageUnit::TransitionImageLayout(VkImage image, VkFormat form
 	}
 }
 
-void Vulkan::VulkanImageUnit::CopyImage(VkImage source, VkImage destination, uint32_t width, uint32_t height)
+void Vulkan::VulkanImageUnit::BlitImage(VkImage source, VkImage destination, VkImageCopy copyData)
 {
 
 	auto cmd = m_commandUnit.lock();
@@ -161,27 +203,11 @@ void Vulkan::VulkanImageUnit::CopyImage(VkImage source, VkImage destination, uin
 		throw std::runtime_error("Unable to lock weak ptr to Command unit object");
 
 	VkCommandBuffer cmdBuffer = cmd->BeginOneTimeCommand();
-
-	VkImageSubresourceLayers imageSrL = {};
-	imageSrL.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	imageSrL.baseArrayLayer = 0;
-	imageSrL.mipLevel = 0;
-	imageSrL.layerCount = 1;
-
-	VkImageCopy imageCopy = {};
-	imageCopy.srcSubresource = imageSrL;
-	imageCopy.dstSubresource = imageSrL;
-	imageCopy.srcOffset = { 0, 0, 0 };
-	imageCopy.dstOffset = { 0, 0, 0 };
-	imageCopy.extent.width = width;
-	imageCopy.extent.height = height;
-	imageCopy.extent.depth = 1;
-
 	vkCmdCopyImage(
 		cmdBuffer,
 		source, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 		destination, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		1, &imageCopy
+		1, &copyData
 	);
 
 	try
@@ -194,7 +220,7 @@ void Vulkan::VulkanImageUnit::CopyImage(VkImage source, VkImage destination, uin
 	}
 }
 
-void Vulkan::VulkanImageUnit::CreateVulkanImage(uint32_t width, uint32_t height, void * pixels, Vulkan::VkManagedImage & vkManagedImg)
+void Vulkan::VulkanImageUnit::CreateVulkanManagedImage(uint32_t width, uint32_t height, void * pixels, Vulkan::VkManagedImage & vkManagedImg)
 {
 	if (vkManagedImg.image == VK_NULL_HANDLE || vkManagedImg.imageMemory == VK_NULL_HANDLE || vkManagedImg.imageView == VK_NULL_HANDLE)
 		vkManagedImg = { m_deviceHandle };
@@ -202,17 +228,56 @@ void Vulkan::VulkanImageUnit::CreateVulkanImage(uint32_t width, uint32_t height,
 	Vulkan::VulkanObjectContainer<VkImage> stagingImage{ m_deviceHandle, vkDestroyImage };
 	Vulkan::VulkanObjectContainer<VkDeviceMemory> stagingImageMemory{ m_deviceHandle, vkFreeMemory };
 
-	CreateImage(width, height, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_LINEAR, VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingImage, stagingImageMemory);
+	CreateImage(width, height, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_LINEAR, VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingImage, stagingImageMemory);
 
 		void* data;
 		vkMapMemory(m_deviceHandle, stagingImageMemory, 0, imageMemorySize, 0, &data);
 		memcpy(data, pixels, (size_t)imageMemorySize);
 		vkUnmapMemory(m_deviceHandle, stagingImageMemory);
 
-		CreateImage(width, height, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vkManagedImg.image, vkManagedImg.imageMemory);
-		TransitionImageLayout(stagingImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-		TransitionImageLayout(vkManagedImg.image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-		CopyImage(stagingImage, vkManagedImg.image, width, height);
-		TransitionImageLayout(vkManagedImg.image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-		CreateImageView(vkManagedImg.image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT, vkManagedImg.imageView);
+		CreateImage(width, height, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vkManagedImg.image, vkManagedImg.imageMemory);
+		LayoutTransition(stagingImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+		LayoutTransition(vkManagedImg.image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		VkImageCopy copy = defaultCopySettings;
+		copy.extent = { width,height,1 };
+		BlitImage(stagingImage, vkManagedImg.image, copy);
+		LayoutTransition(vkManagedImg.image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		CreateImageView(1, vkManagedImg.image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT, vkManagedImg.imageView);
+		vkManagedImg.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		vkManagedImg.format = VK_FORMAT_R8G8B8A8_UNORM;
+}
+
+void Vulkan::VulkanImageUnit::CreateVulkanManagedImageNoData(uint32_t width, uint32_t height, uint32_t layerCount,VkFormat imageFormat, VkImageUsageFlags usage, VkImageTiling tiling, VkImageAspectFlags aspect, VkImageLayout layout, Vulkan::VkManagedImage& vkManagedImg)
+{
+	try
+	{
+		CreateImage(
+			width,
+			height,
+			layerCount,
+			imageFormat,
+			tiling,
+			usage,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			vkManagedImg.image,
+			vkManagedImg.imageMemory);
+
+		CreateImageView(
+			layerCount,
+			vkManagedImg.image, imageFormat,
+			aspect,
+			vkManagedImg.imageView);
+
+		LayoutTransition(
+			vkManagedImg.image,
+			imageFormat,
+			VK_IMAGE_LAYOUT_UNDEFINED,
+			layout);
+		vkManagedImg.layout = layout;
+		vkManagedImg.format = imageFormat;
+	}
+	catch(...)
+	{
+		throw;
+	}
 }

@@ -8,6 +8,7 @@
 #include "SPIRVShader.h"
 #include <array>
 #include "Light.h"
+#include "Camera.h"
 #include "Texture2D.h"
 #include "Mesh.h"
 #include "Material.h"
@@ -15,11 +16,9 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-
-std::map<int, Vulkan::VkCamera> Vulkan::VulkanRenderUnit::m_cameras;
-
 Vulkan::VulkanRenderUnit::~VulkanRenderUnit()
 {
+	//temporary shader cleanup
 	delete(m_skeletonShader);
 	delete(m_defaultShader);
 }
@@ -74,11 +73,11 @@ void Vulkan::VulkanRenderUnit::Initialize(std::weak_ptr<Vulkan::VulkanSystem> vk
 		//testing render passes
 		m_forwardRenderShadows.CreateAsForwardShadowmapPass(
 			m_deviceHandle,
-			VkShadowmapDefaults::k_defaultShadowmapResolution,
-			VkShadowmapDefaults::k_defaultShadowmapResolution,
+			VkShadowmapDefaults::k_resolution,
+			VkShadowmapDefaults::k_resolution,
 			vkImageUnit,
 			vkCmdUnit,
-			VkShadowmapDefaults::k_shadowmapAttachmentFormat);
+			VkShadowmapDefaults::k_attachmentDepthFormat);
 		CreateShadowsGraphicsPipeline({ m_descSetLayoutVertex, m_descSetLayoutFragment });
 		m_forwardRenderShadows.AddBuffers(1);
 		m_forwardRenderShadows.AcquireCommandBuffers(1);
@@ -563,11 +562,11 @@ void Vulkan::VulkanRenderUnit::RecordCommandBuffers()
 	renderPassInfo.renderArea.offset = { 0, 0 };
 	renderPassInfo.renderArea.extent = m_forwardRenderMain.GetExtent();
 
-	for(auto camera : m_cameras)
+	for(auto camera : m_cCameras)
 	{
 		for (uint32_t j = 0; j < meshTransforms.size(); j++)
 		{
-			UpdateMainPassUniformBuffers(j, meshTransforms[j], meshMaterials[j], camera.second);
+			UpdateMainPassUniformBuffers(j, meshTransforms[j], meshMaterials[j], camera.second->m_viewMatrix,camera.second->m_projectionMatrix);
 			WriteVertexSet(m_mainPassVertDescSets[j], j);
 			WriteFragmentSets(meshMaterials[j]->diffuseTexture, m_mainPassFragDescSets[j], j);
 		}
@@ -605,8 +604,8 @@ void Vulkan::VulkanRenderUnit::RecordCommandBuffers()
 					std::array<VkDescriptorSet, 2U> descSets{ m_mainPassVertDescSets[j], m_mainPassFragDescSets[j] };
 					vkCmdBindDescriptorSets(recordBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_solidPipelineLayout, 0, static_cast<uint32_t>(descSets.size()), descSets.data(), 0, nullptr);
 
-					vkCmdSetScissor(recordBuffers[i], 0, 1, camera.second.scissor);
-					vkCmdSetViewport(recordBuffers[i], 0, 1, camera.second.viewport);
+					vkCmdSetScissor(recordBuffers[i], 0, 1, &camera.second->m_scissor);
+					vkCmdSetViewport(recordBuffers[i], 0, 1, &camera.second->m_viewPort);
 					vkCmdDrawIndexed(recordBuffers[i], meshData->indiceCount, 1, meshData->indiceRange.start, vertexOffset, 0);
 				}
 				offset += mesh.second;
@@ -622,7 +621,7 @@ void Vulkan::VulkanRenderUnit::RecordCommandBuffers()
 	}
 }
 
-void Vulkan::VulkanRenderUnit::ConsumeMesh(VkVertex * vertexData, uint32_t vertexCount, uint32_t * indiceData, uint32_t indiceCount, std::unordered_map<int, int> meshDrawCounts, uint32_t objectCount)
+void Vulkan::VulkanRenderUnit::ConsumeMesh(VkVertex * vertexData, uint32_t vertexCount, uint32_t * indiceData, uint32_t indiceCount, std::unordered_map<uint32_t, int> meshDrawCounts, uint32_t objectCount)
 {
 	
 	if (meshPartDraws != meshDrawCounts) //recreate mesh and descriptors
@@ -693,31 +692,6 @@ void Vulkan::VulkanRenderUnit::SetTransformsAndMaterials(std::vector<glm::mat4>&
 	meshMaterials = materials;
 
 
-}
-
-void Vulkan::VulkanRenderUnit::SetLights(std::vector<Light*>& lights)
-{
-	m_lights.clear();
-	m_lightViews.clear();
-	m_lights.reserve(lights.size());
-	m_lightViews.reserve(lights.size());
-	for(uint32_t i = 0 ; i < lights.size();i++)
-	{
-		VkLight light = {};
-		light.color = lights[i]->diffuseColor;
-		light.lightProps = {};
-		light.lightProps.lightType = lights[i]->GetType();
-		light.lightProps.intensity = lights[i]->intensity;
-		light.lightProps.falloff = lights[i]->range;
-		light.lightProps.angle = lights[i]->angle;
-		light.position = glm::vec4(lights[i]->position,1.0f);
-		light.position.x *= -1; // due to flipping Y axis
-		light.direction = lights[i]->GetLightForward();
-		//light.range = lights[i]->range;
-		//light.specularColor = lights[i]->specularColor;
-		m_lights.push_back(light);
-		m_lightViews.push_back(lights[i]->GetLightViewMatrix());
-	}
 }
 
 void Vulkan::VulkanRenderUnit::CreateVertexUniformBuffers(uint32_t count)
@@ -793,7 +767,7 @@ void Vulkan::VulkanRenderUnit::CreateDescriptorPool(uint32_t descriptorCount)
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	poolSizes[0].descriptorCount = descriptorCount*2;
 	poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	poolSizes[1].descriptorCount = descriptorCount*2;
+	poolSizes[1].descriptorCount = descriptorCount * 2;
 
 	VkDescriptorPoolCreateInfo poolCI = {};
 	poolCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -982,29 +956,36 @@ void Vulkan::VulkanRenderUnit::UpdateShadowPassUniformbuffers(int objectIndex, g
 
 	VertexDepthMVP depthUBO = {};
 	glm::mat4 depthViewMatrix = glm::mat4();
-	if (m_lights.size() > 0)
-		depthViewMatrix = m_lightViews[0];
-
 	glm::mat4 depthProjectionMatrix = glm::mat4();
-	if (m_lights[0].lightProps.lightType == LightType::Directional)
+	if (m_cLights.size() > 0)
 	{
-		depthProjectionMatrix = glm::ortho<float>(-15, 15, -15, 15, -30,
-			VkViewportDefaults::k_CameraZFar);
-	}
-	else if (m_lights[0].lightProps.lightType == LightType::Spot)
-	{
-		auto fov = m_lights[0].lightProps.angle +
-			VkShadowmapDefaults::k_lightFOVOffset;
-		if (fov > VkViewportDefaults::k_CameraMaxFov)
+		auto light = m_cLights.begin()->second;
+		depthViewMatrix = light->GetLightViewMatrix();
+		LightType type = light->GetType();
+		if (type == LightType::Directional)
 		{
-			fov = glm::clamp(fov, VkShadowmapDefaults::k_lightFOVOffset,
-				VkViewportDefaults::k_CameraMaxFov);
+			depthProjectionMatrix = glm::ortho<float>(-15, 15, -15, 15, -30,
+				VkViewportDefaults::k_CameraZFar);
 		}
+		else if (type == LightType::Spot)
+		{
+			auto fov = light->angle +
+				VkShadowmapDefaults::k_lightFOVOffset;
+			if (fov > VkViewportDefaults::k_CameraMaxFov)
+			{
+				fov = glm::clamp(fov, VkShadowmapDefaults::k_lightFOVOffset,
+					VkViewportDefaults::k_CameraMaxFov);
+			}
 
 
-		depthProjectionMatrix = glm::perspective(glm::radians(fov),
-			1.0f, VkShadowmapDefaults::k_lightZNear, m_lights[0].lightProps.falloff);
+			depthProjectionMatrix = glm::perspective(glm::radians(fov),
+				1.0f, VkShadowmapDefaults::k_lightZNear, light->range);
+		}
 	}
+
+
+	
+
 
 	depthUBO.depthMVP = depthProjectionMatrix * depthViewMatrix * modelMatrix;
 	depthMVPs[objectIndex] = VkShadowmapDefaults::k_shadowBiasMatrix*depthUBO.depthMVP;
@@ -1022,12 +1003,12 @@ void Vulkan::VulkanRenderUnit::UpdateShadowPassUniformbuffers(int objectIndex, g
 
 
 }
-void Vulkan::VulkanRenderUnit::UpdateMainPassUniformBuffers(int objectIndex, glm::mat4 modelMatrix,Material * material, Vulkan::VkCamera& cam) {
+void Vulkan::VulkanRenderUnit::UpdateMainPassUniformBuffers(int objectIndex, glm::mat4 modelMatrix,Material * material, glm::mat4& view, glm::mat4& proj) {
 
 
 	Vulkan::VertexShaderMVP ubo = {};
 	ubo.model = modelMatrix;
-	ubo.ComputeMVP(*cam.view,*cam.proj);
+	ubo.ComputeMVP(view,proj);
 	//ubo.ComputeMatrices(depthViewMatrix, depthProjectionMatrix);
 	//ubo.modelViewProjection = depthMVPs[objectIndex];
 	ubo.depthMVP = depthMVPs[objectIndex];
@@ -1048,20 +1029,28 @@ void Vulkan::VulkanRenderUnit::UpdateMainPassUniformBuffers(int objectIndex, glm
 	lightsUbo.materialDiffuse = material->diffuseColor;
 	lightsUbo.specularity = material->specularity;
 	
-	uint32_t size = static_cast<uint32_t>(m_lights.size());
-	for (uint32_t i = 0; i < MAX_LIGHTS_PER_FRAGMENT;i++)
+	uint32_t i = 0;
+	for(auto& l : m_cLights)
 	{
-		if (size > i)
+		if (i < MAX_LIGHTS_PER_FRAGMENT)
 		{
-			lightsUbo.lights[i] = m_lights[i];
-			lightsUbo.lights[i].direction = *cam.view*lightsUbo.lights[i].direction;
-			lightsUbo.lights[i].position = *cam.view*lightsUbo.lights[i].position;;
+			lightsUbo.lights[i] = {};
+			lightsUbo.lights[i].color = l.second->diffuseColor;
+			lightsUbo.lights[i].direction = view*l.second->GetLightForward();
+			lightsUbo.lights[i].m_position = glm::vec4(l.second->m_position, 1.0f);
+			lightsUbo.lights[i].m_position.x *= -1;
+			lightsUbo.lights[i].m_position = view*lightsUbo.lights[i].m_position;
+			lightsUbo.lights[i].lightProps = {};
+			lightsUbo.lights[i].lightProps.lightType = l.second->GetType();
+			lightsUbo.lights[i].lightProps.intensity = l.second->intensity;
+			lightsUbo.lights[i].lightProps.falloff = l.second->range;
+			lightsUbo.lights[i].lightProps.angle = l.second->angle;
+			i++;
 		}
 		else
 			break;
 	}
-
-	dataSize = sizeof(lightsUbo);
+	dataSize = sizeof(LightingUniformBuffer);
 	fragShaderLightStageBuffer.Write(0, 0, dataSize, &lightsUbo);
 
 	try
@@ -1075,34 +1064,22 @@ void Vulkan::VulkanRenderUnit::UpdateMainPassUniformBuffers(int objectIndex, glm
 
 }
 
-bool Vulkan::VulkanRenderUnit::AddCamera(int id, VkViewport* viewport, VkRect2D* scissor, glm::mat4* view, glm::mat4* proj,glm::vec3* position)
+void Vulkan::VulkanRenderUnit::AddCamera(Camera * cam)
 {
-
-	auto it = m_cameras.find(id);
-	if (it != m_cameras.end())
-		return false;
-
-	VkCamera cam = {};
-	cam.viewport = viewport;
-	cam.scissor = scissor;
-	cam.view = view;
-	cam.proj = proj;
-	cam.position = position;
-	m_cameras.insert(std::make_pair(id, cam));
-	return true;
+	m_cCameras.insert(std::make_pair(cam->id, cam));
 }
 
-void Vulkan::VulkanRenderUnit::RemoveCamera(int id)
+void Vulkan::VulkanRenderUnit::RemoveCamera(Vulkan::VulkanRenderUnit * renderUnit, uint32_t id)
 {
+	renderUnit->m_cCameras.erase(id);
+}
 
-	auto it = m_cameras.find(id);
-	if (it != m_cameras.end())
-	{
-		//m_commandUnit->FreeCommandBufferSet(id);
-		m_cameras.erase(it);
-	}
+void Vulkan::VulkanRenderUnit::AddLight(Vulkan::Light* light)
+{
+	m_cLights.insert(std::make_pair(light->id, light));
+}
 
-
-
-	
+void Vulkan::VulkanRenderUnit::RemoveLight(Vulkan::VulkanRenderUnit * renderUnit, uint32_t id)
+{
+	renderUnit->m_cLights.erase(id);
 }

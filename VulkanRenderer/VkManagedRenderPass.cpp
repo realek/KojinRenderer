@@ -1,6 +1,7 @@
 #include "VkManagedRenderPass.h"
 #include "VulkanImageUnit.h"
 #include "VulkanCommandUnit.h"
+#include "VkManagedImage.h"
 #include <array>
 
 
@@ -158,6 +159,11 @@ void Vulkan::VkManagedRenderPass::CreateAsForwardShadowmapPass(VkDevice device, 
 	this->CreateTextureSampler(k_defaultSamplerName, VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE, k_defaultAnisotrophy);
 }
 
+void Vulkan::VkManagedRenderPass::AddCubeBuffers(int32_t count)
+{
+
+}
+
 void Vulkan::VkManagedRenderPass::AddBuffers(int32_t count) 
 {
 	if (m_type == RenderPassType::SwapchainManaged)
@@ -277,7 +283,7 @@ std::vector<VkCommandBuffer> Vulkan::VkManagedRenderPass::GetCommandBuffers()
 }
 
 //TODO: improve creation, make it more parametrized
-void Vulkan::VkManagedRenderPass::CreateAsSwapchainManaged(VkDevice device, std::weak_ptr<VulkanImageUnit> imageUnit, std::weak_ptr<VulkanCommandUnit> cmdUnit,VkFormat imageFormat, VkFormat depthFormat, VkExtent2D swapChainExtent, std::vector<VkSwapchainBuffer>& swapChainBuffers)
+void Vulkan::VkManagedRenderPass::CreateAsSwapchainManaged(VkDevice device, std::weak_ptr<VulkanImageUnit> imageUnit, std::weak_ptr<VulkanCommandUnit> cmdUnit,VkFormat imageFormat, VkFormat depthFormat, VkExtent2D swapChainExtent, std::vector<VkManagedImage>& swapChainBuffers)
 {
 	m_device = device;
 	m_type = RenderPassType::SwapchainManaged;
@@ -410,27 +416,11 @@ void Vulkan::VkManagedRenderPass::CreateDepthAttachmentImage(int32_t count, int3
 			int usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 			if (canSample)
 				usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-
-			imageUnit->CreateImage(
-				width,
-				height,
-				depthFormat,
-				VK_IMAGE_TILING_OPTIMAL,
-				usage,
-				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-				m_depthImages[size].image,
-				m_depthImages[size].imageMemory);
-
-			imageUnit->CreateImageView(
-				m_depthImages[size].image, depthFormat,
+			imageUnit->CreateVulkanManagedImageNoData(
+				width, height, 1, depthFormat,usage, VK_IMAGE_TILING_OPTIMAL,
 				VK_IMAGE_ASPECT_DEPTH_BIT,
-				m_depthImages[size].imageView);
-
-			imageUnit->TransitionImageLayout(
-				m_depthImages[size].image,
-				depthFormat,
-				VK_IMAGE_LAYOUT_UNDEFINED,
-				VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+				VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+				m_depthImages[size]);
 		}
 		catch (...)
 		{

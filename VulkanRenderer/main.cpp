@@ -158,8 +158,8 @@ int main()
 
 	int appVer[3] = { 0,0,0 };
 	std::shared_ptr<Vulkan::KojinRenderer> renderer;
-	std::shared_ptr<Vulkan::KojinCamera> camera;
-	std::shared_ptr<Vulkan::KojinCamera> camera1;
+	std::shared_ptr<Vulkan::Camera> camera;
+	std::shared_ptr<Vulkan::Camera> camera1;
 	std::shared_ptr<Vulkan::Light> light;
 	std::shared_ptr<Vulkan::Mesh> mesh;
 	std::shared_ptr<Vulkan::Mesh> planeMesh;
@@ -243,6 +243,8 @@ int main()
 
 	bool running = true;
 	auto startTime = std::chrono::high_resolution_clock::now();
+	float fpsTimer = 0;
+	int fpsCount = 0;
 	float currentDelta = 0.0;
 	float fixedTimeStep = 1/60.0f;
 	float rotmod = 0;
@@ -250,9 +252,8 @@ int main()
 	//Light and camera Test
 	{
 		camera = renderer->CreateCamera({ 0, 1, -4 });
-		camera->SetRotation({0,0,0 });
 		//camera->LookAt({ 0,0,0 });
-		renderer->SetMainCamera(camera);
+		//camera->SetRotation(camera->rotation);
 		//camera1 = renderer->CreateCamera({ 0, -1, 3 });
 		//camera1->SetRotation({ 0.0,0.0,0.0 });
 		//camera->SetOrthographic();
@@ -262,7 +263,7 @@ int main()
 		light->range = 10.0f;
 		light->intensity = 1.0f;
 		light->angle = 30;
-		light->rotation = {45,0,0 };
+		light->m_rotation = {45,0,0 };
 		light->diffuseColor = glm::vec4(0.0, 0.65, 0.85, 1.0);
 
 	}
@@ -272,24 +273,21 @@ int main()
 	{
 		auto currentTime = std::chrono::high_resolution_clock::now();
 		float frameDeltaTime = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0f;
-
 		//input read
-
-		SDL_INPUT();
-		if (w) {
-			light->position.z += frameDeltaTime * 2;
-			std::cout << light->position.z;
+		if(fpsTimer>1)
+		{
+			system("CLS");
+			std::cout << "FPS: "<<fpsCount;
+			fpsCount = 0;
+			fpsTimer = 0;
 		}
-		else if (s)
-			light->position.z -= frameDeltaTime*2;
-		else if (a)
-			light->position.x -= frameDeltaTime*2;
-		else if (d)
-			light->position.x += frameDeltaTime*2;
-		else if (q)
-			light->position.y += frameDeltaTime*2;
-		else if (z)
-			light->position.y -= frameDeltaTime*2;
+		SDL_INPUT();
+		if (w) light->m_position.z += frameDeltaTime * 2;
+		else if (s) light->m_position.z -= frameDeltaTime*2;
+		else if (a) light->m_position.x -= frameDeltaTime*2;
+		else if (d) light->m_position.x += frameDeltaTime*2;
+		else if (q) light->m_position.y += frameDeltaTime*2;
+		else if (z) light->m_position.y -= frameDeltaTime*2;
 		//update objects here
 		rotmod += 5 * frameDeltaTime;
 		//renderer->Update(currentDelta);
@@ -299,8 +297,8 @@ int main()
 		//}
 		RESET_INPUT();
 		running = SDLExitInput();
-		if(currentDelta>0 && currentDelta < fixedTimeStep)
-			SDL_Delay((uint32_t)currentDelta);
+		if(frameDeltaTime < fixedTimeStep)
+			SDL_Delay((uint32_t)(fixedTimeStep-frameDeltaTime));
 		
 		mesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 0,0,0 }, { 0,rotmod,0 }, {0.5,0.5,0.5});
 		renderer->Load(mesh, &material);
@@ -316,7 +314,8 @@ int main()
 
 		renderer->Render();
 		//
-
+		fpsTimer += frameDeltaTime;
+		fpsCount++;
 		startTime = currentTime;
 
 	}

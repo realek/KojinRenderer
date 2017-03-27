@@ -54,9 +54,6 @@
     <ClCompile Include="VkManagedBuffer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="VkSwapChainBuffer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="VkManagedImage.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -122,9 +119,6 @@
     <ClInclude Include="VkManagedBuffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="VkSwapChainBuffer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="VkManagedImage.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -135,9 +129,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="VKWorldSpace.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="VulkanSystemEnums.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="VkManagedRenderPass.h">

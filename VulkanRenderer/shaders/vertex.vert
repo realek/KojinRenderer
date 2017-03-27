@@ -25,12 +25,6 @@ out gl_PerVertex {
     vec4 gl_Position;
 };
 
-const mat4 biasMat = mat4( 
-	0.5, 0.0, 0.0, 0.0,
-	0.0, 0.5, 0.0, 0.0,
-	0.0, 0.0, 1.0, 0.0,
-	0.5, 0.5, 0.0, 1.0 );
-
 void main() {
 
 	vec4 position = vec4(inPosition, 1.0);

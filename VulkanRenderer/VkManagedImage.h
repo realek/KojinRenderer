@@ -3,16 +3,28 @@
 
 namespace Vulkan
 {
+	enum VkManagedImageFlag
+	{
+		Clear,
+		DontClear,
+		Disabled
+	};
+
 	class VkManagedImage
 	{
 	public:
 
 		VkManagedImage() {};
-		VkManagedImage(VkDevice device);
+		VkManagedImage(VkDevice device, VkManagedImageFlag imageFlag = VkManagedImageFlag::Clear, VkManagedImageFlag memoryFlag = VkManagedImageFlag::Clear, VkManagedImageFlag viewFlag = VkManagedImageFlag::Clear);
 
 	public:
 		VulkanObjectContainer<VkImage> image = VK_NULL_HANDLE;
 		VulkanObjectContainer<VkImageView> imageView = VK_NULL_HANDLE;
 		VulkanObjectContainer<VkDeviceMemory> imageMemory = VK_NULL_HANDLE;
+
+	private:
+		VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
+		VkFormat format = VK_FORMAT_UNDEFINED;
+		friend class VulkanImageUnit;
 	};
 }

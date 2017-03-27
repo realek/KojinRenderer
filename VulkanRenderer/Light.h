@@ -3,7 +3,7 @@
 #include <glm\vec4.hpp>
 #include <glm\matrix.hpp>
 #include <functional>
-
+#include <atomic>
 namespace Vulkan
 {
 	enum LightType
@@ -14,25 +14,29 @@ namespace Vulkan
 	};
 
 	class KojinRenderer;
+	class VulkanRenderUnit;
+
 	class Light
 	{
 
 	public:
 		~Light();
 		glm::vec4 diffuseColor;
-		glm::vec3 position;
-		glm::vec3 rotation;
+		glm::vec3 m_position;
+		glm::vec3 m_rotation;
 		float intensity;
 		float range;
 		float angle;
+		const uint32_t id;
 		LightType GetType();
 		void SetType(LightType type);
 		glm::vec4 GetLightForward();
 		glm::mat4 GetLightViewMatrix();
 	private:
 
-		Light(KojinRenderer * rend, std::function<void(Light*, KojinRenderer*)> deleter, glm::vec3 initialPosition);
-		int m_lightType = 0;
+		static std::atomic<uint32_t> globalID;
+		Light(VulkanRenderUnit* rend, std::function<void(VulkanRenderUnit*, int)> deleter, glm::vec3 initialPosition);
+		LightType m_lightType = LightType::Point;
 		std::function<void(Light*)> m_onDestroy;
 		bool m_bound = false;
 		friend class KojinRenderer;

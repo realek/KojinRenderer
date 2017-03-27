@@ -1,5 +1,5 @@
 /*====================================================
-KojinCamera.h abstraction class used to add camera 
+Camera.h abstraction class used to add camera 
 functionality to the KojinRenderer class
 ====================================================*/
 
@@ -11,23 +11,20 @@ functionality to the KojinRenderer class
 namespace Vulkan
 {
 	class KojinRenderer;
-	class KojinCamera
+	class VulkanRenderUnit;
+	class Camera
 	{
 	public:
 
-		~KojinCamera();
+		~Camera();
+		const uint32_t id;
 		void SetOrthographic(float orthoSize = VkViewportDefaults::k_CameraOrthoSize);
 		void SetPerspective();
-		void SetPosition(glm::vec3 position);
-		void SetRotation(glm::vec3 rotation);
+		void SetPositionRotation(glm::vec3 position, glm::vec3 rotation);
 		void SetViewport(glm::vec2 screenCoords, glm::vec2 scale);
 		void LookAt(glm::vec3 target);
 	private:
-		KojinCamera(KojinRenderer * rend, 
-			std::function<void(KojinRenderer*, KojinCamera*)> bindFunction, 
-			std::function<void(KojinRenderer*, KojinCamera*)> deleter, VkExtent2D swapChainExtent, 
-			bool perspective);
-		void BindSelf();
+		Camera(VkExtent2D extent, bool perspective, VulkanRenderUnit* rend, std::function<void(VulkanRenderUnit*, uint32_t)> deleter);;
 		void ComputeViewMatrix(glm::vec3 position, glm::vec3 rotation, glm::mat4& viewMatrix);
 
 	private:
@@ -38,15 +35,13 @@ namespace Vulkan
 		float m_zNear;
 		float m_zFar;
 		VkExtent2D m_swapChainExtent;
-		VkViewport m_cameraViewport;
-		VkRect2D m_cameraScissor;
+		VkViewport m_viewPort;
+		VkRect2D m_scissor;
 		glm::mat4 m_viewMatrix;
 		glm::mat4 m_projectionMatrix;
-		int m_cameraID;
-		static std::atomic<int> globalID;
-		std::function<void(KojinCamera*)> onBind;
-		std::function<void(KojinCamera*)> onDestroy;
-
+		static std::atomic<uint32_t> globalID;
+		std::function<void(Camera*)> onDestroy;
+		friend class VulkanRenderUnit;
 		friend class KojinRenderer;
 	};
 }

@@ -26,7 +26,7 @@ wrapers.
 #endif // !RENDER_ENGINE_MAJOR_VERSION
 
 struct SDL_Window;
-//typedef uint64_t VkImageView;
+
 namespace Vulkan
 {
 	class VulkanSystem;
@@ -34,7 +34,7 @@ namespace Vulkan
 	class VulkanImageUnit;
 	class VulkanSwapchainUnit;
 	class VulkanRenderUnit;
-	class KojinCamera;
+	class Camera;
 	class Light;
 	class Mesh;
 	class Texture2D;
@@ -47,23 +47,17 @@ namespace Vulkan
 		~KojinRenderer();
 		void Load(std::weak_ptr<Vulkan::Mesh> mesh, Vulkan::Material * material);
 		std::shared_ptr<Vulkan::Light> CreateLight(glm::vec3 initialPosition);
-		std::shared_ptr<Vulkan::KojinCamera> CreateCamera(glm::vec3 initialPosition, bool perspective = true);
+		std::shared_ptr<Vulkan::Camera> CreateCamera(glm::vec3 initialPosition, bool perspective = true);
 		void Render();
 		void WaitForIdle();
-		std::weak_ptr<KojinCamera> GetMainCamera();
-		void SetMainCamera(std::shared_ptr<KojinCamera> camera);
 
 	private:
-		static void BindCamera(KojinRenderer* rend, KojinCamera* cam);
-		static void UnbindCamera(KojinRenderer* rend, KojinCamera* cam);
-		static void ClearLight(Vulkan::Light * light, Vulkan::KojinRenderer* rend);
-		std::unordered_map<int, int> m_meshDraws;
-		std::unordered_map<int, int> m_meshDrawsOld;
+
+		std::unordered_map<uint32_t, int> m_meshDraws;
 		int m_objectCount = 0;
 		std::vector<Material*> m_meshPartMaterials;
 		std::vector<glm::mat4> m_meshPartTransforms;
-		std::vector<Light*> m_lights;
-		std::weak_ptr<KojinCamera> m_mainCamera;
+
 		std::shared_ptr<VulkanSystem> m_system;
 		std::shared_ptr<VulkanCommandUnit> m_commandUnit;
 		std::shared_ptr<VulkanImageUnit> m_imageUnit;

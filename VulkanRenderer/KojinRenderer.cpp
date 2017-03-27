@@ -60,11 +60,10 @@ void Vulkan::KojinRenderer::Load(std::weak_ptr<Vulkan::Mesh> mesh, Vulkan::Mater
 	if (!lockedMesh)
 		throw std::runtime_error("Unable to lock weak ptr to provided mesh");
 
-	auto meshID = lockedMesh->GetID();
-	if (m_meshDraws.count(meshID) == 0)
-		m_meshDraws.insert(std::make_pair(meshID,1));
+	if (m_meshDraws.count(lockedMesh->id) == 0)
+		m_meshDraws.insert(std::make_pair(lockedMesh->id,1));
 	else
-		m_meshDraws[meshID]++;
+		m_meshDraws[lockedMesh->id]++;
 	m_objectCount++;
 	m_meshPartMaterials.push_back(material);
 	m_meshPartTransforms.push_back(lockedMesh->modelMatrix);
@@ -72,41 +71,26 @@ void Vulkan::KojinRenderer::Load(std::weak_ptr<Vulkan::Mesh> mesh, Vulkan::Mater
 
 std::shared_ptr<Vulkan::Light> Vulkan::KojinRenderer::CreateLight(glm::vec3 initialPosition)
 {
-	auto light = std::make_shared<Vulkan::Light>(Light(this,KojinRenderer::ClearLight,initialPosition));
+	auto light = std::make_shared<Vulkan::Light>(Light(m_renderUnit.get(),Vulkan::VulkanRenderUnit::RemoveLight,initialPosition));
 	light->m_bound = true;
-	m_lights.push_back(light.get());
+	m_renderUnit->AddLight(light.get());
 	return light;
 }
 
-void Vulkan::KojinRenderer::ClearLight(Vulkan::Light * light, Vulkan::KojinRenderer* rend)
+std::shared_ptr<Vulkan::Camera> Vulkan::KojinRenderer::CreateCamera(glm::vec3 initialPosition, bool perspective)
 {
-	rend->m_lights.erase(std::remove(rend->m_lights.begin(), rend->m_lights.end(), light), rend->m_lights.end());
-}
-
-std::shared_ptr<Vulkan::KojinCamera> Vulkan::KojinRenderer::CreateCamera(glm::vec3 initialPosition, bool perspective)
-{
-	auto camera = std::make_shared<KojinCamera>(KojinCamera(this,KojinRenderer::BindCamera,KojinRenderer::UnbindCamera,this->m_swapChainUnit->swapChainExtent2D,perspective));
-	camera->SetPosition(initialPosition);
-	camera->BindSelf();
+	auto camera = std::make_shared<Camera>(Camera(m_swapChainUnit->swapChainExtent2D, perspective, m_renderUnit.get(), VulkanRenderUnit::RemoveCamera));
+	camera->m_bound = true;
+	camera->SetPositionRotation(initialPosition, { 0,0,0 });
+	m_renderUnit->AddCamera(camera.get());
+	//camera->BindSelf();
 	return camera;
-}
-
-void Vulkan::KojinRenderer::BindCamera(KojinRenderer* rend, KojinCamera* cam)
-{
-	rend->m_renderUnit->AddCamera(cam->m_cameraID, 
-		&cam->m_cameraViewport, &cam->m_cameraScissor, 
-		&cam->m_viewMatrix, &cam->m_projectionMatrix,&cam->m_position);
-}
-
-void Vulkan::KojinRenderer::UnbindCamera(KojinRenderer* rend, KojinCamera* cam)
-{
-	rend->m_renderUnit->RemoveCamera(cam->m_cameraID);
 }
 
 void Vulkan::KojinRenderer::Render()
 {
 
-	m_renderUnit->SetLights(m_lights);
+	//m_renderUnit->SetLights(m_lights);
 	m_renderUnit->ConsumeMesh(
 		Mesh::m_iMeshVertices.data(),
 		static_cast<uint32_t>(Mesh::m_iMeshVertices.size()),
@@ -128,15 +112,3 @@ void Vulkan::KojinRenderer::WaitForIdle()
 {
 	vkDeviceWaitIdle(this->m_system->GetLogicalDevice());
 }
-
-std::weak_ptr<Vulkan::KojinCamera> Vulkan::KojinRenderer::GetMainCamera()
-{
-	return m_mainCamera;
-}
-
-void Vulkan::KojinRenderer::SetMainCamera(std::shared_ptr<KojinCamera> camera)
-{
-	m_mainCamera = camera;
-}
-
-

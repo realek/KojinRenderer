@@ -122,15 +122,15 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions);GLM_FORCE_LEFT_HANDED;GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(SolutionDir)\Dependencies\Release\SDL2_image 2.0.1\include;$(SolutionDir)\Dependencies\Release\assimp-3.3.1\include;$(VULKAN_SDK)\Include;$(VULKAN_SDK)\Third-Party\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\Dependencies\SDL_image 2.0.1\include;$(SolutionDir)\Dependencies\assimp-3.3.1\include;$(VULKAN_SDK)\Include;$(VULKAN_SDK)\Third-Party\Include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>vulkan-1.lib;SDL2.lib;SDL2_image.lib;assimp-vc140-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)\Dependencies\Development\SDL_image 2.0.1\lib\x86;$(SolutionDir)\Dependencies\Release\assimp-3.3.1\lib\;$(VULKAN_SDK)\Bin32;$(VULKAN_SDK)\Third-Party\Bin32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)\Dependencies\SDL_image 2.0.1\lib\32bit;$(SolutionDir)\Dependencies\assimp-3.3.1\lib\32bit;$(VULKAN_SDK)\Lib32;$(VULKAN_SDK)\Third-Party\Bin32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
     </Link>
   </ItemDefinitionGroup>
@@ -167,7 +167,6 @@
     <ClCompile Include="VkManagedImage.cpp" />
     <ClCompile Include="VkManagedPipeline.cpp" />
     <ClCompile Include="VkManagedRenderPass.cpp" />
-    <ClCompile Include="VkSwapChainBuffer.cpp" />
     <ClCompile Include="VulkanCommandUnit.cpp" />
     <ClCompile Include="VulkanImageUnit.cpp" />
     <ClCompile Include="VulkanRenderUnit.cpp" />
@@ -189,11 +188,9 @@
     <ClInclude Include="VkManagedImage.h" />
     <ClInclude Include="VkManagedPipeline.h" />
     <ClInclude Include="VkManagedRenderPass.h" />
-    <ClInclude Include="VkSwapChainBuffer.h" />
     <ClInclude Include="VKWorldSpace.h" />
     <ClInclude Include="VulkanHash.h" />
     <ClInclude Include="VulkanImageUnit.h" />
-    <ClInclude Include="VulkanSystemEnums.h" />
     <ClInclude Include="VulkanSystemStructs.h" />
     <ClInclude Include="VulkanCommandUnit.h" />
     <ClInclude Include="VulkanObject.h" />

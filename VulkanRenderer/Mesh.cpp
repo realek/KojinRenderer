@@ -1,6 +1,5 @@
 #include"VKWorldSpace.h"
 #include "Mesh.h"
-#include "VulkanSystemStructs.h"
 #include <assimp/Importer.hpp> 
 #include <assimp/scene.h>     
 #include <assimp/postprocess.h>
@@ -8,29 +7,25 @@
 #include <unordered_map>
 #include "VulkanHash.h"
 
-std::atomic<int> Vulkan::Mesh::globalID = 0;
-std::map<std::string,int> Vulkan::Mesh::m_loadedIMeshes;
-std::map<int,Vulkan::IMeshData> Vulkan::Mesh::m_iMeshData;
+std::atomic<uint32_t> Vulkan::Mesh::globalID = 0;
+std::map<std::string, uint32_t> Vulkan::Mesh::m_loadedIMeshes;
+std::map<uint32_t,Vulkan::IMeshData> Vulkan::Mesh::m_iMeshData;
 std::vector<Vulkan::VkVertex> Vulkan::Mesh::m_iMeshVertices;
 std::vector<uint32_t> Vulkan::Mesh::m_iMeshIndices;
 const std::string Vulkan::Mesh::PLANE_PATH = "KJ_PATH_QUAD_INTERNAL";
 const std::string Vulkan::Mesh::CUBE_PATH = "KJ_PATH_CUBE_INTERNAL";
 const std::string Vulkan::Mesh::SPHERE_PATH = "KJ_PATH_SPHERE_INTERNAL";
 
-Vulkan::Mesh::Mesh() : m_meshID(++globalID)
+Vulkan::Mesh::Mesh() : id(++globalID)
 {
 }
 
-Vulkan::Mesh::Mesh(int meshID)
+Vulkan::Mesh::Mesh(uint32_t meshID) : id(meshID)
 {
-	m_meshID = meshID;
+
 }
 
-int Vulkan::Mesh::GetID()
-{
-	return m_meshID;
-}
-Vulkan::IMeshData * Vulkan::Mesh::GetMeshData(int meshID)
+Vulkan::IMeshData * Vulkan::Mesh::GetMeshData(uint32_t meshID)
 {
 	return &Mesh::m_iMeshData[meshID];
 }
@@ -304,8 +299,8 @@ void Vulkan::Mesh::WriteToInternalMesh(const char* filepath,std::vector<Vulkan::
 	meshData.vertexRange.end = static_cast<uint32_t>(m_iMeshVertices.size());
 	meshData.vertexCount = static_cast<uint32_t>(verts.size());
 	meshData.indiceCount = static_cast<uint32_t>(indices.size());
-	m_iMeshData.insert(std::make_pair(mesh->m_meshID, meshData));
-	m_loadedIMeshes.insert(std::make_pair(filepath, mesh->m_meshID));
+	m_iMeshData.insert(std::make_pair(mesh->id, meshData));
+	m_loadedIMeshes.insert(std::make_pair(filepath, mesh->id));
 
 }
 

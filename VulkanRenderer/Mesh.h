@@ -40,21 +40,20 @@ namespace Vulkan
 		static std::shared_ptr<Vulkan::Mesh> GetPlane();
 		~Mesh();
 		glm::mat4 modelMatrix;
-		int GetID();
-
-		static IMeshData * GetMeshData(int meshID);
+		const uint32_t id;
+		static IMeshData * GetMeshData(uint32_t meshID);
 	private:
 		Mesh();
-		Mesh(int meshID);
+		Mesh(uint32_t meshID);
 		static void WriteToInternalMesh(const char* filepath, std::vector<Vulkan::VkVertex>& verts, std::vector<uint32_t>& indices, std::shared_ptr<Vulkan::Mesh>& mesh);
 	
 	private:
-		int m_meshID;
-		static std::atomic<int> globalID;
+
+		static std::atomic<uint32_t> globalID;
 		//default assimp import flags
 		static const int defaultFlags = aiProcess_FlipWindingOrder | aiProcess_Triangulate | aiProcess_PreTransformVertices | aiProcess_CalcTangentSpace | aiProcess_GenSmoothNormals;
-		static std::map<std::string, int> m_loadedIMeshes;
-		static std::map<int,IMeshData> m_iMeshData;
+		static std::map<std::string, uint32_t> m_loadedIMeshes;
+		static std::map<uint32_t,IMeshData> m_iMeshData;
 		static std::vector<VkVertex> m_iMeshVertices;
 		static std::vector<uint32_t> m_iMeshIndices;
 		static const std::string PLANE_PATH;
