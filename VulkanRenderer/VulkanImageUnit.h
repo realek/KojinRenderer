@@ -22,7 +22,7 @@ namespace Vulkan
 		void CopyImage(VkManagedImage * source, VkManagedImage * dest, VkCommandBuffer cmdBuffer, uint32_t sourceWidth, uint32_t sourceHeight, uint32_t sourceDepth, VkOffset3D sourceOffset, VkOffset3D destOffset, VkImageSubresourceLayers sourceLayers, VkImageSubresourceLayers destLayers);
 		void CreateVulkanManagedImage(uint32_t width, uint32_t height,void* pixels, Vulkan::VkManagedImage& vkManagedImage);
 		void CreateVulkanManagedImageNoData(uint32_t width, uint32_t height, uint32_t layerCount, VkFormat imageFormat, VkImageUsageFlags usage, VkImageTiling tiling, VkImageAspectFlags aspect, VkImageLayout layout, Vulkan::VkManagedImage & vkManagedImg);
-		void LayoutTransition(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+		void LayoutTransition(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout,VkCommandBuffer cmdBuffer = VK_NULL_HANDLE);
 	
 	private:
 		void CreateImage(uint32_t width, uint32_t height, uint32_t layerCount, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, Vulkan::VulkanObjectContainer<VkImage>& image, Vulkan::VulkanObjectContainer<VkDeviceMemory>& imageMemory);

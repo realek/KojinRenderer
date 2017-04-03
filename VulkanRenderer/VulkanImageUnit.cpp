@@ -74,11 +74,26 @@ void Vulkan::VulkanImageUnit::CopyImage(VkManagedImage * source, VkManagedImage 
 
 	try
 	{
-		LayoutTransition(source->image, source->m_format, source->m_layout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-		LayoutTransition(dest->image, dest->m_format, dest->m_layout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		if (commandBuffer != VK_NULL_HANDLE)
+		{
+			VkCommandBufferBeginInfo cmdBufferBI = {};
+			cmdBufferBI.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+			vkBeginCommandBuffer(commandBuffer, &cmdBufferBI);
+		}
+
+		LayoutTransition(source->image, source->m_format, source->m_layout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,commandBuffer);
+		LayoutTransition(dest->image, dest->m_format, dest->m_layout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,commandBuffer);
 		BlitImage(source->image, dest->image, copyData,commandBuffer);
-		LayoutTransition(source->image, source->m_format, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, source->m_layout);
-		LayoutTransition(dest->image, dest->m_format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dest->m_layout);
+		LayoutTransition(source->image, source->m_format, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, source->m_layout,commandBuffer);
+		LayoutTransition(dest->image, dest->m_format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dest->m_layout,commandBuffer);
+
+		if(commandBuffer!= VK_NULL_HANDLE)
+		{
+			VkResult result = vkEndCommandBuffer(commandBuffer);
+			if (result != VK_SUCCESS) {
+				throw std::runtime_error("Command buffer recording failed. Reason: " + VkResultToString(result));
+			}
+		}
 	}
 	catch(...)
 	{
@@ -128,14 +143,22 @@ void Vulkan::VulkanImageUnit::CreateImage(uint32_t width, uint32_t height, uint3
 		throw std::runtime_error("Unable to bind image memory. Reason: " + Vulkan::VkResultToString(result));
 }
 
-void Vulkan::VulkanImageUnit::LayoutTransition(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout)
+void Vulkan::VulkanImageUnit::LayoutTransition(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, VkCommandBuffer cmdBuffer)
 {
 
-	auto cmd = m_commandUnit.lock();
-	if (!cmd)
-		throw std::runtime_error("Unable to lock weak ptr to Command Unit object.");
+	bool submit = false;
+	std::shared_ptr<VulkanCommandUnit> cmd = nullptr;
 
-	VkCommandBuffer commandBuffer = cmd->BeginOneTimeCommand();
+	if(cmdBuffer==VK_NULL_HANDLE)
+	{
+		cmd = m_commandUnit.lock();
+		if (!cmd)
+			throw std::runtime_error("Unable to lock weak ptr to Command Unit object.");
+		cmdBuffer = cmd->BeginOneTimeCommand();
+		submit = true;
+	}
+
+
 	VkImageMemoryBarrier imageMemoryBarrier = {};
 	imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 	imageMemoryBarrier.oldLayout = oldLayout;
@@ -207,41 +230,43 @@ void Vulkan::VulkanImageUnit::LayoutTransition(VkImage image, VkFormat format, V
 	else
 		throw std::invalid_argument("Layout transition not supported.");
 
-	vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+	vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
 		0,
 		0, nullptr,
 		0, nullptr,
 		1, &imageMemoryBarrier
 	);
 
-	try
+	if (submit)
 	{
-		cmd->EndOneTimeCommand(commandBuffer);
+		try
+		{
+
+			cmd->EndOneTimeCommand(cmdBuffer);
+
+		}
+		catch (...)
+		{
+			throw;
+		}
 	}
-	catch (...)
-	{
-		throw;
-	}
+
 }
 
 void Vulkan::VulkanImageUnit::BlitImage(VkImage source, VkImage destination, VkImageCopy copyData, VkCommandBuffer cmdBuffer)
 {
 
-	auto cmd = m_commandUnit.lock();
-	if (!cmd)
-		throw std::runtime_error("Unable to lock weak ptr to Command unit object");
-
 	bool submit = false;
+	std::shared_ptr<VulkanCommandUnit> cmd = nullptr;
+
+
 	if (cmdBuffer == VK_NULL_HANDLE)
 	{
+		cmd = m_commandUnit.lock();
+		if (!cmd)
+			throw std::runtime_error("Unable to lock weak ptr to Command unit object");
 		cmdBuffer = cmd->BeginOneTimeCommand();
 		submit = true;
-	}
-	else
-	{
-		VkCommandBufferBeginInfo cmdBufferBI = {};
-		cmdBufferBI.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		vkBeginCommandBuffer(cmdBuffer, &cmdBufferBI);
 	}
 
 
@@ -253,29 +278,19 @@ void Vulkan::VulkanImageUnit::BlitImage(VkImage source, VkImage destination, VkI
 	);
 
 
-
-	try
+	if (submit)
 	{
-		if (submit)
+		try
 		{
+
 			cmd->EndOneTimeCommand(cmdBuffer);
-		}
 
-		else
+		}
+		catch (...)
 		{
-			VkResult result = vkEndCommandBuffer(cmdBuffer);
-			if (result != VK_SUCCESS) {
-				throw std::runtime_error("Command buffer recording failed. Reason: " + VkResultToString(result));
-			}
+			throw;
 		}
-
 	}
-	catch (...)
-	{
-		throw;
-	}
-
-
 }
 
 void Vulkan::VulkanImageUnit::CreateVulkanManagedImage(uint32_t width, uint32_t height, void * pixels, Vulkan::VkManagedImage & vkManagedImg)

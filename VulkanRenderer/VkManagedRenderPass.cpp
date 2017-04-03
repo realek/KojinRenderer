@@ -34,7 +34,7 @@ void Vulkan::VkManagedRenderPass::CreateAsForwardPass(VkDevice device, int32_t w
 	colorAttachmentDesc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	colorAttachmentDesc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	colorAttachmentDesc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	colorAttachmentDesc.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	colorAttachmentDesc.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 	VkAttachmentDescription depthAttachmentDesc = {};
 	depthAttachmentDesc.format = depthFormat;

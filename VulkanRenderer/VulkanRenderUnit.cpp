@@ -275,7 +275,8 @@ void Vulkan::VulkanRenderUnit::PresentFrame() {
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = shadowSignalSemaphores;
 	result = vkQueueSubmit(m_deviceQueues.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-
+	if (result != VK_SUCCESS)
+		throw std::runtime_error("Unable to submit draw command buffer. Reason: " + Vulkan::VkResultToString(result));
 
 	cmdBuff = m_fwdSolidPass.GetCommandBuffer();
 	VkSemaphore solidPassSignalsemaphores[] = { m_fwdSolidPass.GetSemaphore() };
@@ -350,8 +351,8 @@ void Vulkan::VulkanRenderUnit::RecordPass(VkManagedRenderPass * pass, VkManagedP
 	VkCommandBuffer cmdBuffer = VK_NULL_HANDLE;
 	if (record == RecordMode::Single_FirstPosition)
 	{
-		cmdBuffer = pass->GetCommandBuffer(0);
-		renderPassInfo.framebuffer = pass->GetFrameBuffer(0);
+		cmdBuffer = pass->GetCommandBuffer();
+		renderPassInfo.framebuffer = pass->GetFrameBuffer();
 
 		vkBeginCommandBuffer(cmdBuffer, &beginInfo);
 
