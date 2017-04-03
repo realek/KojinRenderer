@@ -9,7 +9,6 @@ namespace Vulkan
 {
 	class VulkanSystem;
 	class VulkanImageUnit;
-	class VkManagedRenderPass;
 	class VulkanCommandUnit;
 	class VulkanSwapchainUnit
 	{
@@ -27,7 +26,6 @@ namespace Vulkan
 		Vulkan::VkManagedImage * GetFrameBuffer(size_t index);
 		VkCommandBuffer GetCommandBuffer(size_t index);
 		size_t CommandBufferCount();
-		void SetupMainRenderPass(VkManagedRenderPass& pass, std::weak_ptr<VulkanCommandUnit> cmdUnit);
 
 	private:
 		bool m_mainPassCreated = false;

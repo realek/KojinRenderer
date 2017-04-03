@@ -3,7 +3,6 @@
 #include "VulkanSwapChainUnit.h"
 #include "VulkanImageUnit.h"
 #include "VulkanCommandUnit.h"
-#include "VkManagedRenderPass.h"
 #include "VulkanObjectUtils.h"
 Vulkan::VulkanSwapchainUnit::VulkanSwapchainUnit()
 {
@@ -55,14 +54,6 @@ VkSemaphore Vulkan::VulkanSwapchainUnit::GetPresentSemaphore()
 VkSemaphore Vulkan::VulkanSwapchainUnit::GetProcessingSemaphore()
 {
 	return m_processingSemaphore;
-}
-//Sets up a render pass as the primary render pass used by the swap chain, render pass object is recreated
-void Vulkan::VulkanSwapchainUnit::SetupMainRenderPass(Vulkan::VkManagedRenderPass & pass, std::weak_ptr<VulkanCommandUnit> cmdUnit)
-{
-	if (m_mainPassCreated)
-		throw std::runtime_error("Main pass was already created");
-	pass.CreateAsSwapchainManaged(m_device, m_imageUnit, cmdUnit,swapChainImageFormat, depthFormat, swapChainExtent2D,m_swapChainBuffers);
-	m_mainPassCreated = true;
 }
 
 VkSurfaceFormatKHR Vulkan::VulkanSwapchainUnit::GetSupportedSurfaceFormat(const std::vector<VkSurfaceFormatKHR>* surfaceFormats)

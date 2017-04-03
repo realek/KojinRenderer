@@ -29,8 +29,8 @@ namespace Vulkan
 	
 	enum RecordMode
 	{
-		Single_FirstPosition,
-		Multiple
+		SingleFB,
+		MultipleFB
 	};
 	
 	class VulkanRenderUnit
@@ -41,7 +41,7 @@ namespace Vulkan
 		void Initialize(std::weak_ptr<Vulkan::VulkanSystem> vkSystem, std::shared_ptr<VulkanImageUnit> vkImageUnit, std::shared_ptr<Vulkan::VulkanCommandUnit> vkCmdUnit, std::shared_ptr<Vulkan::VulkanSwapchainUnit> vkSCUnit);
 		void RecordCommandBuffers();
 		void PresentFrame();
-		void RecordPass(VkManagedRenderPass * pass, VkManagedPipeline * pipeline, VkViewport viewport, VkRect2D scissor, VkClearValue clearValues[], uint32_t clearValueCount, std::vector<VkDescriptorSet>* descriptorSets[], uint32_t setCount, RecordMode record = RecordMode::Multiple);	
+		void RecordPass(VkManagedRenderPass * pass, VkManagedPipeline * pipeline, VkViewport viewport, VkRect2D scissor, VkClearValue clearValues[], uint32_t clearValueCount, std::vector<VkDescriptorSet>* descriptorSets[], uint32_t setCount, RecordMode record = RecordMode::MultipleFB);	
 		void UpdateShadowPassUniformbuffers(int objectIndex, glm::mat4 modelMatrix);
 		void UpdateMainPassUniformBuffers(int objectIndex, glm::mat4 modelMatrix, Material * material, glm::mat4& view, glm::mat4& proj);
 		void AddCamera(Camera* cam);
@@ -64,7 +64,6 @@ namespace Vulkan
 		std::weak_ptr<Vulkan::VulkanImageUnit> m_imageUnit;
 
 		//renderPasses
-		VkManagedRenderPass m_fwdMain;
 		VkManagedRenderPass m_fwdSolidPass;
 		VkManagedRenderPass m_fwdOffScreenProjShadows;
 		VkManagedRenderPass m_fwdOffScreenOmniShadows;

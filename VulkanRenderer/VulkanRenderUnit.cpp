@@ -40,7 +40,7 @@ void Vulkan::VulkanRenderUnit::Initialize(std::weak_ptr<Vulkan::VulkanSystem> vk
 	{
 		//descriptor set layout is the same as the default shaders // TODO: needs GLSL lang implementation
 		this->CreateDescriptorSetLayout();
-		vkSCUnit->SetupMainRenderPass(m_fwdMain,vkCmdUnit);
+//		vkSCUnit->SetupMainRenderPass(m_fwdMain,vkCmdUnit);
 		//secondary cameras render pass
 		m_fwdSolidPass.CreateAsForwardPass
 		(
@@ -54,7 +54,6 @@ void Vulkan::VulkanRenderUnit::Initialize(std::weak_ptr<Vulkan::VulkanSystem> vk
 			true,
 			true
 		);
-		m_fwdSolidPass.AcquireCommandBuffers(1);
 		m_fwdSolidPass.AddBuffers(1);
 		//offscreen shadows render pass
 		m_fwdOffScreenProjShadows.CreateAsForwardShadowmapPass(
@@ -65,7 +64,6 @@ void Vulkan::VulkanRenderUnit::Initialize(std::weak_ptr<Vulkan::VulkanSystem> vk
 			vkCmdUnit,
 			VkShadowmapDefaults::k_attachmentDepthFormat);
 		m_fwdOffScreenProjShadows.AddBuffers(1);
-		m_fwdOffScreenProjShadows.AcquireCommandBuffers(1);
 
 		//default pipelines
 		m_solidPipeline.Build(
@@ -349,7 +347,7 @@ void Vulkan::VulkanRenderUnit::RecordPass(VkManagedRenderPass * pass, VkManagedP
 	renderPassInfo.renderArea.offset = { 0, 0 };
 	renderPassInfo.renderArea.extent = pass->GetExtent();
 	VkCommandBuffer cmdBuffer = VK_NULL_HANDLE;
-	if (record == RecordMode::Single_FirstPosition)
+	if (record == RecordMode::SingleFB)
 	{
 		cmdBuffer = pass->GetCommandBuffer();
 		renderPassInfo.framebuffer = pass->GetFrameBuffer();
@@ -453,12 +451,13 @@ void Vulkan::VulkanRenderUnit::RecordPass(VkManagedRenderPass * pass, VkManagedP
 	}
 	else
 	{
+		cmdBuffer = pass->GetCommandBuffer();
+		vkBeginCommandBuffer(cmdBuffer, &beginInfo);
 		size_t fbCount = pass->FramebufferCount();
 		for (size_t i = 0; i < fbCount; i++)
 		{
 			renderPassInfo.framebuffer = pass->GetFrameBuffer(i);
-			cmdBuffer = pass->GetCommandBuffer(i);
-			vkBeginCommandBuffer(cmdBuffer, &beginInfo);
+
 
 			vkCmdBeginRenderPass(cmdBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -500,11 +499,10 @@ void Vulkan::VulkanRenderUnit::RecordPass(VkManagedRenderPass * pass, VkManagedP
 				offset += mesh.second;
 			}
 			vkCmdEndRenderPass(cmdBuffer);
-
-			VkResult result = vkEndCommandBuffer(cmdBuffer);
-			if (result != VK_SUCCESS) {
-				throw std::runtime_error("Command buffer recording failed. Reason: " + VkResultToString(result));
-			}
+		}
+		VkResult result = vkEndCommandBuffer(cmdBuffer);
+		if (result != VK_SUCCESS) {
+			throw std::runtime_error("Command buffer recording failed. Reason: " + VkResultToString(result));
 		}
 	}
 }
@@ -542,7 +540,7 @@ void Vulkan::VulkanRenderUnit::RecordCommandBuffers()
 		lightVP, lightScissor, 
 		clearValues.data(), 
 		static_cast<uint32_t>(clearValues.size()), 
-		sets.data(), 1, RecordMode::Single_FirstPosition);
+		sets.data(), 1, RecordMode::SingleFB);
 
 	//================================================= MAIN PASS ==================================== //
 
@@ -576,7 +574,7 @@ void Vulkan::VulkanRenderUnit::RecordCommandBuffers()
 			static_cast<uint32_t>(clearValues.size()),
 			sets.data(),
 			static_cast<uint32_t>(sets.size()),
-			RecordMode::Single_FirstPosition);
+			RecordMode::SingleFB);
 
 		auto extent = m_fwdSolidPass.GetExtent();
 		for (size_t i = 0; i < scU->CommandBufferCount(); i++)
@@ -877,7 +875,7 @@ void Vulkan::VulkanRenderUnit::WriteFragmentSets(VkImageView textureImageView, V
 	VkDescriptorImageInfo diffuseTextureInfo = {};
 	diffuseTextureInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	diffuseTextureInfo.imageView = textureImageView;
-	diffuseTextureInfo.sampler = m_fwdMain.GetSampler(m_fwdMain.k_defaultSamplerName);
+	diffuseTextureInfo.sampler = m_fwdSolidPass.GetSampler(m_fwdSolidPass.k_defaultSamplerName);
 
 	VkDescriptorImageInfo shadowMaptexture = {};
 	shadowMaptexture.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;

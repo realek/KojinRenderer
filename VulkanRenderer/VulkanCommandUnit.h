@@ -14,8 +14,8 @@ namespace Vulkan
 	{
 	public:
 		void Initialize(std::weak_ptr<VulkanSystem> system);
-		std::vector<VkCommandBuffer> CreateCommandBufferSet(VkRenderPass setID, uint32_t count, VkCommandBufferLevel bufferLevel);
-		std::vector<VkCommandBuffer> GetBufferSet(VkRenderPass setID);
+		VkCommandBuffer CreateCommandBufferSet(VkRenderPass setID, VkCommandBufferLevel bufferLevel);
+		VkCommandBuffer GetBufferSet(VkRenderPass setID);
 		std::vector<VkCommandBuffer> GetSwapChainCommandBuffers();
 		void FreeCommandBufferSet(VkRenderPass setID);
 		VkCommandBuffer BeginOneTimeCommand();
@@ -32,7 +32,7 @@ namespace Vulkan
 		VkDevice m_device;
 		int32_t m_swapchainCmdCount;
 		VulkanObjectContainer<VkCommandPool> m_commandPool;
-		std::map<VkRenderPass, std::vector<VkCommandBuffer>> m_cmdUnitBufferSets;
+		std::map<VkRenderPass, VkCommandBuffer> m_cmdUnitBufferSets;
 		std::vector<VkCommandBuffer> m_swapChainCommandBuffers;
 	};
 }

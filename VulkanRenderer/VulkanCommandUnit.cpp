@@ -42,7 +42,7 @@ void Vulkan::VulkanCommandUnit::CreateSwapChainCommandBuffers(uint32_t count)
 	}
 }
 
-std::vector<VkCommandBuffer> Vulkan::VulkanCommandUnit::CreateCommandBufferSet(VkRenderPass setID, uint32_t count,VkCommandBufferLevel bufferLevel)
+VkCommandBuffer Vulkan::VulkanCommandUnit::CreateCommandBufferSet(VkRenderPass setID,VkCommandBufferLevel bufferLevel)
 {
 	if (m_cmdUnitBufferSets.size() != 0)
 	{
@@ -55,18 +55,16 @@ std::vector<VkCommandBuffer> Vulkan::VulkanCommandUnit::CreateCommandBufferSet(V
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	allocInfo.commandPool = m_commandPool;
 	allocInfo.level = bufferLevel;
-	allocInfo.commandBufferCount = count;
-	std::vector<VkCommandBuffer> buffers;
-	buffers.resize(count);
-
-	if (vkAllocateCommandBuffers(m_device, &allocInfo, buffers.data()) != VK_SUCCESS) {
+	allocInfo.commandBufferCount = 1;
+	VkCommandBuffer buffer;
+	if (vkAllocateCommandBuffers(m_device, &allocInfo, &buffer) != VK_SUCCESS) {
 		throw std::runtime_error("failed to allocate command buffers!");
 	}
-	m_cmdUnitBufferSets.insert(std::make_pair(setID,buffers));
-	return buffers;
+	m_cmdUnitBufferSets.insert(std::make_pair(setID,buffer));
+	return buffer;
 }
 
-std::vector<VkCommandBuffer> Vulkan::VulkanCommandUnit::GetBufferSet(VkRenderPass setID)
+VkCommandBuffer Vulkan::VulkanCommandUnit::GetBufferSet(VkRenderPass setID)
 {
 	return m_cmdUnitBufferSets[setID];
 }
@@ -78,7 +76,7 @@ std::vector<VkCommandBuffer> Vulkan::VulkanCommandUnit::GetSwapChainCommandBuffe
 
 void Vulkan::VulkanCommandUnit::FreeCommandBufferSet(VkRenderPass setID)
 {
-	vkFreeCommandBuffers(m_device, m_commandPool, static_cast<uint32_t>(m_cmdUnitBufferSets[setID].size()), m_cmdUnitBufferSets[setID].data());
+	vkFreeCommandBuffers(m_device, m_commandPool, 1, &m_cmdUnitBufferSets[setID]);
 	m_cmdUnitBufferSets.erase(setID);
 }
 
