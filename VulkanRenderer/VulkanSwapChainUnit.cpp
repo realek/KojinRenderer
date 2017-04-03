@@ -4,20 +4,22 @@
 #include "VulkanImageUnit.h"
 #include "VulkanCommandUnit.h"
 #include "VkManagedRenderPass.h"
-
+#include "VulkanObjectUtils.h"
 Vulkan::VulkanSwapchainUnit::VulkanSwapchainUnit()
 {
 }
 
-void Vulkan::VulkanSwapchainUnit::Initialize(std::weak_ptr<VulkanSystem> vkSystem, std::shared_ptr<VulkanImageUnit> vkImageUnit)
-{		
+void Vulkan::VulkanSwapchainUnit::Initialize(std::weak_ptr<VulkanSystem> vkSystem, std::shared_ptr<VulkanCommandUnit> vkCmdUnit, std::shared_ptr<VulkanImageUnit> vkImageUnit)
+{
 	auto sys = vkSystem.lock();
-	if(!sys)
+	if (!sys)
 		throw std::runtime_error("Unable to lock weak ptr to Vulkan System object");
 	auto swapChainSupport = sys->GetSwapChainSupportData();
 	m_device = sys->GetLogicalDevice();
 	int width, height;
 	sys->GetScreenSizes(width, height);
+	m_commandBuffers = vkCmdUnit->GetSwapChainCommandBuffers();
+	m_cmdBufferCount = m_commandBuffers.size();
 	m_imageUnit = vkImageUnit;
 	CreateSwapChain(
 		sys->GetSurface(),
@@ -26,47 +28,36 @@ void Vulkan::VulkanSwapchainUnit::Initialize(std::weak_ptr<VulkanSystem> vkSyste
 		swapChainSupport->capabilities.currentTransform,
 		GetSupportedSurfaceFormat(&swapChainSupport->formats),
 		GetSupportedPresentMode(&swapChainSupport->presentModes),
-		GetExtent2D(&swapChainSupport->capabilities,width,height),
+		GetExtent2D(&swapChainSupport->capabilities, width, height),
 		sys->GetQueueFamilies()
-		);
+	);
 	depthFormat = sys->GetDepthFormat();
 	CreateSwapChainImageViews();
-	//CreateDepthImage();
 
+	m_presentSemaphore = VulkanObjectContainer<VkSemaphore>{ m_device,vkDestroySemaphore };
+	m_processingSemaphore = VulkanObjectContainer<VkSemaphore>{ m_device,vkDestroySemaphore };
+	MakeSemaphore(m_presentSemaphore, m_device);
+	MakeSemaphore(m_processingSemaphore, m_device);
 }
 
-//void Vulkan::VulkanSwapchainUnit::CreateSwapChainFrameBuffers(VkRenderPass renderPass)
-//{
-//	m_swapchainFrameBuffers.resize(m_swapChainBuffers.size(), Vulkan::VulkanObjectContainer<VkFramebuffer>{m_device, vkDestroyFramebuffer});
-//
-//	for (size_t i = 0; i < m_swapChainBuffers.size(); i++) {
-//		std::array<VkImageView, 2> attachments = {
-//			m_swapChainBuffers[i].imageView,
-//			m_depthImage.imageView
-//		};
-//
-//		VkFramebufferCreateInfo framebufferInfo = {};
-//		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-//		framebufferInfo.renderPass = renderPass;
-//		framebufferInfo.attachmentCount = attachments.size();
-//		framebufferInfo.pAttachments = attachments.data();
-//		framebufferInfo.width = m_swapChainExtent2D.width;
-//		framebufferInfo.height = m_swapChainExtent2D.height;
-//		framebufferInfo.layers = 1;
-//
-//		if (vkCreateFramebuffer(m_device, &framebufferInfo, nullptr, ++(m_swapchainFrameBuffers[i])) != VK_SUCCESS) {
-//			throw std::runtime_error("Unable to create frame buffers");
-//		}
-//	}
-//}
-
-VkSwapchainKHR Vulkan::VulkanSwapchainUnit::SwapChain()
+VkSwapchainKHR Vulkan::VulkanSwapchainUnit::GetSwapChain()
 {
 	return m_swapChain;
 }
 
+//Get Frame presented semaphore
+VkSemaphore Vulkan::VulkanSwapchainUnit::GetPresentSemaphore()
+{
+	return m_presentSemaphore;
+}
+
+//Get Processing semaphore for performing blits onto the swap chain frame buffers.
+VkSemaphore Vulkan::VulkanSwapchainUnit::GetProcessingSemaphore()
+{
+	return m_processingSemaphore;
+}
 //Sets up a render pass as the primary render pass used by the swap chain, render pass object is recreated
-void Vulkan::VulkanSwapchainUnit::SetMainRenderPass(Vulkan::VkManagedRenderPass & pass, std::weak_ptr<VulkanCommandUnit> cmdUnit)
+void Vulkan::VulkanSwapchainUnit::SetupMainRenderPass(Vulkan::VkManagedRenderPass & pass, std::weak_ptr<VulkanCommandUnit> cmdUnit)
 {
 	if (m_mainPassCreated)
 		throw std::runtime_error("Main pass was already created");
@@ -74,7 +65,7 @@ void Vulkan::VulkanSwapchainUnit::SetMainRenderPass(Vulkan::VkManagedRenderPass 
 	m_mainPassCreated = true;
 }
 
-inline VkSurfaceFormatKHR Vulkan::VulkanSwapchainUnit::GetSupportedSurfaceFormat(const std::vector<VkSurfaceFormatKHR>* surfaceFormats)
+VkSurfaceFormatKHR Vulkan::VulkanSwapchainUnit::GetSupportedSurfaceFormat(const std::vector<VkSurfaceFormatKHR>* surfaceFormats)
 {
 	if (surfaceFormats->size() == 1 && surfaceFormats->at(0).format == VK_FORMAT_UNDEFINED)
 		return{ VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
@@ -86,7 +77,7 @@ inline VkSurfaceFormatKHR Vulkan::VulkanSwapchainUnit::GetSupportedSurfaceFormat
 	return surfaceFormats->at(0);
 }
 
-inline VkPresentModeKHR Vulkan::VulkanSwapchainUnit::GetSupportedPresentMode(const std::vector<VkPresentModeKHR>* presentModes)
+VkPresentModeKHR Vulkan::VulkanSwapchainUnit::GetSupportedPresentMode(const std::vector<VkPresentModeKHR>* presentModes)
 {
 	for (auto it = presentModes->begin(); it != presentModes->end(); ++it)
 		if (*it == VK_PRESENT_MODE_MAILBOX_KHR)
@@ -95,7 +86,7 @@ inline VkPresentModeKHR Vulkan::VulkanSwapchainUnit::GetSupportedPresentMode(con
 	return VK_PRESENT_MODE_FIFO_KHR;
 }
 
-inline VkExtent2D Vulkan::VulkanSwapchainUnit::GetExtent2D(const VkSurfaceCapabilitiesKHR * capabilities, int width, int height)
+VkExtent2D Vulkan::VulkanSwapchainUnit::GetExtent2D(const VkSurfaceCapabilitiesKHR * capabilities, int width, int height)
 {
 
 	if (capabilities->currentExtent.width != std::numeric_limits<uint32_t>::max())
@@ -127,7 +118,7 @@ void Vulkan::VulkanSwapchainUnit::CreateSwapChain(VkSurfaceKHR surface, uint32_t
 	swapChainCI.imageColorSpace = format.colorSpace;
 	swapChainCI.imageExtent = extent2D;
 	swapChainCI.imageArrayLayers = 1;
-	swapChainCI.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+	swapChainCI.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
 	uint32_t queueFamilyIndices[] = { queueIds.graphicsFamily, queueIds.presentFamily };
 
@@ -156,19 +147,29 @@ void Vulkan::VulkanSwapchainUnit::CreateSwapChain(VkSurfaceKHR surface, uint32_t
 	std::vector<VkImage> images;
 	images.resize(minImageCount);
 	vkGetSwapchainImagesKHR(m_device, m_swapChain, &minImageCount, images.data());
+	
+	auto imgUnit = m_imageUnit.lock();
+	if(imgUnit==nullptr)
+	{
+		throw std::runtime_error("Unable to lock weak ptr to Vulkan Image Unit object.");
+	}
+
 	for(uint32_t i = 0; i < minImageCount; ++i)
 	{
+		//pre transition swapchain image layouts
+		imgUnit->LayoutTransition(images[i], format.format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR); 
 		m_swapChainBuffers[i].image = images[i];
+		m_swapChainBuffers[i].m_layers = 1;
+		m_swapChainBuffers[i].m_format = format.format;
+		m_swapChainBuffers[i].m_layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 	}
 
 	swapChainImageFormat = format.format;
 	swapChainExtent2D = extent2D;
 
-
-
 }
 
-inline void Vulkan::VulkanSwapchainUnit::CreateSwapChainImageViews()
+void Vulkan::VulkanSwapchainUnit::CreateSwapChainImageViews()
 {
 	auto imageUnit = m_imageUnit.lock();
 	if (!imageUnit)
@@ -191,5 +192,20 @@ inline void Vulkan::VulkanSwapchainUnit::CreateSwapChainImageViews()
 			throw std::runtime_error(std::string(e.what()) + "Unable to create image views for swapChain.");
 		}
 	}
+}
+
+Vulkan::VkManagedImage* Vulkan::VulkanSwapchainUnit::GetFrameBuffer(size_t index)
+{
+	return &m_swapChainBuffers[index];
+}
+
+VkCommandBuffer Vulkan::VulkanSwapchainUnit::GetCommandBuffer(size_t index)
+{
+	return m_commandBuffers[index];
+}
+
+size_t Vulkan::VulkanSwapchainUnit::CommandBufferCount()
+{
+	return m_cmdBufferCount;
 }
 

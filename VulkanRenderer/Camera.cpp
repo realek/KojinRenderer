@@ -9,7 +9,7 @@
 
 std::atomic<uint32_t> Vulkan::Camera::globalID = 0;
 
-Vulkan::Camera::Camera(VkExtent2D extent, bool perspective, VulkanRenderUnit * rend, std::function<void(VulkanRenderUnit*, uint32_t)> deleter) : id(++globalID)
+Vulkan::Camera::Camera(VkExtent2D extent, bool perspective, VulkanRenderUnit * rend, std::function<void(VulkanRenderUnit*, Camera*)> setMain, std::function<void(VulkanRenderUnit*, uint32_t)> deleter) : id(++globalID)
 {
 	m_swapChainExtent = extent;
 	m_viewPort = {};
@@ -38,7 +38,12 @@ Vulkan::Camera::Camera(VkExtent2D extent, bool perspective, VulkanRenderUnit * r
 	onDestroy = [rend, deleter](Camera* camera)
 	{
 		deleter(rend, camera->id);
-	};;
+	};
+
+	this->onSetAsMain = [rend,setMain](Camera* camera)
+	{
+		setMain(rend, camera);
+	};
 }
 
 void Vulkan::Camera::ComputeViewMatrix(glm::vec3 position, glm::vec3 rotation, glm::mat4 & viewMatrix)
@@ -73,6 +78,11 @@ void Vulkan::Camera::SetPerspective()
 	m_projectionMatrix = glm::perspective(glm::radians(m_fov), aspect, m_zNear, m_zFar);
 }
 
+void Vulkan::Camera::SetAsMain()
+{
+	onSetAsMain(this);
+}
+
 void Vulkan::Camera::SetPositionRotation(glm::vec3 position, glm::vec3 rotation)
 {
 	m_position = position;
@@ -103,5 +113,5 @@ void Vulkan::Camera::LookAt(glm::vec3 target)
 	auto cosY = glm::sqrt(1 + (m_viewMatrix[0][2] / 2.0f)); //half z
 	m_rotation.y = glm::degrees(-atan2(m_viewMatrix[0][2], cosY));
 	m_rotation.x = glm::degrees(glm::atan(-m_viewMatrix[1][2], m_viewMatrix[2][2]));
-	m_rotation.z = 0;//glm::degrees(glm::atan(m_viewMatrix[2][3], m_viewMatrix[2][2]));
+	m_rotation.z = 0;
 }

@@ -87,12 +87,8 @@ VkFormat Vulkan::VulkanSystem::GetDepthFormat()
 		VkFormatProperties props;
 		vkGetPhysicalDeviceFormatProperties(m_selectedPhysicalDevice, format, &props);
 
-		if (k_depthStencilTiling == VK_IMAGE_TILING_OPTIMAL &&
-			(props.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) == VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
-		{
+		if (props.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
 			return format;
-			break;
-		}
 
 	}
 

@@ -11,10 +11,6 @@ integrated before implementation.
 
 namespace Vulkan 
 {
-	template<typename>
-	class VulkanObjectContainer;
-
-
 
 	class SPIRVShader
 	{

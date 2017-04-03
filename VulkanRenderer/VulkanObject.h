@@ -26,27 +26,27 @@ namespace Vulkan
 			this->clear = clear;
 		}
 
-		VulkanObjectContainer(const VulkanObjectContainer<VkInstance> &vkInstance, std::function<void(VkInstance, T, VkAllocationCallbacks*)> deleteFunction, bool clear = true)
+		VulkanObjectContainer(const VulkanObjectContainer<VkInstance>& vkInstance, std::function<void(VkInstance, T, VkAllocationCallbacks*)> deleteFunction, bool clear = true)
 		{
 			this->deleter = [&vkInstance, deleteFunction](T object) {  deleteFunction(vkInstance, object, nullptr);	};
 			this->clear = clear;
 		
 		}
 
-		VulkanObjectContainer(const VulkanObjectContainer<VkDevice> &vkDevice, std::function<void(VkDevice, T, VkAllocationCallbacks*)> deleteFunction, bool clear = true)
+		VulkanObjectContainer(const VulkanObjectContainer<VkDevice>& vkDevice, std::function<void(VkDevice, T, VkAllocationCallbacks*)> deleteFunction, bool clear = true)
 		{
 			this->deleter = [&vkDevice, deleteFunction](T object) { deleteFunction(vkDevice, object, nullptr); };
 			this->clear = clear;
 		
 		}
 
-		VulkanObjectContainer(VkInstance vkInstance, std::function<void(VkInstance, T, VkAllocationCallbacks*)> deleteFunction, bool clear = true)
+		VulkanObjectContainer(const VkInstance& vkInstance, std::function<void(VkInstance, T, VkAllocationCallbacks*)> deleteFunction, bool clear = true)
 		{
 			this->deleter = [vkInstance, deleteFunction](T object) {  deleteFunction(vkInstance, object, nullptr);	};
 			this->clear = clear;
 		}
 
-		VulkanObjectContainer(VkDevice vkDevice, std::function<void(VkDevice, T, VkAllocationCallbacks*)> deleteFunction, bool clear = true)
+		VulkanObjectContainer(const VkDevice& vkDevice, std::function<void(VkDevice, T, VkAllocationCallbacks*)> deleteFunction, bool clear = true)
 		{
 			this->deleter = [vkDevice, deleteFunction](T object) { deleteFunction(vkDevice, object, nullptr); };
 			this->clear = clear;

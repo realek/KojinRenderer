@@ -8,6 +8,8 @@ errors to the user or retrieving data from Vulkan objects.
 #include <stdexcept>
 namespace Vulkan
 {
+	template<class T>
+	class VulkanObjectContainer;
 	//Converts VkResult enums used to represent errors to string
 	inline static std::string VkResultToString(VkResult errorCode)
 	{

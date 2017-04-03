@@ -167,6 +167,7 @@
     <ClCompile Include="VkManagedImage.cpp" />
     <ClCompile Include="VkManagedPipeline.cpp" />
     <ClCompile Include="VkManagedRenderPass.cpp" />
+    <ClCompile Include="VulkanObjectUtils.cpp" />
     <ClCompile Include="VulkanCommandUnit.cpp" />
     <ClCompile Include="VulkanImageUnit.cpp" />
     <ClCompile Include="VulkanRenderUnit.cpp" />
@@ -188,6 +189,7 @@
     <ClInclude Include="VkManagedImage.h" />
     <ClInclude Include="VkManagedPipeline.h" />
     <ClInclude Include="VkManagedRenderPass.h" />
+    <ClInclude Include="VulkanObjectUtils.h" />
     <ClInclude Include="VKWorldSpace.h" />
     <ClInclude Include="VulkanHash.h" />
     <ClInclude Include="VulkanImageUnit.h" />

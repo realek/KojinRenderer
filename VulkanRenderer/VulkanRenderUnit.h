@@ -9,12 +9,13 @@ mesh data. Contains render&present functionality.
 #include <memory>
 #include <unordered_map>
 #include "VkManagedRenderPass.h"
+#include "VkManagedPipeline.h"
+
 #undef CreateSemaphore
 
 namespace Vulkan 
 {
 
-	class SPIRVShader;
 	class Texture2D;
 	class Mesh;
 	class VulkanSystem;
@@ -25,6 +26,13 @@ namespace Vulkan
 	class Light;
 	class Camera;
 	struct IMeshData;
+	
+	enum RecordMode
+	{
+		Single_FirstPosition,
+		Multiple
+	};
+	
 	class VulkanRenderUnit
 	{
 	
@@ -33,9 +41,11 @@ namespace Vulkan
 		void Initialize(std::weak_ptr<Vulkan::VulkanSystem> vkSystem, std::shared_ptr<VulkanImageUnit> vkImageUnit, std::shared_ptr<Vulkan::VulkanCommandUnit> vkCmdUnit, std::shared_ptr<Vulkan::VulkanSwapchainUnit> vkSCUnit);
 		void RecordCommandBuffers();
 		void PresentFrame();
+		void RecordPass(VkManagedRenderPass * pass, VkManagedPipeline * pipeline, VkViewport viewport, VkRect2D scissor, VkClearValue clearValues[], uint32_t clearValueCount, std::vector<VkDescriptorSet>* descriptorSets[], uint32_t setCount, RecordMode record = RecordMode::Multiple);	
 		void UpdateShadowPassUniformbuffers(int objectIndex, glm::mat4 modelMatrix);
 		void UpdateMainPassUniformBuffers(int objectIndex, glm::mat4 modelMatrix, Material * material, glm::mat4& view, glm::mat4& proj);
 		void AddCamera(Camera* cam);
+		static void SetAsMainCamera(Vulkan::VulkanRenderUnit * renderUnit, Camera * cam);
 		static void RemoveCamera(Vulkan::VulkanRenderUnit* renderUnit, uint32_t id);
 		void AddLight(Vulkan::Light* light);
 		static void RemoveLight(Vulkan::VulkanRenderUnit* renderUnit, uint32_t id);
@@ -45,18 +55,19 @@ namespace Vulkan
 	
 	private:
 
-		SPIRVShader * m_defaultShader;
-		SPIRVShader * m_skeletonShader; //one UBO with MVP on vert
 		VkDevice m_deviceHandle;
 		VkQueueContainer m_deviceQueues;
 		VkPhysicalDevice m_currentPhysicalDevice;
+
 		std::weak_ptr<Vulkan::VulkanCommandUnit> m_commandUnit;
 		std::weak_ptr<Vulkan::VulkanSwapchainUnit> m_swapChainUnit;
 		std::weak_ptr<Vulkan::VulkanImageUnit> m_imageUnit;
 
 		//renderPasses
-		VkManagedRenderPass m_forwardRenderMain;
-		VkManagedRenderPass m_forwardRenderShadows;
+		VkManagedRenderPass m_fwdMain;
+		VkManagedRenderPass m_fwdSolidPass;
+		VkManagedRenderPass m_fwdOffScreenProjShadows;
+		VkManagedRenderPass m_fwdOffScreenOmniShadows;
 
 		//meshData
 		VkManagedBuffer vertexBuffer;
@@ -67,19 +78,18 @@ namespace Vulkan
 		std::vector<Material*> meshMaterials;
 		
 		
-		VulkanObjectContainer<VkDescriptorSetLayout> m_descSetLayoutVertex;
-		VulkanObjectContainer<VkDescriptorSetLayout> m_descSetLayoutFragment;
+		VulkanObjectContainer<VkDescriptorSetLayout> m_dummyVertSetLayout;
+		VulkanObjectContainer<VkDescriptorSetLayout> m_dummyFragSetLayout;
 
-		VulkanObjectContainer<VkPipelineLayout> m_solidPipelineLayout;
-		VulkanObjectContainer<VkPipeline> m_solidPipeline;
-		VulkanObjectContainer<VkPipelineLayout> m_forwardShadowPipelineLayout;
-		VulkanObjectContainer<VkPipeline> m_forwardShadowsPipeline;
-
+		VkManagedPipeline m_solidPipeline;
+		VkManagedPipeline m_projShadowsPipeline;
+		VkManagedPipeline m_shadowOmniPipeline;
 
 		//shadowmap uniform buffers
 		VkManagedBuffer shadowmapUniformStagingBuffer;
 		std::vector<VkManagedBuffer> shadowmapUniformBuffers;
-
+		VkManagedBuffer omniShadowmapUniformStagingBuffer;
+		std::vector<VkManagedBuffer> omniShadowmapUniformBuffers;
 
 		// TODO : switch to dynamic buffers ASAP.
 		VkManagedBuffer vertShaderMVPStageBuffer;
@@ -92,24 +102,21 @@ namespace Vulkan
 		VulkanObjectContainer<VkDescriptorPool> m_descriptorPool;
 		std::vector<VkDescriptorSet> m_mainPassFragDescSets;
 		std::vector<VkDescriptorSet> m_mainPassVertDescSets;
-		std::vector<VkDescriptorSet> m_shadowPasVertDescSets;
-
-		//semaphores -- TODO: create SemaphoreUnit abstraction
-		VulkanObjectContainer<VkSemaphore> m_frameRenderedSemaphore;
-		VulkanObjectContainer<VkSemaphore> m_framePresentedSemaphore;
-		VulkanObjectContainer<VkSemaphore> m_offscreenSubmitSemaphore;
+		std::vector<VkDescriptorSet> m_shadowPassVertDescSets;
+		std::vector<VkDescriptorSet> m_omniShadowPassVertDescSets;
 
 		//current cameras
 		std::unordered_map<uint32_t, Camera*> m_cCameras;
+		Camera * m_cMainCam;
 		//current lights
 		std::unordered_map<uint32_t, Light*> m_cLights;
+		//current omni shadow cubeMaps
+		std::vector<VkManagedImage> m_cOmniShadowCubemaps;
+		//current layered projected shadow map
+		VkManagedImage m_projectedLayeredShadowMap;
 	private:
 
 		void CreateDescriptorSetLayout();
-		void CreateSolidGraphicsPipeline(std::vector<VkDescriptorSetLayout> layouts);
-		void CreateShadowsGraphicsPipeline(std::vector<VkDescriptorSetLayout> layouts);
-		void CreateShaderModule(std::vector<char>& code, VulkanObjectContainer<VkShaderModule>& shader);
-
 		void CreateVertexUniformBuffers(uint32_t count);
 		void CreateFragmentUniformBuffers(uint32_t count);
 		void CreateShadowmapUniformBuffers(uint32_t count);
@@ -118,7 +125,6 @@ namespace Vulkan
 		void WriteVertexSet(VkDescriptorSet vertSet, uint32_t index);
 		void WriteShadowmapVertexSet(VkDescriptorSet vertSet, uint32_t index);
 		void WriteFragmentSets(VkImageView textureImageView, VkDescriptorSet fragSet, uint32_t index);
-		void CreateSemaphore(Vulkan::VulkanObjectContainer<VkSemaphore>& semaphore);
 
 	};
 }

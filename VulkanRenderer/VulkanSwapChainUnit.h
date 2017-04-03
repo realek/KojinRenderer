@@ -17,12 +17,17 @@ namespace Vulkan
 	public:
 
 		VulkanSwapchainUnit();
-		void Initialize(std::weak_ptr<VulkanSystem> sys, std::shared_ptr<VulkanImageUnit> imageUnit);
+		void Initialize(std::weak_ptr<VulkanSystem> sys, std::shared_ptr<VulkanCommandUnit> cmdUnit, std::shared_ptr<VulkanImageUnit> imageUnit);
 		VkFormat swapChainImageFormat;
 		VkExtent2D swapChainExtent2D;
 		VkFormat depthFormat;
-		VkSwapchainKHR SwapChain();
-		void SetMainRenderPass(VkManagedRenderPass& pass, std::weak_ptr<VulkanCommandUnit> cmdUnit);
+		VkSwapchainKHR GetSwapChain();
+		VkSemaphore GetPresentSemaphore();
+		VkSemaphore GetProcessingSemaphore();
+		Vulkan::VkManagedImage * GetFrameBuffer(size_t index);
+		VkCommandBuffer GetCommandBuffer(size_t index);
+		size_t CommandBufferCount();
+		void SetupMainRenderPass(VkManagedRenderPass& pass, std::weak_ptr<VulkanCommandUnit> cmdUnit);
 
 	private:
 		bool m_mainPassCreated = false;
@@ -30,6 +35,10 @@ namespace Vulkan
 		std::weak_ptr<VulkanImageUnit> m_imageUnit;
 		VulkanObjectContainer<VkSwapchainKHR> m_swapChain;
 		std::vector<VkManagedImage> m_swapChainBuffers;
+		VulkanObjectContainer<VkSemaphore> m_presentSemaphore;
+		VulkanObjectContainer<VkSemaphore> m_processingSemaphore;
+		size_t m_cmdBufferCount = 0;
+		std::vector<VkCommandBuffer> m_commandBuffers;
 
 	private:
 
@@ -38,5 +47,6 @@ namespace Vulkan
 		VkExtent2D GetExtent2D(const VkSurfaceCapabilitiesKHR * capabilities, int width, int height);
 		void CreateSwapChain(VkSurfaceKHR surface, uint32_t minImageCount, uint32_t maxImageCount, VkSurfaceTransformFlagBitsKHR transformFlags, VkSurfaceFormatKHR & format, VkPresentModeKHR presentMode, VkExtent2D & extent2D, VkQueueFamilyIDs queueIds);
 		void CreateSwapChainImageViews();
+
 	};
 }

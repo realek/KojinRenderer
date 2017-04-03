@@ -5,8 +5,8 @@ Vulkan::VkManagedBuffer::VkManagedBuffer(VkDevice device, VkDeviceSize bufferSiz
 {
 	this->device = device;
 	this->bufferSize = bufferSize;
-	buffer = VulkanObjectContainer<VkBuffer>{ device,vkDestroyBuffer };
-	memory = VulkanObjectContainer<VkDeviceMemory>{ device, vkFreeMemory };
+	buffer = VulkanObjectContainer<VkBuffer>{ this->device,vkDestroyBuffer };
+	memory = VulkanObjectContainer<VkDeviceMemory>{ this->device, vkFreeMemory };
 }
 
 void Vulkan::VkManagedBuffer::Build(VkPhysicalDevice physDevice,VkBufferUsageFlags usage, VkMemoryPropertyFlags properties){

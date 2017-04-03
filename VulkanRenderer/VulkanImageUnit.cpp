@@ -53,7 +53,7 @@ void Vulkan::VulkanImageUnit::CreateImageView(uint32_t layerCount, VkImage image
 		throw std::runtime_error("Unable to create texture image view. Reason: " + Vulkan::VkResultToString(result));
 }
 
-void Vulkan::VulkanImageUnit::CopyImage(VkManagedImage & source, VkManagedImage & dest, uint32_t sourceWidth, uint32_t sourceHeight, uint32_t sourceDepth = 1, VkOffset3D sourceOffset = {0,0,0}, VkOffset3D destOffset = {0,0,0}, VkImageSubresourceLayers sourceLayers = {}, VkImageSubresourceLayers destLayers = {})
+void Vulkan::VulkanImageUnit::CopyImage(VkManagedImage * source, VkManagedImage * dest, VkCommandBuffer commandBuffer, uint32_t sourceWidth, uint32_t sourceHeight, uint32_t sourceDepth = 1, VkOffset3D sourceOffset = {0,0,0}, VkOffset3D destOffset = {0,0,0}, VkImageSubresourceLayers sourceLayers = {}, VkImageSubresourceLayers destLayers = {})
 {
 	VkExtent3D ext;
 	ext.width = sourceWidth;
@@ -74,18 +74,17 @@ void Vulkan::VulkanImageUnit::CopyImage(VkManagedImage & source, VkManagedImage 
 
 	try
 	{
-		LayoutTransition(source.image, source.format, source.layout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-		LayoutTransition(dest.image, dest.format, dest.layout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-		BlitImage(source.image, dest.image, copyData);
-		LayoutTransition(source.image, source.format, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, source.layout);
-		LayoutTransition(dest.image, dest.format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dest.layout);
+		LayoutTransition(source->image, source->m_format, source->m_layout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+		LayoutTransition(dest->image, dest->m_format, dest->m_layout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		BlitImage(source->image, dest->image, copyData,commandBuffer);
+		LayoutTransition(source->image, source->m_format, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, source->m_layout);
+		LayoutTransition(dest->image, dest->m_format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dest->m_layout);
 	}
 	catch(...)
 	{
 		throw;
 	}
 }
-
 
 void Vulkan::VulkanImageUnit::CreateImage(uint32_t width, uint32_t height, uint32_t layerCount, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, Vulkan::VulkanObjectContainer<VkImage>& image, Vulkan::VulkanObjectContainer<VkDeviceMemory>& imageMemory)
 {
@@ -159,7 +158,15 @@ void Vulkan::VulkanImageUnit::LayoutTransition(VkImage image, VkFormat format, V
 	imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
 	imageMemoryBarrier.subresourceRange.layerCount = 1;
 
-	if (oldLayout == VK_IMAGE_LAYOUT_PREINITIALIZED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
+	if(oldLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL){
+		imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+		imageMemoryBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	}
+	else if (oldLayout == VK_IMAGE_LAYOUT_PREINITIALIZED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
+		imageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+		imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+	}
+	else if (oldLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL){
 		imageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
 		imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
 	}
@@ -167,13 +174,35 @@ void Vulkan::VulkanImageUnit::LayoutTransition(VkImage image, VkFormat format, V
 		imageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
 		imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 	}
+	else if(oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL){
+		imageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+		imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	}
+	else if (oldLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+		imageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+		imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	}
 	else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
 		imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 		imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 	}
+	else if(oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR){
+
+		imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+		imageMemoryBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	}
+	else if(oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR){
+
+		imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+		imageMemoryBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	}
 	else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
-		imageMemoryBarrier.srcAccessMask = 0;
+		imageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
 		imageMemoryBarrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	}
+	else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL){
+		imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+		imageMemoryBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 	}
 	else
 		throw std::invalid_argument("Layout transition not supported.");
@@ -195,14 +224,27 @@ void Vulkan::VulkanImageUnit::LayoutTransition(VkImage image, VkFormat format, V
 	}
 }
 
-void Vulkan::VulkanImageUnit::BlitImage(VkImage source, VkImage destination, VkImageCopy copyData)
+void Vulkan::VulkanImageUnit::BlitImage(VkImage source, VkImage destination, VkImageCopy copyData, VkCommandBuffer cmdBuffer)
 {
 
 	auto cmd = m_commandUnit.lock();
 	if (!cmd)
 		throw std::runtime_error("Unable to lock weak ptr to Command unit object");
 
-	VkCommandBuffer cmdBuffer = cmd->BeginOneTimeCommand();
+	bool submit = false;
+	if (cmdBuffer == VK_NULL_HANDLE)
+	{
+		cmdBuffer = cmd->BeginOneTimeCommand();
+		submit = true;
+	}
+	else
+	{
+		VkCommandBufferBeginInfo cmdBufferBI = {};
+		cmdBufferBI.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		vkBeginCommandBuffer(cmdBuffer, &cmdBufferBI);
+	}
+
+
 	vkCmdCopyImage(
 		cmdBuffer,
 		source, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
@@ -210,14 +252,30 @@ void Vulkan::VulkanImageUnit::BlitImage(VkImage source, VkImage destination, VkI
 		1, &copyData
 	);
 
+
+
 	try
 	{
-		cmd->EndOneTimeCommand(cmdBuffer);
+		if (submit)
+		{
+			cmd->EndOneTimeCommand(cmdBuffer);
+		}
+
+		else
+		{
+			VkResult result = vkEndCommandBuffer(cmdBuffer);
+			if (result != VK_SUCCESS) {
+				throw std::runtime_error("Command buffer recording failed. Reason: " + VkResultToString(result));
+			}
+		}
+
 	}
 	catch (...)
 	{
 		throw;
 	}
+
+
 }
 
 void Vulkan::VulkanImageUnit::CreateVulkanManagedImage(uint32_t width, uint32_t height, void * pixels, Vulkan::VkManagedImage & vkManagedImg)
@@ -243,8 +301,9 @@ void Vulkan::VulkanImageUnit::CreateVulkanManagedImage(uint32_t width, uint32_t 
 		BlitImage(stagingImage, vkManagedImg.image, copy);
 		LayoutTransition(vkManagedImg.image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		CreateImageView(1, vkManagedImg.image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT, vkManagedImg.imageView);
-		vkManagedImg.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		vkManagedImg.format = VK_FORMAT_R8G8B8A8_UNORM;
+		vkManagedImg.m_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		vkManagedImg.m_format = VK_FORMAT_R8G8B8A8_UNORM;
+		vkManagedImg.m_layers = 1;
 }
 
 void Vulkan::VulkanImageUnit::CreateVulkanManagedImageNoData(uint32_t width, uint32_t height, uint32_t layerCount,VkFormat imageFormat, VkImageUsageFlags usage, VkImageTiling tiling, VkImageAspectFlags aspect, VkImageLayout layout, Vulkan::VkManagedImage& vkManagedImg)
@@ -273,8 +332,9 @@ void Vulkan::VulkanImageUnit::CreateVulkanManagedImageNoData(uint32_t width, uin
 			imageFormat,
 			VK_IMAGE_LAYOUT_UNDEFINED,
 			layout);
-		vkManagedImg.layout = layout;
-		vkManagedImg.format = imageFormat;
+		vkManagedImg.m_layout = layout;
+		vkManagedImg.m_format = imageFormat;
+		vkManagedImg.m_layers = layerCount;
 	}
 	catch(...)
 	{

@@ -252,7 +252,8 @@ int main()
 	//Light and camera Test
 	{
 		camera = renderer->CreateCamera({ 0, 1, -4 });
-		camera->LookAt({ 1.0,0,0 });
+		camera->LookAt({ 0.0,0,0 });
+		camera->SetAsMain();
 		//camera->SetPositionRotation(camera->m_position, camera->m_rotation);
 		//camera->SetRotation(camera->rotation);
 		//camera1 = renderer->CreateCamera({ 0, -1, 3 });
@@ -277,8 +278,8 @@ int main()
 		//input read
 		if(fpsTimer>1)
 		{
-			system("CLS");
-			std::cout << "FPS: "<<fpsCount;
+			//system("CLS");
+			//std::cout << "FPS: "<<fpsCount;
 			fpsCount = 0;
 			fpsTimer = 0;
 		}

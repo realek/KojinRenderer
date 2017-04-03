@@ -23,8 +23,11 @@ namespace Vulkan
 		VulkanObjectContainer<VkDeviceMemory> imageMemory = VK_NULL_HANDLE;
 
 	private:
-		VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
-		VkFormat format = VK_FORMAT_UNDEFINED;
+		VkDevice m_deviceHandle = VK_NULL_HANDLE;
+		VkImageLayout m_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+		VkFormat m_format = VK_FORMAT_UNDEFINED;
+		uint32_t m_layers = 0;
 		friend class VulkanImageUnit;
+		friend class VulkanSwapchainUnit;
 	};
 }
