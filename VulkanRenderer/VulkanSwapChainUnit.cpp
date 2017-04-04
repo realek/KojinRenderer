@@ -200,3 +200,8 @@ size_t Vulkan::VulkanSwapchainUnit::CommandBufferCount()
 	return m_cmdBufferCount;
 }
 
+std::vector<VkCommandBuffer> Vulkan::VulkanSwapchainUnit::GetCommandbuffers()
+{
+	return m_commandBuffers;
+}
+

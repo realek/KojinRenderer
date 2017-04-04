@@ -27,6 +27,8 @@ namespace Vulkan
 		VkCommandBuffer GetCommandBuffer(size_t index);
 		size_t CommandBufferCount();
 
+		std::vector<VkCommandBuffer> GetCommandbuffers();
+
 	private:
 		bool m_mainPassCreated = false;
 		VkDevice m_device;

@@ -556,8 +556,14 @@ void Vulkan::VulkanRenderUnit::RecordCommandBuffers()
 	if (scU == nullptr)
 		return;
 
+	auto commandBuffers = scU->GetCommandbuffers();
+	imgUnit->BeginMultiCopy(commandBuffers);
+	
 	for (auto camera : m_cCameras)
 	{
+		if (camera.first > 1) // FORCE SKIP CAMERAS FOR NOW
+			continue;
+
 		for (uint32_t j = 0; j < meshTransforms.size(); j++)
 		{
 			UpdateMainPassUniformBuffers(j, meshTransforms[j], meshMaterials[j], camera.second->m_viewMatrix, camera.second->m_projectionMatrix);
@@ -576,30 +582,23 @@ void Vulkan::VulkanRenderUnit::RecordCommandBuffers()
 			static_cast<uint32_t>(sets.size()),
 			RecordMode::SingleFB);
 
-		auto extent = m_fwdSolidPass.GetExtent();
-		for (size_t i = 0; i < scU->CommandBufferCount(); i++)
+		VkOffset3D offset = {};
+		offset.x = camera.second->m_scissor.offset.x;
+		offset.y = camera.second->m_scissor.offset.y;
+		offset.z = 0;
+		for (size_t i = 0; i < commandBuffers.size(); i++)
 		{
-			imgUnit->CopyImage(
+			imgUnit->Copy(
 				m_fwdSolidPass.GetAttachment(0, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT),
 				scU->GetFrameBuffer(i),
-				scU->GetCommandBuffer(i),
-				extent.width, extent.height, 1U, { 0,0,0 }, { 0,0,0 }, {}, {});
+				commandBuffers[i],
+				{ (uint32_t)camera.second->m_viewPort.width, (uint32_t)camera.second->m_viewPort.height, (uint32_t)camera.second->m_viewPort.maxDepth },
+				{ scU->swapChainExtent2D.width, scU->swapChainExtent2D.height, 1U }, 
+				{ 0,0,0 }, offset, {}, {});
 		}
 	}
+	imgUnit->EndMultiCopy();
 
-
-
-
-	//	RecordPass(
-	//		&m_fwdMain,
-	//		&m_solidPipeline,
-	//		camera.second->m_viewPort,
-	//		camera.second->m_scissor,
-	//		clearValues.data(),
-	//		static_cast<uint32_t>(clearValues.size()),
-	//		sets.data(),
-	//		static_cast<uint32_t>(sets.size()));
-	//}
 }
 
 void Vulkan::VulkanRenderUnit::ConsumeMesh(VkVertex * vertexData, uint32_t vertexCount, uint32_t * indiceData, uint32_t indiceCount, std::unordered_map<uint32_t, int> meshDrawCounts, uint32_t objectCount)

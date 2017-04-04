@@ -256,10 +256,13 @@ int main()
 		camera->SetAsMain();
 		//camera->SetPositionRotation(camera->m_position, camera->m_rotation);
 		//camera->SetRotation(camera->rotation);
-		//camera1 = renderer->CreateCamera({ 0, -1, 3 });
+		camera1 = renderer->CreateCamera({ 0, 1, 3 });
+		camera1->SetViewport({ 0.0,0.0 }, { 0.35f,0.35f });
 		//camera1->SetRotation({ 0.0,0.0,0.0 });
 		//camera->SetOrthographic();
-		//camera->LookAt({ 0,0.0,0.0 });
+		camera1->LookAt({ 0,0.0,0.0 });
+
+
 		light = renderer->CreateLight({ 0.0,1.5, -3.0 });
 		light->SetType(Vulkan::LightType::Spot);
 		light->range = 10.0f;

@@ -53,47 +53,120 @@ void Vulkan::VulkanImageUnit::CreateImageView(uint32_t layerCount, VkImage image
 		throw std::runtime_error("Unable to create texture image view. Reason: " + Vulkan::VkResultToString(result));
 }
 
-void Vulkan::VulkanImageUnit::CopyImage(VkManagedImage * source, VkManagedImage * dest, VkCommandBuffer commandBuffer, uint32_t sourceWidth, uint32_t sourceHeight, uint32_t sourceDepth = 1, VkOffset3D sourceOffset = {0,0,0}, VkOffset3D destOffset = {0,0,0}, VkImageSubresourceLayers sourceLayers = {}, VkImageSubresourceLayers destLayers = {})
+//Used to signal the image unit that a multi-copy operation will now happen, after a call to this function
+//Use Copy as it would normally be used
+void Vulkan::VulkanImageUnit::BeginMultiCopy(VkCommandBuffer buffer)
 {
-	VkExtent3D ext;
-	ext.width = sourceWidth;
-	ext.height = sourceHeight;
-	ext.depth = sourceDepth;
+	if (m_runningMultiCopy)
+		throw std::runtime_error("Multi-copy operation still in process or was not ended.");
 
+	VkCommandBufferBeginInfo cmdBufferBI = {};
+	cmdBufferBI.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	VkResult result = vkBeginCommandBuffer(buffer, &cmdBufferBI);
+	if (result != VK_SUCCESS) {
+		throw std::runtime_error("Command buffer record start failed. Reason: " + VkResultToString(result));
+	}
+	m_multiCopyCommandBuffers.insert(buffer);
+	m_runningMultiCopy = true;
+}
+
+//Used to signal the image unit that a multi-copy operation will now happen, after a call to this function
+//Use Copy as it would normally be used
+//Note: this function will mark multiple command buffers for copying.
+void Vulkan::VulkanImageUnit::BeginMultiCopy(std::vector<VkCommandBuffer> copyBuffers)
+{
+	if (m_runningMultiCopy)
+	{
+		throw std::runtime_error("Multi-copy operation still in process or was not ended.");
+	}
+
+	VkCommandBufferBeginInfo cmdBufferBI = {};
+	cmdBufferBI.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+	for(size_t i = 0 ; i < copyBuffers.size();i++)
+	{
+		VkResult result = vkBeginCommandBuffer(copyBuffers[i], &cmdBufferBI);
+		if (result != VK_SUCCESS) {
+			throw std::runtime_error("Command buffer record start failed. Reason: " + VkResultToString(result));
+		}
+		m_multiCopyCommandBuffers.insert(copyBuffers[i]);
+	}
+	m_runningMultiCopy = true;
+}
+//Used to signal the image unit that a multi-copy operation has ended, this call will finish the recording on the command buffer
+void Vulkan::VulkanImageUnit::EndMultiCopy()
+{
+	if (!m_runningMultiCopy)
+		throw std::runtime_error("Multi-copy operation was not started.");
+
+	for(VkCommandBuffer buffer : m_multiCopyCommandBuffers)
+	{
+		VkResult result = vkEndCommandBuffer(buffer);
+		if (result != VK_SUCCESS) {
+			throw std::runtime_error("Command buffer record end failed. Reason: " + VkResultToString(result));
+		}
+	}
+
+	m_runningMultiCopy = false;
+}
+
+//Used to blit images, if BeginMulticopy was called before, the commandbuffer parameter will be compared to the multicopy buffers
+//Note: If multicopy is in process this function will not end the command buffer recording anymore, you must call EndMultiCopy to end the recording process.
+void Vulkan::VulkanImageUnit::Copy(VkManagedImage * src, VkManagedImage * dst, VkCommandBuffer commandBuffer, VkExtent3D srcExtent, VkExtent3D dstExtent, VkOffset3D srcOffset = {0,0,0}, VkOffset3D dstOffset = {0,0,0}, VkImageSubresourceLayers srcLayers = {}, VkImageSubresourceLayers dstLayers = {})
+{
+	VkImageBlit blitData = {};
 	VkImageCopy copyData = defaultCopySettings;
-	copyData.extent = ext;
-	sourceLayers.aspectMask = 0;
-	if (sourceLayers.layerCount != 0 && sourceLayers.aspectMask != 0)
-		copyData.srcSubresource = sourceLayers;
-	if (sourceOffset.x != 0 || sourceOffset.y != 0 || sourceOffset.z != 0)
-		copyData.srcOffset = sourceOffset;
-	if (destLayers.layerCount != 0 && destLayers.aspectMask != 0)
-		copyData.dstSubresource = destLayers;
-	if (destOffset.x != 0 || destOffset.y != 0 || destOffset.z != 0)
-		copyData.dstOffset = destOffset;
+	bool blit = true;
+	//compare source extent with destination extent if not equal switch to vkImageBlit
+	if (srcExtent.height == dstExtent.height && srcExtent.width == dstExtent.width && srcExtent.depth == dstExtent.depth)
+	{
+		copyData.extent = srcExtent;
+		srcLayers.aspectMask = 0;
+		if (srcLayers.layerCount != 0 && srcLayers.aspectMask != 0)
+			copyData.srcSubresource = srcLayers;
+		if (srcOffset.x != 0 || srcOffset.y != 0 || srcOffset.z != 0)
+			copyData.srcOffset = srcOffset;
+		if (dstLayers.layerCount != 0 && dstLayers.aspectMask != 0)
+			copyData.dstSubresource = dstLayers;
+		if (dstOffset.x != 0 || dstOffset.y != 0 || dstOffset.z != 0)
+			copyData.dstOffset = dstOffset;
+		blit = false;
+		
+	}	
 
 	try
 	{
-		if (commandBuffer != VK_NULL_HANDLE)
+		if (!m_runningMultiCopy || m_multiCopyCommandBuffers.count(commandBuffer) == 0)
 		{
-			VkCommandBufferBeginInfo cmdBufferBI = {};
-			cmdBufferBI.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-			vkBeginCommandBuffer(commandBuffer, &cmdBufferBI);
-		}
-
-		LayoutTransition(source->image, source->m_format, source->m_layout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,commandBuffer);
-		LayoutTransition(dest->image, dest->m_format, dest->m_layout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,commandBuffer);
-		BlitImage(source->image, dest->image, copyData,commandBuffer);
-		LayoutTransition(source->image, source->m_format, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, source->m_layout,commandBuffer);
-		LayoutTransition(dest->image, dest->m_format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dest->m_layout,commandBuffer);
-
-		if(commandBuffer!= VK_NULL_HANDLE)
-		{
-			VkResult result = vkEndCommandBuffer(commandBuffer);
-			if (result != VK_SUCCESS) {
-				throw std::runtime_error("Command buffer recording failed. Reason: " + VkResultToString(result));
+			if (commandBuffer != VK_NULL_HANDLE)
+			{
+				VkCommandBufferBeginInfo cmdBufferBI = {};
+				cmdBufferBI.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+				vkBeginCommandBuffer(commandBuffer, &cmdBufferBI);
 			}
 		}
+
+		LayoutTransition(src->image, src->m_format, src->m_layout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,commandBuffer);
+		LayoutTransition(dst->image, dst->m_format, dst->m_layout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,commandBuffer);
+		if (!blit)
+			CopyImage(src->image, dst->image, copyData, commandBuffer);
+		else
+			BlitImage(src->image, dst->image, blitData, commandBuffer);
+
+		LayoutTransition(src->image, src->m_format, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, src->m_layout,commandBuffer);
+		LayoutTransition(dst->image, dst->m_format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dst->m_layout,commandBuffer);
+
+		if (!m_runningMultiCopy || m_multiCopyCommandBuffers.count(commandBuffer) == 0)
+		{
+			if (commandBuffer != VK_NULL_HANDLE)
+			{
+				VkResult result = vkEndCommandBuffer(commandBuffer);
+				if (result != VK_SUCCESS) {
+					throw std::runtime_error("Command buffer recording failed. Reason: " + VkResultToString(result));
+				}
+			}
+		}
+
 	}
 	catch(...)
 	{
@@ -253,7 +326,11 @@ void Vulkan::VulkanImageUnit::LayoutTransition(VkImage image, VkFormat format, V
 
 }
 
-void Vulkan::VulkanImageUnit::BlitImage(VkImage source, VkImage destination, VkImageCopy copyData, VkCommandBuffer cmdBuffer)
+void Vulkan::VulkanImageUnit::BlitImage(VkImage src, VkImage dst, VkImageBlit blitData, VkCommandBuffer cmdBuffer)
+{
+}
+
+void Vulkan::VulkanImageUnit::CopyImage(VkImage source, VkImage destination, VkImageCopy copyData, VkCommandBuffer cmdBuffer)
 {
 
 	bool submit = false;
@@ -313,7 +390,7 @@ void Vulkan::VulkanImageUnit::CreateVulkanManagedImage(uint32_t width, uint32_t 
 		LayoutTransition(vkManagedImg.image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 		VkImageCopy copy = defaultCopySettings;
 		copy.extent = { width,height,1 };
-		BlitImage(stagingImage, vkManagedImg.image, copy);
+		CopyImage(stagingImage, vkManagedImg.image, copy);
 		LayoutTransition(vkManagedImg.image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		CreateImageView(1, vkManagedImg.image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT, vkManagedImg.imageView);
 		vkManagedImg.m_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
