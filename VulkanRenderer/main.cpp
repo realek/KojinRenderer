@@ -160,6 +160,7 @@ int main()
 	std::shared_ptr<Vulkan::KojinRenderer> renderer;
 	std::shared_ptr<Vulkan::Camera> camera;
 	std::shared_ptr<Vulkan::Camera> camera1;
+	std::shared_ptr<Vulkan::Camera> camera2;
 	std::shared_ptr<Vulkan::Light> light;
 	std::shared_ptr<Vulkan::Mesh> mesh;
 	std::shared_ptr<Vulkan::Mesh> planeMesh;
@@ -252,16 +253,15 @@ int main()
 	//Light and camera Test
 	{
 		camera = renderer->CreateCamera({ 0, 1, -4 });
-		camera->LookAt({ 0.0,0,0 });
+		camera->LookAt({ 0,0,0 });
 		camera->SetAsMain();
-		//camera->SetPositionRotation(camera->m_position, camera->m_rotation);
-		//camera->SetRotation(camera->rotation);
 		camera1 = renderer->CreateCamera({ 0, 1, 3 });
-		camera1->SetViewport({ 0.0,0.0 }, { 0.35f,0.35f });
-		//camera1->SetRotation({ 0.0,0.0,0.0 });
-		//camera->SetOrthographic();
+		camera1->SetViewport({ 0.0f,0.0f }, { 0.35f,0.35f });
 		camera1->LookAt({ 0,0.0,0.0 });
 
+		camera2 = renderer->CreateCamera({ 3,1,0 });
+		camera2->SetViewport({ 0.65f,0.0f }, { 0.35f,0.35f });
+		camera2->LookAt({ 0,0,0 });
 
 		light = renderer->CreateLight({ 0.0,1.5, -3.0 });
 		light->SetType(Vulkan::LightType::Spot);

@@ -114,25 +114,18 @@ void Vulkan::VulkanImageUnit::EndMultiCopy()
 //Note: If multicopy is in process this function will not end the command buffer recording anymore, you must call EndMultiCopy to end the recording process.
 void Vulkan::VulkanImageUnit::Copy(VkManagedImage * src, VkManagedImage * dst, VkCommandBuffer commandBuffer, VkExtent3D srcExtent, VkExtent3D dstExtent, VkOffset3D srcOffset = {0,0,0}, VkOffset3D dstOffset = {0,0,0}, VkImageSubresourceLayers srcLayers = {}, VkImageSubresourceLayers dstLayers = {})
 {
-	VkImageBlit blitData = {};
+
 	VkImageCopy copyData = defaultCopySettings;
-	bool blit = true;
-	//compare source extent with destination extent if not equal switch to vkImageBlit
-	if (srcExtent.height == dstExtent.height && srcExtent.width == dstExtent.width && srcExtent.depth == dstExtent.depth)
-	{
-		copyData.extent = srcExtent;
-		srcLayers.aspectMask = 0;
-		if (srcLayers.layerCount != 0 && srcLayers.aspectMask != 0)
-			copyData.srcSubresource = srcLayers;
-		if (srcOffset.x != 0 || srcOffset.y != 0 || srcOffset.z != 0)
-			copyData.srcOffset = srcOffset;
-		if (dstLayers.layerCount != 0 && dstLayers.aspectMask != 0)
-			copyData.dstSubresource = dstLayers;
-		if (dstOffset.x != 0 || dstOffset.y != 0 || dstOffset.z != 0)
-			copyData.dstOffset = dstOffset;
-		blit = false;
-		
-	}	
+	copyData.extent = srcExtent;
+	srcLayers.aspectMask = 0;
+	if (srcLayers.layerCount != 0 && srcLayers.aspectMask != 0)
+		copyData.srcSubresource = srcLayers;
+	if (srcOffset.x != 0 || srcOffset.y != 0 || srcOffset.z != 0)
+		copyData.srcOffset = srcOffset;
+	if (dstLayers.layerCount != 0 && dstLayers.aspectMask != 0)
+		copyData.dstSubresource = dstLayers;
+	if (dstOffset.x != 0 || dstOffset.y != 0 || dstOffset.z != 0)
+		copyData.dstOffset = dstOffset;
 
 	try
 	{
@@ -148,11 +141,7 @@ void Vulkan::VulkanImageUnit::Copy(VkManagedImage * src, VkManagedImage * dst, V
 
 		LayoutTransition(src->image, src->m_format, src->m_layout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,commandBuffer);
 		LayoutTransition(dst->image, dst->m_format, dst->m_layout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,commandBuffer);
-		if (!blit)
-			CopyImage(src->image, dst->image, copyData, commandBuffer);
-		else
-			BlitImage(src->image, dst->image, blitData, commandBuffer);
-
+		CopyImage(src->image, dst->image, copyData, commandBuffer);
 		LayoutTransition(src->image, src->m_format, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, src->m_layout,commandBuffer);
 		LayoutTransition(dst->image, dst->m_format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dst->m_layout,commandBuffer);
 
@@ -324,10 +313,6 @@ void Vulkan::VulkanImageUnit::LayoutTransition(VkImage image, VkFormat format, V
 		}
 	}
 
-}
-
-void Vulkan::VulkanImageUnit::BlitImage(VkImage src, VkImage dst, VkImageBlit blitData, VkCommandBuffer cmdBuffer)
-{
 }
 
 void Vulkan::VulkanImageUnit::CopyImage(VkImage source, VkImage destination, VkImageCopy copyData, VkCommandBuffer cmdBuffer)

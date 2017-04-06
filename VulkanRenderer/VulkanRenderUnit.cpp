@@ -40,8 +40,6 @@ void Vulkan::VulkanRenderUnit::Initialize(std::weak_ptr<Vulkan::VulkanSystem> vk
 	{
 		//descriptor set layout is the same as the default shaders // TODO: needs GLSL lang implementation
 		this->CreateDescriptorSetLayout();
-//		vkSCUnit->SetupMainRenderPass(m_fwdMain,vkCmdUnit);
-		//secondary cameras render pass
 		m_fwdSolidPass.CreateAsForwardPass
 		(
 			m_deviceHandle,
@@ -54,7 +52,6 @@ void Vulkan::VulkanRenderUnit::Initialize(std::weak_ptr<Vulkan::VulkanSystem> vk
 			true,
 			true
 		);
-		m_fwdSolidPass.AddBuffers(1);
 		//offscreen shadows render pass
 		m_fwdOffScreenProjShadows.CreateAsForwardShadowmapPass(
 			m_deviceHandle,
@@ -63,7 +60,6 @@ void Vulkan::VulkanRenderUnit::Initialize(std::weak_ptr<Vulkan::VulkanSystem> vk
 			vkImageUnit,
 			vkCmdUnit,
 			VkShadowmapDefaults::k_attachmentDepthFormat);
-		m_fwdOffScreenProjShadows.AddBuffers(1);
 
 		//default pipelines
 		m_solidPipeline.Build(
@@ -235,103 +231,33 @@ void Vulkan::VulkanRenderUnit::Initialize(std::weak_ptr<Vulkan::VulkanSystem> vk
 //}
 
 void Vulkan::VulkanRenderUnit::PresentFrame() {
-	uint32_t imageIndex;
-
-	auto cmdUnit = m_commandUnit.lock();
-	if (!cmdUnit)
-		throw std::runtime_error("Unable to lock weak ptr to Command unit object.");
 	
+
+	uint32_t bufferIndex;
 	auto scU = m_swapChainUnit.lock();
 	if (!scU)
 		throw std::runtime_error("Unable to lock weak ptr to Swap Chain unit.");
-	auto sc = scU->GetSwapChain();
-	VkSemaphore presentSemaphore = scU->GetPresentSemaphore();
-	VkSemaphore scProcessingSemaphore = scU->GetProcessingSemaphore();
-	VkResult result = vkAcquireNextImageKHR(m_deviceHandle, sc, std::numeric_limits<uint64_t>::max(), presentSemaphore, VK_NULL_HANDLE, &imageIndex);
-
-	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+	VkResult result;
+	if (!RecordAndSubmitRenderPasses(&bufferIndex))
+	{
 		//recreate swap chain
 		return;
 	}
-	else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
-		throw std::runtime_error("Failed to acquire next swapchain image. Reason: " + Vulkan::VkResultToString(result));
 
-	auto cmdBuff = m_fwdOffScreenProjShadows.GetCommandBuffer();
-
-	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-	VkSubmitInfo submitInfo = {};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-	VkSemaphore shadowWaitSemaphores[] = { presentSemaphore };
-	VkSemaphore shadowSignalSemaphores[] = { m_fwdOffScreenProjShadows.GetSemaphore() };
-	
-	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = shadowWaitSemaphores;
-	submitInfo.pWaitDstStageMask = waitStages;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &cmdBuff;
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = shadowSignalSemaphores;
-	result = vkQueueSubmit(m_deviceQueues.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-	if (result != VK_SUCCESS)
-		throw std::runtime_error("Unable to submit draw command buffer. Reason: " + Vulkan::VkResultToString(result));
-
-	cmdBuff = m_fwdSolidPass.GetCommandBuffer();
-	VkSemaphore solidPassSignalsemaphores[] = { m_fwdSolidPass.GetSemaphore() };
-
-	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = shadowSignalSemaphores;
-	submitInfo.pWaitDstStageMask = waitStages;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &cmdBuff;
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = solidPassSignalsemaphores;
-
-	result = vkQueueSubmit(m_deviceQueues.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-	if (result != VK_SUCCESS)
-		throw std::runtime_error("Unable to submit draw command buffer. Reason: " + Vulkan::VkResultToString(result));
-
-	cmdBuff = scU->GetCommandBuffer(imageIndex);
-	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = solidPassSignalsemaphores;
-	submitInfo.pWaitDstStageMask = waitStages;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &cmdBuff;
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = &scProcessingSemaphore;
-	result = vkQueueSubmit(m_deviceQueues.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-	if (result != VK_SUCCESS)
-		throw std::runtime_error("Unable to submit draw command buffer. Reason: " + Vulkan::VkResultToString(result));
-
-	VkPresentInfoKHR presentInfo = {};
-	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-
-	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = &scProcessingSemaphore;
-	VkSwapchainKHR swapChains[] = { sc };
-	presentInfo.swapchainCount = 1;
-	presentInfo.pSwapchains = swapChains;
-
-	presentInfo.pImageIndices = &imageIndex;
-
-	result = vkQueuePresentKHR(m_deviceQueues.presentQueue, &presentInfo);
+	result = ProcessSwapChain(m_swapChainUnit, &bufferIndex, m_fwdSolidPass.GetLastSemaphore(), 1, 
+	{ VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT }, m_deviceQueues.graphicsQueue, m_deviceQueues.presentQueue);
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
 		//recreate swap chain
+		return;
 	}
 	else if (result != VK_SUCCESS)
 		throw std::runtime_error("Unable to present swap chain image. Reason: " + Vulkan::VkResultToString(result));
 	
-	//wait for the present queue to finish
-	vkQueueWaitIdle(m_deviceQueues.presentQueue);
-	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = &scProcessingSemaphore;
-	submitInfo.pWaitDstStageMask = waitStages;
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = &presentSemaphore;
+
 }
 
-void Vulkan::VulkanRenderUnit::RecordPass(VkManagedRenderPass * pass, VkManagedPipeline * pipeline, VkViewport viewport, VkRect2D scissor, VkClearValue clearValues[], uint32_t clearValueCount, std::vector<VkDescriptorSet>* descriptorSets[], uint32_t setCount, RecordMode record)
+void Vulkan::VulkanRenderUnit::RecordPass(VkManagedRenderPass * pass, VkManagedPipeline * pipeline, VkViewport viewport, VkRect2D scissor, const VkClearValue clearValues[], uint32_t clearValueCount, std::vector<VkDescriptorSet>* descriptorSets[], uint32_t setCount, RecordMode record, uint32_t fbCIndex)
 {
 	auto scUnit = m_swapChainUnit.lock();
 	if (!scUnit)
@@ -339,6 +265,7 @@ void Vulkan::VulkanRenderUnit::RecordPass(VkManagedRenderPass * pass, VkManagedP
 
 	VkCommandBufferBeginInfo beginInfo = {};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 	VkRenderPassBeginInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	renderPassInfo.clearValueCount = clearValueCount;
@@ -346,15 +273,25 @@ void Vulkan::VulkanRenderUnit::RecordPass(VkManagedRenderPass * pass, VkManagedP
 	renderPassInfo.renderPass = pass->GetPass();
 	renderPassInfo.renderArea.offset = { 0, 0 };
 	renderPassInfo.renderArea.extent = pass->GetExtent();
-	VkCommandBuffer cmdBuffer = VK_NULL_HANDLE;
-	if (record == RecordMode::SingleFB)
+
+	std::vector<VkDynamicState> activeStates = pipeline->GetDynamicStates();
+
+	if (record == RecordMode::SingleFB || record == RecordMode::SingleFB_Multipass)
 	{
-		cmdBuffer = pass->GetCommandBuffer();
-		renderPassInfo.framebuffer = pass->GetFrameBuffer();
+		VkCommandBuffer cmdBuffer = VK_NULL_HANDLE;
+		if (record == RecordMode::SingleFB_Multipass)
+		{
+			renderPassInfo.framebuffer = pass->GetFrameBuffer(fbCIndex);
+			cmdBuffer = pass->GetCommandBuffer(fbCIndex);
+		}
+		else
+		{
+			cmdBuffer = pass->GetCommandBuffer();
+			renderPassInfo.framebuffer = pass->GetFrameBuffer();
+		}
 
 		vkBeginCommandBuffer(cmdBuffer, &beginInfo);
-
-		vkCmdBeginRenderPass(cmdBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdBeginRenderPass(cmdBuffer, &renderPassInfo, VkSubpassContents::VK_SUBPASS_CONTENTS_INLINE);
 
 		VkBuffer vertexBuffers[] = { vertexBuffer.buffer };
 		VkDeviceSize offsets[] = { 0 };
@@ -385,7 +322,7 @@ void Vulkan::VulkanRenderUnit::RecordPass(VkManagedRenderPass * pass, VkManagedP
 				}
 
 				vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetLayout(), 0, static_cast<uint32_t>(descSets.size()), descSets.data(), 0, nullptr);
-				std::vector<VkDynamicState> activeStates = pipeline->GetDynamicStates();
+
 
 				for(VkDynamicState& state : activeStates)
 				{
@@ -448,24 +385,22 @@ void Vulkan::VulkanRenderUnit::RecordPass(VkManagedRenderPass * pass, VkManagedP
 		if (result != VK_SUCCESS) {
 			throw std::runtime_error("Command buffer recording failed. Reason: " + VkResultToString(result));
 		}
+
 	}
-	else
+	else if(record == RecordMode::MultipleFB)
 	{
-		cmdBuffer = pass->GetCommandBuffer();
-		vkBeginCommandBuffer(cmdBuffer, &beginInfo);
-		size_t fbCount = pass->FramebufferCount();
-		for (size_t i = 0; i < fbCount; i++)
+		auto frameBuffers = pass->GetFrameBuffers();
+		auto cmdBuffers = pass->GetCommandBuffers();
+		for (size_t i = 0; i < frameBuffers.size(); i++)
 		{
-			renderPassInfo.framebuffer = pass->GetFrameBuffer(i);
-
-
-			vkCmdBeginRenderPass(cmdBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+			renderPassInfo.framebuffer = frameBuffers[i];
+			vkCmdBeginRenderPass(cmdBuffers[i], &renderPassInfo, VkSubpassContents::VK_SUBPASS_CONTENTS_INLINE);
 
 			VkBuffer vertexBuffers[] = { vertexBuffer.buffer };
 			VkDeviceSize offsets[] = { 0 };
-			vkCmdBindVertexBuffers(cmdBuffer, 0, 1, vertexBuffers, offsets);
-			vkCmdBindIndexBuffer(cmdBuffer, indiceBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-			vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipeline());
+			vkCmdBindVertexBuffers(cmdBuffers[i], 0, 1, vertexBuffers, offsets);
+			vkCmdBindIndexBuffer(cmdBuffers[i], indiceBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindPipeline(cmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetPipeline());
 
 			int offset = 0;
 			for (auto const mesh : meshPartDraws)
@@ -489,26 +424,160 @@ void Vulkan::VulkanRenderUnit::RecordPass(VkManagedRenderPass * pass, VkManagedP
 						descSets.push_back((*descriptorSets[d])[j]);
 					}
 
-					vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetLayout(), 0, static_cast<uint32_t>(descSets.size()), descSets.data(), 0, nullptr);
+					vkCmdBindDescriptorSets(cmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->GetLayout(), 0, static_cast<uint32_t>(descSets.size()), descSets.data(), 0, nullptr);
 
-					//	vkCmdSetDepthBias(cmdBuffer, VkShadowmapDefaults::k_depthBias, 0.0f, VkShadowmapDefaults::k_depthBiasSlope);
-					vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
-					vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
-					vkCmdDrawIndexed(cmdBuffer, meshData->indiceCount, 1, meshData->indiceRange.start, vertexOffset, 0);
+					for (VkDynamicState& state : activeStates)
+					{
+						switch (state)
+						{
+						case VK_DYNAMIC_STATE_VIEWPORT:
+							pipeline->SetDynamicState<VkViewport>(cmdBuffers[i], state, viewport);
+							break;
+						case VK_DYNAMIC_STATE_SCISSOR:
+							pipeline->SetDynamicState<VkRect2D>(cmdBuffers[i], state, scissor);
+							break;
+						case VK_DYNAMIC_STATE_LINE_WIDTH:
+							//unused
+							throw std::runtime_error("Invalid Dynamic state.");
+							break;
+						case VK_DYNAMIC_STATE_DEPTH_BIAS:
+							//Hardcoded bias until depth-bias is moved to lights
+							VkDepthBias bias;
+							bias.constDepth = VkShadowmapDefaults::k_depthBias;
+							bias.depthSlope = VkShadowmapDefaults::k_depthBiasSlope;
+							pipeline->SetDynamicState<VkDepthBias>(cmdBuffers[i], state, bias);
+							break;
+						case VK_DYNAMIC_STATE_BLEND_CONSTANTS:
+							//unused
+							throw std::runtime_error("Invalid Dynamic state.");
+							break;
+						case VK_DYNAMIC_STATE_DEPTH_BOUNDS:
+							//unused
+							throw std::runtime_error("Invalid Dynamic state.");
+							break;
+						case VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK:
+							//unused
+							throw std::runtime_error("Invalid Dynamic state.");
+							break;
+						case VK_DYNAMIC_STATE_STENCIL_WRITE_MASK:
+							//unused
+							throw std::runtime_error("Invalid Dynamic state.");
+							break;
+						case VK_DYNAMIC_STATE_STENCIL_REFERENCE:
+							//unused
+							throw std::runtime_error("Invalid Dynamic state.");
+							break;
+						case VK_DYNAMIC_STATE_VIEWPORT_W_SCALING_NV:
+							//unused
+							throw std::runtime_error("Invalid Dynamic state.");
+							break;
+						case VK_DYNAMIC_STATE_DISCARD_RECTANGLE_EXT:
+							//unused
+							throw std::runtime_error("Invalid Dynamic state.");
+							break;
+						}
+					}
+					vkCmdDrawIndexed(cmdBuffers[i], meshData->indiceCount, 1, meshData->indiceRange.start, vertexOffset, 0);
 				}
 				offset += mesh.second;
 			}
-			vkCmdEndRenderPass(cmdBuffer);
+			vkCmdEndRenderPass(cmdBuffers[i]);
+			VkResult result = vkEndCommandBuffer(cmdBuffers[i]);
+			if (result != VK_SUCCESS) {
+				throw std::runtime_error("Command buffer recording failed. Reason: " + VkResultToString(result));
+			}
 		}
-		VkResult result = vkEndCommandBuffer(cmdBuffer);
-		if (result != VK_SUCCESS) {
-			throw std::runtime_error("Command buffer recording failed. Reason: " + VkResultToString(result));
-		}
+
 	}
 }
 
-void Vulkan::VulkanRenderUnit::RecordCommandBuffers()
+VkResult Vulkan::VulkanRenderUnit::SubmitPass(VkManagedRenderPass * pass, VkSemaphore * waitSemaphores, uint32_t waitSemaphoreCount, std::vector<VkPipelineStageFlags> waitStages, VkQueue submitQueue, SubmitMode mode, uint32_t passCI)
 {
+	VkCommandBuffer cmdBuff;
+	VkSubmitInfo submitInfo = {};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.waitSemaphoreCount = waitSemaphoreCount;
+	submitInfo.pWaitSemaphores = waitSemaphores;
+	submitInfo.pWaitDstStageMask = waitStages.data();
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = pass->GetNextSemaphore();
+
+	if (mode == SubmitMode::SingleBuffer)
+	{
+		cmdBuff = pass->GetCommandBuffer();
+	}
+	else
+	{
+		cmdBuff = pass->GetCommandBuffer(passCI);
+	}
+		submitInfo.pCommandBuffers = &cmdBuff;
+		submitInfo.commandBufferCount = 1;
+		return vkQueueSubmit(m_deviceQueues.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+}
+
+VkResult Vulkan::VulkanRenderUnit::AcquireNextSwapChainImage(std::weak_ptr<Vulkan::VulkanSwapchainUnit>& VkSc, uint32_t* bufferIndex, uint32_t timeout)
+{
+	auto scU = VkSc.lock();
+	if (!scU)
+		throw std::runtime_error("Unable to lock weak ptr to Swap Chain unit.");
+	auto sc = scU->GetSwapChain();
+
+	//wait for the present queue to finish
+	vkQueueWaitIdle(m_deviceQueues.presentQueue);
+
+	return vkAcquireNextImageKHR(m_deviceHandle, sc, timeout, *scU->GetPresentSemaphore(), VK_NULL_HANDLE, bufferIndex);
+
+}
+
+VkResult Vulkan::VulkanRenderUnit::ProcessSwapChain(std::weak_ptr<Vulkan::VulkanSwapchainUnit>& VkSc, uint32_t* imageIndex, VkSemaphore * waitSemaphores, uint32_t waitSemaphoreCount, std::vector<VkPipelineStageFlags> waitStates, VkQueue processQueue, VkQueue presentQueue)
+{
+	VkResult result;
+	std::shared_ptr<VulkanSwapchainUnit> ScUnit = VkSc.lock();
+	if (ScUnit == nullptr)
+		throw std::runtime_error("Unable to lock weak ptr to Vulkan Swapchain Unit object.");
+
+	VkCommandBuffer cmdBuff = ScUnit->GetCommandBuffer(*imageIndex);
+	VkSemaphore * processingSemaphore = ScUnit->GetProcessingSemaphore();
+	VkSubmitInfo submitInfo = {};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.waitSemaphoreCount = waitSemaphoreCount;
+	submitInfo.pWaitSemaphores = waitSemaphores;
+	submitInfo.pWaitDstStageMask = waitStates.data();
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &cmdBuff;
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = processingSemaphore;
+	result = vkQueueSubmit(m_deviceQueues.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+	if (result != VK_SUCCESS)
+		throw std::runtime_error("Unable to submit draw command buffer. Reason: " + Vulkan::VkResultToString(result));
+
+
+	VkPresentInfoKHR presentInfo = {};
+	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	presentInfo.waitSemaphoreCount = 1;
+	presentInfo.pWaitSemaphores = processingSemaphore;
+	VkSwapchainKHR swapChain = ScUnit->GetSwapChain();
+	presentInfo.swapchainCount = 1;
+	presentInfo.pSwapchains = &swapChain;
+	presentInfo.pImageIndices = imageIndex;
+	
+	return vkQueuePresentKHR(presentQueue, &presentInfo);
+}
+
+bool Vulkan::VulkanRenderUnit::RecordAndSubmitRenderPasses(uint32_t * bufferIndex)
+{
+	VkResult result;
+	result = AcquireNextSwapChainImage(m_swapChainUnit, bufferIndex, 1000);
+	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+		//recreate swap chain instead of recording
+		return false;
+	}
+	else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+		throw std::runtime_error("Failed to acquire next swapchain image. Reason: " + Vulkan::VkResultToString(result));
+
+	auto scU = m_swapChainUnit.lock();
+	if (!scU)
+		throw std::runtime_error("Unable to lock weak ptr to Swap Chain unit.");
 
 	std::array<VkClearValue, 2> clearValues = {};
 	clearValues[0].depthStencil = { (uint32_t)1.0f, (uint32_t)0.0f };
@@ -542,27 +611,28 @@ void Vulkan::VulkanRenderUnit::RecordCommandBuffers()
 		static_cast<uint32_t>(clearValues.size()), 
 		sets.data(), 1, RecordMode::SingleFB);
 
+	result = SubmitPass(&m_fwdOffScreenProjShadows, scU->GetPresentSemaphore(), 1, { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT }, m_deviceQueues.graphicsQueue);
+	if (result != VK_SUCCESS)
+		throw std::runtime_error("Unable to submit draw command buffer. Reason: " + Vulkan::VkResultToString(result));
+	vkQueueWaitIdle(m_deviceQueues.graphicsQueue);
 	//================================================= MAIN PASS ==================================== //
 
 	clearValues[0].color = { 0,0,0.25f,1.0 };
 	clearValues[0].depthStencil = {};
 	sets[0] = &m_mainPassVertDescSets;
 	sets[1] = &m_mainPassFragDescSets;
-
-	auto imgUnit = m_imageUnit.lock();
-	if (imgUnit == nullptr)
-		return;
-	auto scU = m_swapChainUnit.lock();
-	if (scU == nullptr)
-		return;
-
-	auto commandBuffers = scU->GetCommandbuffers();
-	imgUnit->BeginMultiCopy(commandBuffers);
 	
+	uint32_t passCount = 0;
+	{
+		size_t camC = m_cCameras.size();
+		if (m_fwdSolidPass.FramebufferCount() < camC)
+		{
+			m_fwdSolidPass.SetFrameBufferCount(static_cast<uint32_t>(camC));
+		}
+	}
+
 	for (auto camera : m_cCameras)
 	{
-		if (camera.first > 1) // FORCE SKIP CAMERAS FOR NOW
-			continue;
 
 		for (uint32_t j = 0; j < meshTransforms.size(); j++)
 		{
@@ -580,25 +650,56 @@ void Vulkan::VulkanRenderUnit::RecordCommandBuffers()
 			static_cast<uint32_t>(clearValues.size()),
 			sets.data(),
 			static_cast<uint32_t>(sets.size()),
-			RecordMode::SingleFB);
+			RecordMode::SingleFB_Multipass,passCount);
+
+		if (passCount == 0)
+		{
+
+			result = SubmitPass(&m_fwdSolidPass, m_fwdOffScreenProjShadows.GetLastSemaphore(), 1, { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT }, m_deviceQueues.graphicsQueue, SubmitMode::SingleBuffer_MultiPass, passCount);
+		}
+		else
+		{
+			result = SubmitPass(&m_fwdSolidPass, m_fwdSolidPass.GetLastSemaphore(), 1, { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT }, m_deviceQueues.graphicsQueue, SubmitMode::SingleBuffer_MultiPass, passCount);
+			
+		}
+	
+		if (result != VK_SUCCESS)
+			throw std::runtime_error("Unable to submit draw command buffer. Reason: " + Vulkan::VkResultToString(result));
+		vkQueueWaitIdle(m_deviceQueues.graphicsQueue);
+		passCount++;
+	}
+
+	//Prepare to build draw command buffers
+	auto imgUnit = m_imageUnit.lock();
+	if (imgUnit == nullptr)
+		throw std::runtime_error("Unable to lock weak ptr to Vulkan Image unit object.");
+
+	auto commandBuffers = scU->GetCommandbuffers();
+	imgUnit->BeginMultiCopy(commandBuffers);
+
+	auto camIT = m_cCameras.begin();
+	for (uint32_t j = 0; j < passCount; j++) 
+	{
 
 		VkOffset3D offset = {};
-		offset.x = camera.second->m_scissor.offset.x;
-		offset.y = camera.second->m_scissor.offset.y;
+		offset.x = camIT->second->m_viewPort.x;
+		offset.y = camIT->second->m_viewPort.y;
 		offset.z = 0;
 		for (size_t i = 0; i < commandBuffers.size(); i++)
 		{
 			imgUnit->Copy(
-				m_fwdSolidPass.GetAttachment(0, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT),
+				m_fwdSolidPass.GetAttachment(j, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT),
 				scU->GetFrameBuffer(i),
 				commandBuffers[i],
-				{ (uint32_t)camera.second->m_viewPort.width, (uint32_t)camera.second->m_viewPort.height, (uint32_t)camera.second->m_viewPort.maxDepth },
-				{ scU->swapChainExtent2D.width, scU->swapChainExtent2D.height, 1U }, 
-				{ 0,0,0 }, offset, {}, {});
+				{ (uint32_t)camIT->second->m_viewPort.width, (uint32_t)camIT->second->m_viewPort.height, 1U },
+				{ scU->swapChainExtent2D.width, scU->swapChainExtent2D.height, 1U },
+				offset, offset, {}, {});
 		}
+		++camIT;
 	}
-	imgUnit->EndMultiCopy();
 
+	imgUnit->EndMultiCopy();
+	return true;
 }
 
 void Vulkan::VulkanRenderUnit::ConsumeMesh(VkVertex * vertexData, uint32_t vertexCount, uint32_t * indiceData, uint32_t indiceCount, std::unordered_map<uint32_t, int> meshDrawCounts, uint32_t objectCount)

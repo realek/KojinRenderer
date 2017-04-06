@@ -35,8 +35,6 @@ namespace Vulkan
 	
 	private:
 		void CreateImage(uint32_t width, uint32_t height, uint32_t layerCount, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, Vulkan::VulkanObjectContainer<VkImage>& image, Vulkan::VulkanObjectContainer<VkDeviceMemory>& imageMemory);
-
-		void BlitImage(VkImage src, VkImage dst, VkImageBlit blitData, VkCommandBuffer cmdBuffer = VK_NULL_HANDLE);
 		void CopyImage(VkImage source, VkImage destination, VkImageCopy copyData, VkCommandBuffer cmdBuffer = VK_NULL_HANDLE);
 	private:
 		std::weak_ptr<VulkanCommandUnit> m_commandUnit;

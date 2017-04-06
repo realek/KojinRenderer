@@ -67,7 +67,7 @@ namespace Vulkan
 			return &object;
 		}
 		//prefix decrement operator overloaded to get internal object reference
-		const T* operator --()
+		T* operator --()
 		{
 			return &object;
 		}
@@ -91,12 +91,6 @@ namespace Vulkan
 			C* otherPtr = other;
 			return objPtr == reinterpret_cast<T*>(otherPtr);
 		}
-
-		inline T Get() const
-		{
-			return object;
-		}
-
 
 	private:
 

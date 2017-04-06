@@ -99,7 +99,7 @@ void Vulkan::KojinRenderer::Render()
 		m_meshDraws,
 		m_objectCount);
 	m_renderUnit->SetTransformsAndMaterials(m_meshPartTransforms, m_meshPartMaterials);
-	m_renderUnit->RecordCommandBuffers();
+	//m_renderUnit->RecordAndSubmitRenderPasses();
 	m_meshDraws.clear();
 	m_meshPartTransforms.clear();
 	m_meshPartMaterials.clear();

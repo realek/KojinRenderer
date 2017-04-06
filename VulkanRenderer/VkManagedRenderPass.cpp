@@ -15,7 +15,8 @@ void Vulkan::VkManagedRenderPass::CreateAsForwardPass(VkDevice device, int32_t w
 	m_device = device;
 	m_type = RenderPassType::Secondary_OnScreen_Forward;
 	m_pass = VulkanObjectContainer<VkRenderPass>{ m_device, vkDestroyRenderPass };
-	m_semaphore = VulkanObjectContainer<VkSemaphore>{ m_device,vkDestroySemaphore };
+	m_semaphoreA = VulkanObjectContainer<VkSemaphore>{ m_device,vkDestroySemaphore };
+	m_semaphoreB = VulkanObjectContainer<VkSemaphore>{ m_device,vkDestroySemaphore };
 	m_extent.width = width;
 	m_extent.height = height;
 	m_colorformat = imageFormat;
@@ -24,7 +25,8 @@ void Vulkan::VkManagedRenderPass::CreateAsForwardPass(VkDevice device, int32_t w
 	m_cmdUnit = cmdUnit;
 	VkResult result;
 
-	MakeSemaphore(m_semaphore, m_device);
+	MakeSemaphore(m_semaphoreA, m_device);
+	MakeSemaphore(m_semaphoreB, m_device);
 
 	VkAttachmentDescription colorAttachmentDesc = {};
 	colorAttachmentDesc.format = imageFormat;
@@ -95,7 +97,8 @@ void Vulkan::VkManagedRenderPass::CreateAsForwardPass(VkDevice device, int32_t w
 	if (result != VK_SUCCESS)
 		throw std::runtime_error("Unable to create render pass. Reason: " + Vulkan::VkResultToString(result));
 	this->CreateTextureSampler(k_defaultSamplerName, VK_BORDER_COLOR_INT_OPAQUE_BLACK, k_defaultAnisotrophy);
-	m_commandBuffer = cmdUnit->CreateCommandBufferSet(m_pass, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+	SetFrameBufferCount(1);
+
 }
 
 void Vulkan::VkManagedRenderPass::CreateAsForwardShadowmapPass(VkDevice device, int32_t width, int32_t height, std::shared_ptr<VulkanImageUnit> imageUnit, std::shared_ptr<VulkanCommandUnit> cmdUnit,VkFormat depthFormat)
@@ -103,7 +106,8 @@ void Vulkan::VkManagedRenderPass::CreateAsForwardShadowmapPass(VkDevice device, 
 	m_device = device;
 	m_type = RenderPassType::Secondary_Offscreen_Forward_Projected_Shadows;
 	m_pass = VulkanObjectContainer<VkRenderPass>{ m_device, vkDestroyRenderPass };
-	m_semaphore = VulkanObjectContainer<VkSemaphore>{ m_device,vkDestroySemaphore };
+	m_semaphoreA = VulkanObjectContainer<VkSemaphore>{ m_device,vkDestroySemaphore };
+	m_semaphoreB = VulkanObjectContainer<VkSemaphore>{ m_device,vkDestroySemaphore };
 	m_extent.width = width;
 	m_extent.height = height;
 	m_depthFormat = depthFormat;
@@ -112,7 +116,8 @@ void Vulkan::VkManagedRenderPass::CreateAsForwardShadowmapPass(VkDevice device, 
 	m_cmdUnit = cmdUnit;
 	VkResult result;
 
-	MakeSemaphore(m_semaphore, m_device);
+	MakeSemaphore(m_semaphoreA, m_device);
+	MakeSemaphore(m_semaphoreB, m_device);
 
 	VkAttachmentDescription depthAttachmentDesc = {};
 	depthAttachmentDesc.format = m_depthFormat;
@@ -165,15 +170,18 @@ void Vulkan::VkManagedRenderPass::CreateAsForwardShadowmapPass(VkDevice device, 
 		throw std::runtime_error("Unable to create render pass. Reason: " + Vulkan::VkResultToString(result));
 
 	this->CreateTextureSampler(k_defaultSamplerName, VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE, k_defaultAnisotrophy);
-	m_commandBuffer = cmdUnit->CreateCommandBufferSet(m_pass, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+	SetFrameBufferCount(1);
 }
 
-void Vulkan::VkManagedRenderPass::AddBuffers(int32_t count) 
+void Vulkan::VkManagedRenderPass::SetFrameBufferCount(int32_t count) 
 {
 	if (m_type == RenderPassType::Uninitialized)
 	{
 		throw std::runtime_error("Render pass is uninitialized.");
 	}
+
+	//temporary solution until framebuffer wrapper
+	RemoveFrameBuffers();
 
 	if (m_type == RenderPassType::Secondary_OnScreen_Forward)
 	{
@@ -187,13 +195,10 @@ void Vulkan::VkManagedRenderPass::AddBuffers(int32_t count)
 		CreateDepthAttachmentImage(count, m_extent.width, m_extent.height, m_depthFormat, true);
 		CreateColorAttachmentImage(count, m_extent.width, m_extent.height, m_colorformat, true);
 	}
-	uint32_t size = static_cast<uint32_t>(m_frameBuffers.size());
-	if (m_frameBuffers.capacity() < size + count)
-		m_frameBuffers.reserve(size + count);
 
-	auto neededCount = size + count;
-	
-	for (size_t i = size; i < neededCount; i++) {
+	m_frameBuffers.reserve(count);
+
+	for (size_t i = 0; i < count; i++) {
 		std::vector<VkImageView> attachments;
 		if (m_type != RenderPassType::Secondary_Offscreen_Forward_Projected_Shadows)
 			attachments.push_back(m_colorAttachments[i].imageView);
@@ -214,32 +219,44 @@ void Vulkan::VkManagedRenderPass::AddBuffers(int32_t count)
 		if (vkCreateFramebuffer(m_device, &framebufferInfo, nullptr, ++m_frameBuffers[i]) != VK_SUCCESS) {
 			throw std::runtime_error("Unable to create frame buffers");
 		}
-
 	}
 
 
+	auto cmdUnit = m_cmdUnit.lock();
+	if (cmdUnit == nullptr)
+		throw std::runtime_error("Unable to lock weak ptr to Vulkan Command Unit object.");
+
+	m_commandBuffer = cmdUnit->CreateCommandBuffers(VK_COMMAND_BUFFER_LEVEL_PRIMARY, count);
+	//std::move(newCmdBuffers.begin(), newCmdBuffers.end(), std::back_inserter(m_commandBuffer));
+
 }
 
-void Vulkan::VkManagedRenderPass::RemoveBuffers(int32_t count)
+void Vulkan::VkManagedRenderPass::RemoveFrameBuffers()
 {
 	if (m_type == RenderPassType::Uninitialized)
 	{
 		throw std::runtime_error("Render pass is uninitialized.");
 	}
 
-	int32_t size = static_cast<uint32_t>(m_frameBuffers.size());
-	if (size == 0)
-		return;
-	else if (size < count)
-		count -= count - size;
-
-	for(int i = 0; i<count;i++)
+	auto cmdUnit = m_cmdUnit.lock();
+	if (cmdUnit == nullptr)
+		throw std::runtime_error("Unable to lock weak ptr to Vulkan Command Unit object.");
+	if(m_commandBuffer.size() > 0)
 	{
-		m_frameBuffers.pop_back();
-		m_depthAttachments.pop_back();
-		if (m_type != RenderPassType::Secondary_Offscreen_Forward_Projected_Shadows)
-			m_colorAttachments.pop_back();
+		cmdUnit->FreeCommandBuffers(m_commandBuffer);
+		m_frameBuffers.clear();
+		m_depthAttachments.clear();
+		m_colorAttachments.clear();
 	}
+
+	//for (int i = 0; i < count; i++)
+	//{
+	//	m_frameBuffers.pop_back();
+	//	m_depthAttachments.pop_back();
+	//	m_commandBuffer.pop_back();
+	//	if (m_type != RenderPassType::Secondary_Offscreen_Forward_Projected_Shadows)
+	//		m_colorAttachments.pop_back();
+	//}
 
 }
 
@@ -263,24 +280,36 @@ size_t Vulkan::VkManagedRenderPass::FramebufferCount()
 	return m_frameBuffers.size();
 }
 
-VkFramebuffer Vulkan::VkManagedRenderPass::GetFrameBuffer(size_t index)
+VkFramebuffer Vulkan::VkManagedRenderPass::GetFrameBuffer(uint32_t index)
 {
 	return m_frameBuffers[index];
 }
 
-VkCommandBuffer Vulkan::VkManagedRenderPass::GetCommandBuffer()
+std::vector<VkFramebuffer> Vulkan::VkManagedRenderPass::GetFrameBuffers()
+{
+	size_t size = m_frameBuffers.size();
+	std::vector<VkFramebuffer> fbs;
+	fbs.resize(size);
+	
+	for(size_t i = 0; i < size;i++)
+		fbs[i] = m_frameBuffers[i];
+
+	return fbs;
+}
+
+VkCommandBuffer Vulkan::VkManagedRenderPass::GetCommandBuffer(uint32_t index)
+{
+	return m_commandBuffer[index];
+}
+
+std::vector<VkCommandBuffer> Vulkan::VkManagedRenderPass::GetCommandBuffers()
 {
 	return m_commandBuffer;
 }
-
+//temporary 
 VkImageView Vulkan::VkManagedRenderPass::GetDepthImageView(size_t index)
 {
 	return m_depthAttachments[index].imageView;
-}
-
-VkImageView Vulkan::VkManagedRenderPass::GetColorImageView(size_t index)
-{
-	return m_colorAttachments[index].imageView;
 }
 
 Vulkan::VkManagedImage * Vulkan::VkManagedRenderPass::GetAttachment(size_t index, VkImageUsageFlagBits attachmentType)
@@ -299,10 +328,34 @@ Vulkan::VkManagedImage * Vulkan::VkManagedRenderPass::GetAttachment(size_t index
 	}
 }
 
-VkSemaphore Vulkan::VkManagedRenderPass::GetSemaphore()
+//Returns the next unused semaphore, cycles semaphore usage
+VkSemaphore * Vulkan::VkManagedRenderPass::GetNextSemaphore()
 {
-	return m_semaphore;
+	useA = !useA;
+	if (useA)
+	{
+		return --m_semaphoreA;
+	}
+	else
+	{
+		return --m_semaphoreB;
+
+	}
 }
+
+//Returns the last used semaphore, this does not cycle semaphore usage
+VkSemaphore * Vulkan::VkManagedRenderPass::GetLastSemaphore()
+{
+	if (!useA)
+	{
+		return --m_semaphoreB;
+	}
+	else
+	{
+		return --m_semaphoreA;
+	}
+}
+
 
 void Vulkan::VkManagedRenderPass::CreateDepthAttachmentImage(int32_t count, int32_t width, int32_t height,VkFormat depthFormat,bool stencil, bool canSample, bool blitSource)
 {
@@ -311,10 +364,7 @@ void Vulkan::VkManagedRenderPass::CreateDepthAttachmentImage(int32_t count, int3
 	if (!imageUnit)
 		throw std::runtime_error("Unable to lock weak ptr to Image unit object");
 
-	uint32_t size = static_cast<uint32_t>(m_depthAttachments.size());
-	if (m_depthAttachments.capacity() < size + count)
-		m_depthAttachments.reserve(size + count);
-
+	m_depthAttachments.reserve(count);
 	for(int32_t i = 0; i < count;i++)
 	{
 		m_depthAttachments.push_back({ m_device });
@@ -333,13 +383,12 @@ void Vulkan::VkManagedRenderPass::CreateDepthAttachmentImage(int32_t count, int3
 				width, height, 1, depthFormat,usage, VK_IMAGE_TILING_OPTIMAL,
 				aspect,
 				VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-				m_depthAttachments[size]);
+				m_depthAttachments[i]);
 		}
 		catch (...)
 		{
 			throw;
 		}
-		size++;
 	}
 
 
@@ -353,10 +402,7 @@ void Vulkan::VkManagedRenderPass::CreateColorAttachmentImage(int32_t count, int3
 	if (!imageUnit)
 		throw std::runtime_error("Unable to lock weak ptr to Image unit object");
 
-	uint32_t size = static_cast<uint32_t>(m_colorAttachments.size());
-	if (m_colorAttachments.capacity() < size + count)
-		m_colorAttachments.reserve(size + count);
-
+	m_colorAttachments.reserve(count);
 	for (int32_t i = 0; i < count; i++)
 	{
 		m_colorAttachments.push_back({ m_device });
@@ -370,13 +416,12 @@ void Vulkan::VkManagedRenderPass::CreateColorAttachmentImage(int32_t count, int3
 				width, height, 1, colorFormat, usage, VK_IMAGE_TILING_OPTIMAL,
 				VK_IMAGE_ASPECT_COLOR_BIT,
 				VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-				m_colorAttachments[size]);
+				m_colorAttachments[i]);
 		}
 		catch (...)
 		{
 			throw;
 		}
-		size++;
 	}
 }
 

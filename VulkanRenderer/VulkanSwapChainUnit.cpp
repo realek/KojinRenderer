@@ -45,15 +45,15 @@ VkSwapchainKHR Vulkan::VulkanSwapchainUnit::GetSwapChain()
 }
 
 //Get Frame presented semaphore
-VkSemaphore Vulkan::VulkanSwapchainUnit::GetPresentSemaphore()
+VkSemaphore * Vulkan::VulkanSwapchainUnit::GetPresentSemaphore()
 {
-	return m_presentSemaphore;
+	return --m_presentSemaphore;
 }
 
 //Get Processing semaphore for performing blits onto the swap chain frame buffers.
-VkSemaphore Vulkan::VulkanSwapchainUnit::GetProcessingSemaphore()
+VkSemaphore * Vulkan::VulkanSwapchainUnit::GetProcessingSemaphore()
 {
-	return m_processingSemaphore;
+	return --m_processingSemaphore;
 }
 
 VkSurfaceFormatKHR Vulkan::VulkanSwapchainUnit::GetSupportedSurfaceFormat(const std::vector<VkSurfaceFormatKHR>* surfaceFormats)

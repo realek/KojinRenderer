@@ -164,6 +164,7 @@
     <ClCompile Include="Texture2D.cpp" />
     <ClCompile Include="Mesh.cpp" />
     <ClCompile Include="VkManagedBuffer.cpp" />
+    <ClCompile Include="VkManagedFrameBuffer.cpp" />
     <ClCompile Include="VkManagedImage.cpp" />
     <ClCompile Include="VkManagedPipeline.cpp" />
     <ClCompile Include="VkManagedRenderPass.cpp" />
@@ -186,6 +187,7 @@
     <ClInclude Include="SPIRVShader.h" />
     <ClInclude Include="Texture2D.h" />
     <ClInclude Include="VkManagedBuffer.h" />
+    <ClInclude Include="VkManagedFrameBuffer.h" />
     <ClInclude Include="VkManagedImage.h" />
     <ClInclude Include="VkManagedPipeline.h" />
     <ClInclude Include="VkManagedRenderPass.h" />

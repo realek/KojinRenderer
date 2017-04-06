@@ -14,10 +14,11 @@ namespace Vulkan
 	public:
 
 		VkManagedRenderPass();
+
 		void CreateAsForwardPass(VkDevice device, int32_t width, int32_t height, std::shared_ptr<VulkanImageUnit> imageUnit, std::shared_ptr<VulkanCommandUnit> cmdUnit, VkFormat imageFormat, VkFormat depthFormat, bool hasColorAttachment = true, bool hasDepthAttachment = true);
 		void CreateAsForwardShadowmapPass(VkDevice device, int32_t width, int32_t height, std::shared_ptr<VulkanImageUnit> imageUnit, std::shared_ptr<VulkanCommandUnit> cmdUnit, VkFormat depthFormat);
-		void AddBuffers(int32_t count);
-		void RemoveBuffers(int32_t count);
+		void SetFrameBufferCount(int32_t count);
+		void RemoveFrameBuffers();
 		void CreateTextureSampler(std::string name, VkBorderColor borderColor, float anisotrophy = 16, bool depthSampler = false);
 		void EditSampler(std::string name, float anisotrophy, VkBorderColor borderColor, bool depthSampler);
 		VkSampler GetSampler(std::string name);
@@ -25,12 +26,15 @@ namespace Vulkan
 		VkExtent2D GetExtent();
 		VkDevice GetDevice();
 		size_t FramebufferCount();
-		VkFramebuffer GetFrameBuffer(size_t index = 0);
-		VkCommandBuffer GetCommandBuffer();
+		VkFramebuffer GetFrameBuffer(uint32_t index = 0);
+		std::vector<VkFramebuffer> GetFrameBuffers();
+		VkCommandBuffer GetCommandBuffer(uint32_t index = 0);
+		std::vector<VkCommandBuffer> GetCommandBuffers();
 		VkImageView GetDepthImageView(size_t index);
 		VkImageView GetColorImageView(size_t index);
 		Vulkan::VkManagedImage * GetAttachment(size_t index, VkImageUsageFlagBits attachmentType);
-		VkSemaphore GetSemaphore();
+		VkSemaphore * GetNextSemaphore();
+		VkSemaphore * GetLastSemaphore();
 		const std::string k_defaultSamplerName ="vk_implem_default_sampler";
 		const float k_defaultAnisotrophy = 16;
 
@@ -65,9 +69,11 @@ namespace Vulkan
 		std::vector<VulkanObjectContainer<VkFramebuffer>> m_frameBuffers;
 		std::vector<VkManagedImage> m_depthAttachments;
 		std::vector<VkManagedImage> m_colorAttachments;
-		VkCommandBuffer m_commandBuffer;
+		std::vector<VkCommandBuffer> m_commandBuffer;
 		std::map<std::string, VulkanObjectContainer<VkSampler>> m_samplers;
-		VulkanObjectContainer<VkSemaphore> m_semaphore;
+		VulkanObjectContainer<VkSemaphore> m_semaphoreA;
+		VulkanObjectContainer<VkSemaphore> m_semaphoreB;
+		bool useA = false;
 		friend class VulkanSwapchainUnit;
 
 	};

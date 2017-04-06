@@ -30,18 +30,24 @@ namespace Vulkan
 	enum RecordMode
 	{
 		SingleFB,
-		MultipleFB
+		MultipleFB,
+		SingleFB_Multipass
 	};
 	
+	enum SubmitMode
+	{
+		SingleBuffer,
+		SingleBuffer_MultiPass
+	};
 	class VulkanRenderUnit
 	{
 	
 	public:
 
 		void Initialize(std::weak_ptr<Vulkan::VulkanSystem> vkSystem, std::shared_ptr<VulkanImageUnit> vkImageUnit, std::shared_ptr<Vulkan::VulkanCommandUnit> vkCmdUnit, std::shared_ptr<Vulkan::VulkanSwapchainUnit> vkSCUnit);
-		void RecordCommandBuffers();
-		void PresentFrame();
-		void RecordPass(VkManagedRenderPass * pass, VkManagedPipeline * pipeline, VkViewport viewport, VkRect2D scissor, VkClearValue clearValues[], uint32_t clearValueCount, std::vector<VkDescriptorSet>* descriptorSets[], uint32_t setCount, RecordMode record = RecordMode::MultipleFB);	
+		//will return true if succeded, will return false if swapchain needs to be recreated, throws if any other kind of error occurs.
+		bool RecordAndSubmitRenderPasses(uint32_t * bufferIndex);
+		void PresentFrame();	
 		void UpdateShadowPassUniformbuffers(int objectIndex, glm::mat4 modelMatrix);
 		void UpdateMainPassUniformBuffers(int objectIndex, glm::mat4 modelMatrix, Material * material, glm::mat4& view, glm::mat4& proj);
 		void AddCamera(Camera* cam);
@@ -115,6 +121,10 @@ namespace Vulkan
 		VkManagedImage m_projectedLayeredShadowMap;
 	private:
 
+		void RecordPass(VkManagedRenderPass * pass, VkManagedPipeline * pipeline, VkViewport viewport, VkRect2D scissor, const VkClearValue clearValues[], uint32_t clearValueCount, std::vector<VkDescriptorSet>* descriptorSets[], uint32_t setCount, RecordMode record = RecordMode::SingleFB, uint32_t fbCIndex = 0);
+		VkResult SubmitPass(VkManagedRenderPass * pass, VkSemaphore * waitSemaphores, uint32_t waitSemaphoreCount, std::vector<VkPipelineStageFlags> waitStages, VkQueue submitQueue, SubmitMode mode = SubmitMode::SingleBuffer, uint32_t passCI = 0);
+		VkResult AcquireNextSwapChainImage(std::weak_ptr<Vulkan::VulkanSwapchainUnit>& VkSc, uint32_t * imageIndex, uint32_t timeout);
+		VkResult ProcessSwapChain(std::weak_ptr<Vulkan::VulkanSwapchainUnit>& VkSc, uint32_t * imageIndex, VkSemaphore * waitSemaphores, uint32_t waitSemaphoreCount, std::vector<VkPipelineStageFlags> waitStates, VkQueue processQueue, VkQueue presentQueue);
 		void CreateDescriptorSetLayout();
 		void CreateVertexUniformBuffers(uint32_t count);
 		void CreateFragmentUniformBuffers(uint32_t count);

@@ -21,8 +21,8 @@ namespace Vulkan
 		VkExtent2D swapChainExtent2D;
 		VkFormat depthFormat;
 		VkSwapchainKHR GetSwapChain();
-		VkSemaphore GetPresentSemaphore();
-		VkSemaphore GetProcessingSemaphore();
+		VkSemaphore * GetPresentSemaphore();
+		VkSemaphore * GetProcessingSemaphore();
 		Vulkan::VkManagedImage * GetFrameBuffer(size_t index);
 		VkCommandBuffer GetCommandBuffer(size_t index);
 		size_t CommandBufferCount();

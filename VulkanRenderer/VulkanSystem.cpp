@@ -166,7 +166,7 @@ void Vulkan::VulkanSystem::CreateVulkanInstance(const VkApplicationInfo * appInf
 
 void Vulkan::VulkanSystem::CreateVulkanSurface(SDL_Window* window)
 {
-	if (m_vulkanInstance.Get() == VK_NULL_HANDLE)
+	if (m_vulkanInstance == VK_NULL_HANDLE)
 		throw std::runtime_error("Vulkan instance was not created. Aborting...");
 
 	SDL_SysWMinfo windowInfo;
