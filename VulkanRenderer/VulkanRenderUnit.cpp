@@ -569,7 +569,6 @@ bool Vulkan::VulkanRenderUnit::RecordAndSubmitRenderPasses(uint32_t * bufferInde
 	VkResult result;
 	result = AcquireNextSwapChainImage(m_swapChainUnit, bufferIndex, 1000);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-		//recreate swap chain instead of recording
 		return false;
 	}
 	else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
@@ -682,8 +681,8 @@ bool Vulkan::VulkanRenderUnit::RecordAndSubmitRenderPasses(uint32_t * bufferInde
 	{
 
 		VkOffset3D offset = {};
-		offset.x = camIT->second->m_viewPort.x;
-		offset.y = camIT->second->m_viewPort.y;
+		offset.x = static_cast<uint32_t>(camIT->second->m_viewPort.x);
+		offset.y = static_cast<uint32_t>(camIT->second->m_viewPort.y);
 		offset.z = 0;
 		for (size_t i = 0; i < commandBuffers.size(); i++)
 		{
@@ -979,7 +978,7 @@ void Vulkan::VulkanRenderUnit::WriteFragmentSets(VkImageView textureImageView, V
 
 	VkDescriptorImageInfo shadowMaptexture = {};
 	shadowMaptexture.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-	shadowMaptexture.imageView = m_fwdOffScreenProjShadows.GetDepthImageView(0);
+	shadowMaptexture.imageView = m_fwdOffScreenProjShadows.GetAttachment(0, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)->imageView;
 	shadowMaptexture.sampler = m_fwdOffScreenProjShadows.GetSampler(m_fwdOffScreenProjShadows.k_defaultSamplerName);
 
 	VkDescriptorBufferInfo lightsUniformBufferInfo = {};

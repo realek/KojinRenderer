@@ -7,6 +7,7 @@ namespace Vulkan
 {
 
 	class VkManagedImage;
+	class VkManagedFrameBuffer;
 	class VulkanImageUnit;
 	class VulkanCommandUnit;
 	class VkManagedRenderPass
@@ -14,11 +15,10 @@ namespace Vulkan
 	public:
 
 		VkManagedRenderPass();
-
+		~VkManagedRenderPass();
 		void CreateAsForwardPass(VkDevice device, int32_t width, int32_t height, std::shared_ptr<VulkanImageUnit> imageUnit, std::shared_ptr<VulkanCommandUnit> cmdUnit, VkFormat imageFormat, VkFormat depthFormat, bool hasColorAttachment = true, bool hasDepthAttachment = true);
 		void CreateAsForwardShadowmapPass(VkDevice device, int32_t width, int32_t height, std::shared_ptr<VulkanImageUnit> imageUnit, std::shared_ptr<VulkanCommandUnit> cmdUnit, VkFormat depthFormat);
 		void SetFrameBufferCount(int32_t count);
-		void RemoveFrameBuffers();
 		void CreateTextureSampler(std::string name, VkBorderColor borderColor, float anisotrophy = 16, bool depthSampler = false);
 		void EditSampler(std::string name, float anisotrophy, VkBorderColor borderColor, bool depthSampler);
 		VkSampler GetSampler(std::string name);
@@ -30,8 +30,6 @@ namespace Vulkan
 		std::vector<VkFramebuffer> GetFrameBuffers();
 		VkCommandBuffer GetCommandBuffer(uint32_t index = 0);
 		std::vector<VkCommandBuffer> GetCommandBuffers();
-		VkImageView GetDepthImageView(size_t index);
-		VkImageView GetColorImageView(size_t index);
 		Vulkan::VkManagedImage * GetAttachment(size_t index, VkImageUsageFlagBits attachmentType);
 		VkSemaphore * GetNextSemaphore();
 		VkSemaphore * GetLastSemaphore();
@@ -51,11 +49,7 @@ namespace Vulkan
 			Secondary_Offscreen_Deffered_Shadows = 6,
 			RenderPassCount = 7
 		};
-
-	private:
-		void CreateDepthAttachmentImage(int32_t count, int32_t width, int32_t height, VkFormat depthFormat,bool stencil, bool canSample = false, bool blitSource = false);
-		void CreateColorAttachmentImage(int32_t count, int32_t width, int32_t height, VkFormat colorFormat, bool blitSource = false);
-		
+	
 	private:
 
 		VkDevice m_device;
@@ -66,9 +60,8 @@ namespace Vulkan
 		VulkanObjectContainer<VkRenderPass> m_pass;
 		std::weak_ptr<VulkanImageUnit> m_imageUnit;
 		std::weak_ptr<VulkanCommandUnit> m_cmdUnit;
-		std::vector<VulkanObjectContainer<VkFramebuffer>> m_frameBuffers;
-		std::vector<VkManagedImage> m_depthAttachments;
-		std::vector<VkManagedImage> m_colorAttachments;
+		std::vector<VkManagedFrameBuffer*> m_fbs;
+		size_t m_fbSize = 0;
 		std::vector<VkCommandBuffer> m_commandBuffer;
 		std::map<std::string, VulkanObjectContainer<VkSampler>> m_samplers;
 		VulkanObjectContainer<VkSemaphore> m_semaphoreA;

@@ -56,7 +56,13 @@ std::weak_ptr<Vulkan::Texture2D> Vulkan::Texture2D::GetWhiteTexture()
 
 VkImageView Vulkan::Texture2D::ImageView()
 {
-	return m_image.imageView;
+	return m_image->imageView;
+}
+Vulkan::Texture2D::~Texture2D()
+{
+	if (this->m_image != nullptr)
+		delete m_image;
+
 }
 void Vulkan::Texture2D::CleanUp()
 {

@@ -3,11 +3,18 @@
 #include "VulkanCommandUnit.h"
 #include "VkManagedImage.h"
 #include "VulkanObjectUtils.h"
+#include "VkManagedFrameBuffer.h"
 #include <array>
 
 
 Vulkan::VkManagedRenderPass::VkManagedRenderPass()
 {
+}
+
+Vulkan::VkManagedRenderPass::~VkManagedRenderPass()
+{
+	for (VkManagedFrameBuffer* buffer : m_fbs)
+		delete(buffer);
 }
 
 void Vulkan::VkManagedRenderPass::CreateAsForwardPass(VkDevice device, int32_t width, int32_t height, std::shared_ptr<VulkanImageUnit> imageUnit, std::shared_ptr<VulkanCommandUnit> cmdUnit, VkFormat imageFormat, VkFormat depthFormat, bool hasColorAttachment, bool hasDepthAttachment)
@@ -180,12 +187,61 @@ void Vulkan::VkManagedRenderPass::SetFrameBufferCount(int32_t count)
 		throw std::runtime_error("Render pass is uninitialized.");
 	}
 
-	//temporary solution until framebuffer wrapper
-	RemoveFrameBuffers();
+	uint32_t size = static_cast<uint32_t>(m_fbSize);
+	count = count - size;
+	if (count == 0)
+		return;
+	
+	auto cmdUnit = m_cmdUnit.lock();
+	if (cmdUnit == nullptr)
+		throw std::runtime_error("Unable to lock weak ptr to Vulkan Command Unit object.");
 
-	if (m_type == RenderPassType::Secondary_OnScreen_Forward)
+	if(count > 0)
 	{
-		CreateDepthAttachmentImage(count, m_extent.width, m_extent.height, m_depthFormat, true, false);
+		std::vector<VkCommandBuffer> newCmdBuffers = cmdUnit->CreateCommandBuffers(VK_COMMAND_BUFFER_LEVEL_PRIMARY, count);
+		std::move(newCmdBuffers.begin(), newCmdBuffers.end(), std::back_inserter(m_commandBuffer));
+
+		for (int32_t i = 0; i < count; i++)
+		{
+			m_fbs.push_back(new VkManagedFrameBuffer{ m_imageUnit });
+
+			if (m_type == RenderPassType::Secondary_OnScreen_Forward)
+			{
+				m_fbs[size]->SetupAttachment(VkManagedFrameBufferAttachment::ColorAttachment, m_extent, m_colorformat, false, false, true);
+				m_fbs[size]->SetupAttachment(VkManagedFrameBufferAttachment::DepthAttachment, m_extent, m_depthFormat, false, true, false);
+			}
+			else if (m_type == RenderPassType::Secondary_Offscreen_Forward_Projected_Shadows)
+			{
+				m_fbs[size]->SetupAttachment(VkManagedFrameBufferAttachment::DepthAttachment, m_extent, m_depthFormat, true, true, true);
+			}
+			else if (m_type == RenderPassType::Secondary_Offscreen_Forward_OmniDirectional_Shadows)
+			{
+				m_fbs[size]->SetupAttachment(VkManagedFrameBufferAttachment::ColorAttachment, m_extent, m_colorformat, true, false, true);
+				m_fbs[size]->SetupAttachment(VkManagedFrameBufferAttachment::DepthAttachment, m_extent, m_depthFormat, false, true, false);
+			}
+			m_fbs[size]->Build(m_extent, m_device, m_pass);
+			size++;
+		}
+	}
+	else
+	{
+		int32_t cmdBuffCount = -1 * count;
+		std::vector<VkCommandBuffer> discardBuffers;
+		discardBuffers.reserve(cmdBuffCount);
+		std::move(m_commandBuffer.end(), m_commandBuffer.end() + cmdBuffCount, std::back_inserter(discardBuffers));
+		m_commandBuffer.erase(m_commandBuffer.end(), m_commandBuffer.end() + cmdBuffCount);
+
+		for(int i = count ; i < 0; i++)
+		{
+			delete(m_fbs[size]);
+			m_fbs.pop_back();
+			size--;
+		}
+	}
+	m_fbSize = m_fbs.size();
+	/*if (m_type == RenderPassType::Secondary_OnScreen_Forward)
+	{
+		CreateDepthAttachmentImage(count, m_extent.width, m_extent.height, m_depthFormat, true);
 		CreateColorAttachmentImage(count, m_extent.width, m_extent.height, m_colorformat, true);
 	}
 	else if (m_type == RenderPassType::Secondary_Offscreen_Forward_Projected_Shadows)
@@ -219,44 +275,8 @@ void Vulkan::VkManagedRenderPass::SetFrameBufferCount(int32_t count)
 		if (vkCreateFramebuffer(m_device, &framebufferInfo, nullptr, ++m_frameBuffers[i]) != VK_SUCCESS) {
 			throw std::runtime_error("Unable to create frame buffers");
 		}
-	}
+	}*/
 
-
-	auto cmdUnit = m_cmdUnit.lock();
-	if (cmdUnit == nullptr)
-		throw std::runtime_error("Unable to lock weak ptr to Vulkan Command Unit object.");
-
-	m_commandBuffer = cmdUnit->CreateCommandBuffers(VK_COMMAND_BUFFER_LEVEL_PRIMARY, count);
-	//std::move(newCmdBuffers.begin(), newCmdBuffers.end(), std::back_inserter(m_commandBuffer));
-
-}
-
-void Vulkan::VkManagedRenderPass::RemoveFrameBuffers()
-{
-	if (m_type == RenderPassType::Uninitialized)
-	{
-		throw std::runtime_error("Render pass is uninitialized.");
-	}
-
-	auto cmdUnit = m_cmdUnit.lock();
-	if (cmdUnit == nullptr)
-		throw std::runtime_error("Unable to lock weak ptr to Vulkan Command Unit object.");
-	if(m_commandBuffer.size() > 0)
-	{
-		cmdUnit->FreeCommandBuffers(m_commandBuffer);
-		m_frameBuffers.clear();
-		m_depthAttachments.clear();
-		m_colorAttachments.clear();
-	}
-
-	//for (int i = 0; i < count; i++)
-	//{
-	//	m_frameBuffers.pop_back();
-	//	m_depthAttachments.pop_back();
-	//	m_commandBuffer.pop_back();
-	//	if (m_type != RenderPassType::Secondary_Offscreen_Forward_Projected_Shadows)
-	//		m_colorAttachments.pop_back();
-	//}
 
 }
 
@@ -277,22 +297,21 @@ VkDevice Vulkan::VkManagedRenderPass::GetDevice()
 
 size_t Vulkan::VkManagedRenderPass::FramebufferCount()
 {
-	return m_frameBuffers.size();
+	return m_fbSize;
 }
 
 VkFramebuffer Vulkan::VkManagedRenderPass::GetFrameBuffer(uint32_t index)
 {
-	return m_frameBuffers[index];
+	return m_fbs[index]->FrameBuffer();
 }
 
 std::vector<VkFramebuffer> Vulkan::VkManagedRenderPass::GetFrameBuffers()
 {
-	size_t size = m_frameBuffers.size();
 	std::vector<VkFramebuffer> fbs;
-	fbs.resize(size);
+	fbs.resize(m_fbSize);
 	
-	for(size_t i = 0; i < size;i++)
-		fbs[i] = m_frameBuffers[i];
+	for(size_t i = 0; i < m_fbSize;i++)
+		fbs[i] = m_fbs[i]->FrameBuffer();
 
 	return fbs;
 }
@@ -306,23 +325,17 @@ std::vector<VkCommandBuffer> Vulkan::VkManagedRenderPass::GetCommandBuffers()
 {
 	return m_commandBuffer;
 }
-//temporary 
-VkImageView Vulkan::VkManagedRenderPass::GetDepthImageView(size_t index)
-{
-	return m_depthAttachments[index].imageView;
-}
 
 Vulkan::VkManagedImage * Vulkan::VkManagedRenderPass::GetAttachment(size_t index, VkImageUsageFlagBits attachmentType)
 {
 	switch (attachmentType)
 	{
 	case VkImageUsageFlagBits::VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT:
-		return &m_colorAttachments[index];
-		break;
-	
+		return m_fbs[index]->ColorAttachment();
+
 	case VkImageUsageFlagBits::VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT:
-		return &m_depthAttachments[index];
-		break;
+		return m_fbs[index]->DepthAttachment();
+
 	default:
 		throw std::runtime_error("Incorrect attachment type provided.");
 	}
@@ -356,74 +369,6 @@ VkSemaphore * Vulkan::VkManagedRenderPass::GetLastSemaphore()
 	}
 }
 
-
-void Vulkan::VkManagedRenderPass::CreateDepthAttachmentImage(int32_t count, int32_t width, int32_t height,VkFormat depthFormat,bool stencil, bool canSample, bool blitSource)
-{
-
-	auto imageUnit = m_imageUnit.lock();
-	if (!imageUnit)
-		throw std::runtime_error("Unable to lock weak ptr to Image unit object");
-
-	m_depthAttachments.reserve(count);
-	for(int32_t i = 0; i < count;i++)
-	{
-		m_depthAttachments.push_back({ m_device });
-
-		try
-		{
-			int usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-			if (canSample)
-				usage = usage | VK_IMAGE_USAGE_SAMPLED_BIT;
-			if (blitSource)
-				usage = usage | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-			int aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
-			if (stencil && depthFormat == VK_FORMAT_D32_SFLOAT_S8_UINT)
-				aspect = aspect | VK_IMAGE_ASPECT_STENCIL_BIT;
-			imageUnit->CreateVulkanManagedImageNoData(
-				width, height, 1, depthFormat,usage, VK_IMAGE_TILING_OPTIMAL,
-				aspect,
-				VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-				m_depthAttachments[i]);
-		}
-		catch (...)
-		{
-			throw;
-		}
-	}
-
-
-
-
-}
-
-void Vulkan::VkManagedRenderPass::CreateColorAttachmentImage(int32_t count, int32_t width, int32_t height, VkFormat colorFormat, bool blitSource)
-{
-	auto imageUnit = m_imageUnit.lock();
-	if (!imageUnit)
-		throw std::runtime_error("Unable to lock weak ptr to Image unit object");
-
-	m_colorAttachments.reserve(count);
-	for (int32_t i = 0; i < count; i++)
-	{
-		m_colorAttachments.push_back({ m_device });
-
-		try
-		{
-			int usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-			if(blitSource)
-				usage = usage | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-			imageUnit->CreateVulkanManagedImageNoData(
-				width, height, 1, colorFormat, usage, VK_IMAGE_TILING_OPTIMAL,
-				VK_IMAGE_ASPECT_COLOR_BIT,
-				VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-				m_colorAttachments[i]);
-		}
-		catch (...)
-		{
-			throw;
-		}
-	}
-}
 
 void Vulkan::VkManagedRenderPass::CreateTextureSampler(std::string name, VkBorderColor border, float anisotrophy, bool depthSampler)
 {

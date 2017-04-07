@@ -355,10 +355,11 @@ void Vulkan::VulkanImageUnit::CopyImage(VkImage source, VkImage destination, VkI
 	}
 }
 
-void Vulkan::VulkanImageUnit::CreateVulkanManagedImage(uint32_t width, uint32_t height, void * pixels, Vulkan::VkManagedImage & vkManagedImg)
+void Vulkan::VulkanImageUnit::CreateVulkanManagedImage(uint32_t width, uint32_t height, void * pixels, Vulkan::VkManagedImage *& vkManagedImg)
 {
-	if (vkManagedImg.image == VK_NULL_HANDLE || vkManagedImg.imageMemory == VK_NULL_HANDLE || vkManagedImg.imageView == VK_NULL_HANDLE)
-		vkManagedImg = { m_deviceHandle };
+	if (vkManagedImg == nullptr)
+		vkManagedImg = new VkManagedImage{ m_deviceHandle };
+
 	VkDeviceSize imageMemorySize = width * height * 4;
 	Vulkan::VulkanObjectContainer<VkImage> stagingImage{ m_deviceHandle, vkDestroyImage };
 	Vulkan::VulkanObjectContainer<VkDeviceMemory> stagingImageMemory{ m_deviceHandle, vkFreeMemory };
@@ -370,17 +371,17 @@ void Vulkan::VulkanImageUnit::CreateVulkanManagedImage(uint32_t width, uint32_t 
 		memcpy(data, pixels, (size_t)imageMemorySize);
 		vkUnmapMemory(m_deviceHandle, stagingImageMemory);
 
-		CreateImage(width, height, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vkManagedImg.image, vkManagedImg.imageMemory);
+		CreateImage(width, height, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vkManagedImg->image, vkManagedImg->imageMemory);
 		LayoutTransition(stagingImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-		LayoutTransition(vkManagedImg.image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		LayoutTransition(vkManagedImg->image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 		VkImageCopy copy = defaultCopySettings;
 		copy.extent = { width,height,1 };
-		CopyImage(stagingImage, vkManagedImg.image, copy);
-		LayoutTransition(vkManagedImg.image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-		CreateImageView(1, vkManagedImg.image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT, vkManagedImg.imageView);
-		vkManagedImg.m_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		vkManagedImg.m_format = VK_FORMAT_R8G8B8A8_UNORM;
-		vkManagedImg.m_layers = 1;
+		CopyImage(stagingImage, vkManagedImg->image, copy);
+		LayoutTransition(vkManagedImg->image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		CreateImageView(1, vkManagedImg->image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT, vkManagedImg->imageView);
+		vkManagedImg->m_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		vkManagedImg->m_format = VK_FORMAT_R8G8B8A8_UNORM;
+		vkManagedImg->m_layers = 1;
 }
 
 void Vulkan::VulkanImageUnit::CreateVulkanManagedImageNoData(uint32_t width, uint32_t height, uint32_t layerCount,VkFormat imageFormat, VkImageUsageFlags usage, VkImageTiling tiling, VkImageAspectFlags aspect, VkImageLayout layout, Vulkan::VkManagedImage& vkManagedImg)
@@ -414,6 +415,45 @@ void Vulkan::VulkanImageUnit::CreateVulkanManagedImageNoData(uint32_t width, uin
 		vkManagedImg.m_layers = layerCount;
 	}
 	catch(...)
+	{
+		throw;
+	}
+}
+
+void Vulkan::VulkanImageUnit::CreateVulkanManagedImageNoData(uint32_t width, uint32_t height, uint32_t layerCount, VkFormat imageFormat, VkImageUsageFlags usage, VkImageTiling tiling, VkImageAspectFlags aspect, VkImageLayout layout, Vulkan::VkManagedImage *& vkManagedImg)
+{
+	try
+	{
+		if (vkManagedImg == nullptr)
+			vkManagedImg = new VkManagedImage{ m_deviceHandle };
+
+		CreateImage(
+			width,
+			height,
+			layerCount,
+			imageFormat,
+			tiling,
+			usage,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			vkManagedImg->image,
+			vkManagedImg->imageMemory);
+
+		CreateImageView(
+			layerCount,
+			vkManagedImg->image, imageFormat,
+			aspect,
+			vkManagedImg->imageView);
+
+		LayoutTransition(
+			vkManagedImg->image,
+			imageFormat,
+			VK_IMAGE_LAYOUT_UNDEFINED,
+			layout);
+		vkManagedImg->m_layout = layout;
+		vkManagedImg->m_format = imageFormat;
+		vkManagedImg->m_layers = layerCount;
+	}
+	catch (...)
 	{
 		throw;
 	}

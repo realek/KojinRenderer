@@ -74,6 +74,11 @@ namespace Vulkan
 		VkManagedRenderPass m_fwdOffScreenProjShadows;
 		VkManagedRenderPass m_fwdOffScreenOmniShadows;
 
+		//layered shadowmap attachment
+		VkManagedImage * m_layeredProjectedShadowmaps;
+		//vector of cubemaps for omni-shadowmaps
+		std::vector<VkManagedImage*> m_omniDirectionalDhadowMaps;
+
 		//meshData
 		VkManagedBuffer vertexBuffer;
 		VkManagedBuffer indiceBuffer;
@@ -115,10 +120,7 @@ namespace Vulkan
 		Camera * m_cMainCam;
 		//current lights
 		std::unordered_map<uint32_t, Light*> m_cLights;
-		//current omni shadow cubeMaps
-		std::vector<VkManagedImage> m_cOmniShadowCubemaps;
-		//current layered projected shadow map
-		VkManagedImage m_projectedLayeredShadowMap;
+
 	private:
 
 		void RecordPass(VkManagedRenderPass * pass, VkManagedPipeline * pipeline, VkViewport viewport, VkRect2D scissor, const VkClearValue clearValues[], uint32_t clearValueCount, std::vector<VkDescriptorSet>* descriptorSets[], uint32_t setCount, RecordMode record = RecordMode::SingleFB, uint32_t fbCIndex = 0);

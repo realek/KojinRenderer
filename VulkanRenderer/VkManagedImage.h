@@ -14,7 +14,7 @@ namespace Vulkan
 	{
 	public:
 
-		VkManagedImage() {};
+		//VkManagedImage() {};
 		VkManagedImage(VkDevice device, VkManagedImageFlag imageFlag = VkManagedImageFlag::Clear, VkManagedImageFlag memoryFlag = VkManagedImageFlag::Clear, VkManagedImageFlag viewFlag = VkManagedImageFlag::Clear);
 
 	public:

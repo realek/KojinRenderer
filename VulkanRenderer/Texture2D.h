@@ -17,11 +17,12 @@ namespace Vulkan
 		static std::weak_ptr<Texture2D> CreateFromFile(const char * filepath,bool storePixelData = false);
 		static std::weak_ptr<Texture2D> GetWhiteTexture();
 		VkImageView ImageView();
+		~Texture2D();
 	private:
 
 		//store pixels if specified
 		void* pixels;
-		VkManagedImage m_image;
+		VkManagedImage * m_image = nullptr;
 		Texture2D() {};
 		static std::map<const char*,std::shared_ptr<Texture2D>> textures;
 		int width, height;
