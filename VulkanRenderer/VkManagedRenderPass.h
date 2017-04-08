@@ -24,6 +24,7 @@ namespace Vulkan
 		VkSampler GetSampler(std::string name);
 		VkRenderPass GetPass();
 		VkExtent2D GetExtent();
+		VkExtent3D GetExtent3D();
 		VkDevice GetDevice();
 		size_t FramebufferCount();
 		VkFramebuffer GetFrameBuffer(uint32_t index = 0);

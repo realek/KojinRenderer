@@ -19,7 +19,7 @@ layout(location = 0) out vec3 fragColor;
 layout(location = 1) out vec2 fragTexCoord;
 layout(location = 2) out vec3 fragNormal;
 layout(location = 3) out vec3 fragPos;
-layout(location = 4) out vec4 shadowFragPos;
+layout(location = 4) out vec4 position;
 
 out gl_PerVertex {
     vec4 gl_Position;
@@ -27,12 +27,11 @@ out gl_PerVertex {
 
 void main() {
 
-	vec4 position = vec4(inPosition, 1.0);
+	position = vec4(inPosition, 1.0);
     gl_Position = ubo.modelViewProjection * position;
     fragColor = inColor;
     fragTexCoord = inTexCoord;
 	fragNormal = vec3(ubo.normal * vec4(inNormal,1.0));
 	vec4 vPos = ubo.modelView*position;
 	fragPos = vec3(vPos)/vPos.w;
-	shadowFragPos = ubo.depthMVP * position;
 }

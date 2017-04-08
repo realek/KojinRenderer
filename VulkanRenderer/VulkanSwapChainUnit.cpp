@@ -148,11 +148,11 @@ void Vulkan::VulkanSwapchainUnit::CreateSwapChain(VkSurfaceKHR surface, uint32_t
 	for(uint32_t i = 0; i < minImageCount; ++i)
 	{
 		//pre transition swapchain image layouts
-		imgUnit->LayoutTransition(images[i], format.format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR); 
+		imgUnit->LayoutTransition(images[i], 1, format.format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR); 
 		m_swapChainBuffers[i].image = images[i];
-		m_swapChainBuffers[i].m_layers = 1;
-		m_swapChainBuffers[i].m_format = format.format;
-		m_swapChainBuffers[i].m_layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		m_swapChainBuffers[i].layers = 1;
+		m_swapChainBuffers[i].format = format.format;
+		m_swapChainBuffers[i].layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 	}
 
 	swapChainImageFormat = format.format;

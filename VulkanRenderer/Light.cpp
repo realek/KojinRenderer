@@ -4,6 +4,7 @@
 #include <glm/gtx/rotate_vector.hpp>
 #include <glm\gtc\matrix_transform.hpp>
 #include <glm\gtc\quaternion.hpp>
+#include "VulkanSystemStructs.h"
 
 std::atomic<uint32_t> Vulkan::Light::globalID = 0;
 void Vulkan::Light::SetType(Vulkan::LightType type)
@@ -13,10 +14,10 @@ void Vulkan::Light::SetType(Vulkan::LightType type)
 
 glm::vec4 Vulkan::Light::GetLightForward()
 {
+	auto rotZ = glm::eulerAngleZ(glm::radians(-m_rotation.z));
 	auto rotY = glm::eulerAngleY(glm::radians(-m_rotation.y));
 	auto rotX = glm::eulerAngleX(glm::radians(m_rotation.x));
-
-	return rotX*rotY*glm::vec4(VkWorldSpace::WORLD_FORWARD, 0.0f);
+	return ((rotZ*rotY*rotX)*glm::vec4(VkWorldSpace::WORLD_FORWARD, 0.0f));
 }
 
 glm::mat4 Vulkan::Light::GetLightViewMatrix()
@@ -44,6 +45,32 @@ glm::mat4 Vulkan::Light::GetLightViewMatrix()
 			return glm::mat4();
 		}
 	}
+}
+
+glm::mat4 Vulkan::Light::GetLightProjectionMatrix()
+{
+	glm::mat4 depthProj;
+	if (m_lightType == LightType::Directional)
+	{
+		depthProj = glm::ortho<float>(-15, 15, -15, 15, -30,
+			Vulkan::VkViewportDefaults::k_CameraZFar);
+	}
+	else if (m_lightType == LightType::Spot)
+	{
+		auto fov = angle +
+			VkShadowmapDefaults::k_lightFOVOffset;
+		if (fov > VkViewportDefaults::k_CameraMaxFov)
+		{
+			fov = glm::clamp(fov, VkShadowmapDefaults::k_lightFOVOffset,
+				VkViewportDefaults::k_CameraMaxFov);
+		}
+
+
+		depthProj = glm::perspective(glm::radians(fov),
+			1.0f, VkShadowmapDefaults::k_lightZNear, range);
+	}
+
+	return depthProj;
 }
 
 /*

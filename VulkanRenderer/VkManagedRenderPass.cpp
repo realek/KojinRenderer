@@ -134,7 +134,7 @@ void Vulkan::VkManagedRenderPass::CreateAsForwardShadowmapPass(VkDevice device, 
 	depthAttachmentDesc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	depthAttachmentDesc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	depthAttachmentDesc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	depthAttachmentDesc.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+	depthAttachmentDesc.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 	VkAttachmentReference depthAttachmentRef = {};
 	depthAttachmentRef.attachment = 0;
@@ -212,7 +212,7 @@ void Vulkan::VkManagedRenderPass::SetFrameBufferCount(int32_t count)
 			}
 			else if (m_type == RenderPassType::Secondary_Offscreen_Forward_Projected_Shadows)
 			{
-				m_fbs[size]->SetupAttachment(VkManagedFrameBufferAttachment::DepthAttachment, m_extent, m_depthFormat, true, true, true);
+				m_fbs[size]->SetupAttachment(VkManagedFrameBufferAttachment::DepthAttachment, m_extent, m_depthFormat, true, false, true);
 			}
 			else if (m_type == RenderPassType::Secondary_Offscreen_Forward_OmniDirectional_Shadows)
 			{
@@ -288,6 +288,12 @@ VkRenderPass Vulkan::VkManagedRenderPass::GetPass()
 VkExtent2D Vulkan::VkManagedRenderPass::GetExtent()
 {
 	return m_extent;
+}
+
+VkExtent3D Vulkan::VkManagedRenderPass::GetExtent3D()
+{
+
+	return {m_extent.width,m_extent.height,1U};
 }
 
 VkDevice Vulkan::VkManagedRenderPass::GetDevice()

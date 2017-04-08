@@ -32,6 +32,7 @@ namespace Vulkan
 		void SetType(LightType type);
 		glm::vec4 GetLightForward();
 		glm::mat4 GetLightViewMatrix();
+		glm::mat4 GetLightProjectionMatrix();
 	private:
 
 		static std::atomic<uint32_t> globalID;

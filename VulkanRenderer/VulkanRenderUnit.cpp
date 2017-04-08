@@ -15,7 +15,11 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <array>
 
-Vulkan::VulkanRenderUnit::~VulkanRenderUnit(){}
+Vulkan::VulkanRenderUnit::~VulkanRenderUnit()
+{
+	if (m_layeredProjectedShadowmaps != nullptr)
+		delete(m_layeredProjectedShadowmaps);
+}
 
 void Vulkan::VulkanRenderUnit::Initialize(std::weak_ptr<Vulkan::VulkanSystem> vkSystem, std::shared_ptr<VulkanImageUnit> vkImageUnit, std::shared_ptr<Vulkan::VulkanCommandUnit> vkCmdUnit, std::shared_ptr<Vulkan::VulkanSwapchainUnit> vkSCUnit)
 {
@@ -578,42 +582,107 @@ bool Vulkan::VulkanRenderUnit::RecordAndSubmitRenderPasses(uint32_t * bufferInde
 	if (!scU)
 		throw std::runtime_error("Unable to lock weak ptr to Swap Chain unit.");
 
+	auto imgUnit = m_imageUnit.lock();
+	if (imgUnit == nullptr)
+		throw std::runtime_error("Unable to lock weak ptr to Vulkan Image unit object.");
+
+	//================================================ SHADOW PASS PROJECTED =======================================//
 	std::array<VkClearValue, 2> clearValues = {};
+	std::array<std::vector<VkDescriptorSet>*, 2U> sets;
+
 	clearValues[0].depthStencil = { (uint32_t)1.0f, (uint32_t)0.0f };
 	clearValues[1].depthStencil = { (uint32_t)1.0f, (uint32_t)0.0f };
 
-	//update uniforms and write descriptors
-	for (uint32_t j = 0; j < meshTransforms.size(); j++)
+	if (m_layeredProjectedShadowmaps == nullptr || m_layeredProjectedShadowmaps->layers != static_cast<uint32_t>(m_cLights.size()))
 	{
-		UpdateShadowPassUniformbuffers(j, meshTransforms[j]);
-		WriteShadowmapVertexSet(m_shadowPassVertDescSets[j], j);
+		if (m_layeredProjectedShadowmaps != nullptr)
+			delete m_layeredProjectedShadowmaps;
+
+		imgUnit->CreateVulkanManagedImageNoData
+		(
+			VkShadowmapDefaults::k_resolution,
+			VkShadowmapDefaults::k_resolution,
+			static_cast<uint32_t>(m_cLights.size()),
+			VkShadowmapDefaults::k_attachmentDepthFormat,
+			VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+			VK_IMAGE_TILING_OPTIMAL,
+			VK_IMAGE_ASPECT_DEPTH_BIT,
+			VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+			m_layeredProjectedShadowmaps
+		);
 	}
 
-	VkRect2D lightScissor = {};
-	lightScissor.offset = { 0,0 };
-	VkViewport lightVP = {};
-	lightVP.minDepth = 0.0;
-	lightVP.maxDepth = 1.0;
+	uint32_t idx = 0;
+	depthMVPs.clear();
+	for(auto& light : m_cLights)
 	{
-		auto shadowPassExt = m_fwdOffScreenProjShadows.GetExtent();
-		lightVP.height = (float)shadowPassExt.height;
-		lightVP.width = (float)shadowPassExt.width;
-		lightScissor.extent = shadowPassExt;
-	}
-	std::array<std::vector<VkDescriptorSet>*, 2U> sets;
-	sets[0] = &m_shadowPassVertDescSets;
-	RecordPass(
-		&m_fwdOffScreenProjShadows, 
-		&m_projShadowsPipeline, 
-		lightVP, lightScissor, 
-		clearValues.data(), 
-		static_cast<uint32_t>(clearValues.size()), 
-		sets.data(), 1, RecordMode::SingleFB);
+		depthMVPs.push_back(light.second->GetLightProjectionMatrix() * light.second->GetLightViewMatrix());
+		//update uniforms and write descriptors
+		for (uint32_t j = 0; j < meshTransforms.size(); j++)
+		{
+			//UpdateShadowPassUniformbuffers(j, meshTransforms[j],light.second);
+			UpdateShadowPassUniformbuffers(j, meshTransforms[j], depthMVPs.back());
+			WriteShadowmapVertexSet(m_shadowPassVertDescSets[j], j);
+		}
 
-	result = SubmitPass(&m_fwdOffScreenProjShadows, scU->GetPresentSemaphore(), 1, { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT }, m_deviceQueues.graphicsQueue);
-	if (result != VK_SUCCESS)
-		throw std::runtime_error("Unable to submit draw command buffer. Reason: " + Vulkan::VkResultToString(result));
-	vkQueueWaitIdle(m_deviceQueues.graphicsQueue);
+		VkRect2D lightScissor = {};
+		lightScissor.offset = { 0,0 };
+		VkViewport lightVP = {};
+		lightVP.minDepth = 0.0;
+		lightVP.maxDepth = 1.0;
+		{
+			auto shadowPassExt = m_fwdOffScreenProjShadows.GetExtent();
+			lightVP.height = (float)shadowPassExt.height;
+			lightVP.width = (float)shadowPassExt.width;
+			lightScissor.extent = shadowPassExt;
+		}
+
+		sets[0] = &m_shadowPassVertDescSets;
+		RecordPass(
+			&m_fwdOffScreenProjShadows,
+			&m_projShadowsPipeline,
+			lightVP, lightScissor,
+			clearValues.data(),
+			static_cast<uint32_t>(clearValues.size()),
+			sets.data(), 1, RecordMode::SingleFB);
+
+		if(idx==0)
+		{
+			result = SubmitPass(&m_fwdOffScreenProjShadows, scU->GetPresentSemaphore(), 1, { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT }, m_deviceQueues.graphicsQueue);
+		}
+		else
+		{
+			result = SubmitPass(&m_fwdOffScreenProjShadows, m_fwdOffScreenProjShadows.GetLastSemaphore(), 1, { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT }, m_deviceQueues.graphicsQueue);
+		}
+		
+		
+		if (result != VK_SUCCESS)
+			throw std::runtime_error("Unable to submit draw command buffer. Reason: " + Vulkan::VkResultToString(result));
+		vkQueueWaitIdle(m_deviceQueues.graphicsQueue);
+
+		VkExtent3D ext = m_fwdOffScreenProjShadows.GetExtent3D();
+		VkImageSubresourceLayers dstLayer = {};
+		dstLayer.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+		dstLayer.baseArrayLayer = idx;
+		dstLayer.layerCount = 1;
+		dstLayer.mipLevel = 0;
+
+		VkImageSubresourceLayers srcLayer = {};
+		srcLayer.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+		srcLayer.baseArrayLayer = 0;
+		srcLayer.layerCount = 1;
+		srcLayer.mipLevel = 0;
+
+
+		imgUnit->Copy(
+			m_fwdOffScreenProjShadows.GetAttachment(0, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT),
+			m_layeredProjectedShadowmaps, VK_NULL_HANDLE,
+			ext, ext, { 0,0,0 }, { 0,0,0 }, srcLayer, dstLayer);
+		vkQueueWaitIdle(m_deviceQueues.graphicsQueue);
+		idx++;
+	}
+	
+
 	//================================================= MAIN PASS ==================================== //
 
 	clearValues[0].color = { 0,0,0.25f,1.0 };
@@ -621,6 +690,7 @@ bool Vulkan::VulkanRenderUnit::RecordAndSubmitRenderPasses(uint32_t * bufferInde
 	sets[0] = &m_mainPassVertDescSets;
 	sets[1] = &m_mainPassFragDescSets;
 	
+
 	uint32_t passCount = 0;
 	{
 		size_t camC = m_cCameras.size();
@@ -669,14 +739,11 @@ bool Vulkan::VulkanRenderUnit::RecordAndSubmitRenderPasses(uint32_t * bufferInde
 	}
 
 	//Prepare to build draw command buffers
-	auto imgUnit = m_imageUnit.lock();
-	if (imgUnit == nullptr)
-		throw std::runtime_error("Unable to lock weak ptr to Vulkan Image unit object.");
-
-	auto commandBuffers = scU->GetCommandbuffers();
-	imgUnit->BeginMultiCopy(commandBuffers);
+	
 
 	auto camIT = m_cCameras.begin();
+	auto commandBuffers = scU->GetCommandbuffers();
+	imgUnit->BeginMultiCopy(commandBuffers);
 	for (uint32_t j = 0; j < passCount; j++) 
 	{
 
@@ -836,9 +903,6 @@ void Vulkan::VulkanRenderUnit::CreateShadowmapUniformBuffers(uint32_t count)
 	{
 		throw;
 	}
-	if (depthMVPs.size() > 0)
-		depthMVPs.clear();
-	depthMVPs.resize(count, glm::mat4());
 }
 
 void Vulkan::VulkanRenderUnit::CreateDescriptorPool(uint32_t descriptorCount)
@@ -977,8 +1041,9 @@ void Vulkan::VulkanRenderUnit::WriteFragmentSets(VkImageView textureImageView, V
 	diffuseTextureInfo.sampler = m_fwdSolidPass.GetSampler(m_fwdSolidPass.k_defaultSamplerName);
 
 	VkDescriptorImageInfo shadowMaptexture = {};
-	shadowMaptexture.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-	shadowMaptexture.imageView = m_fwdOffScreenProjShadows.GetAttachment(0, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)->imageView;
+	shadowMaptexture.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	//shadowMaptexture.imageView = m_fwdOffScreenProjShadows.GetAttachment(0, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)->imageView;
+	shadowMaptexture.imageView = m_layeredProjectedShadowmaps->imageView;
 	shadowMaptexture.sampler = m_fwdOffScreenProjShadows.GetSampler(m_fwdOffScreenProjShadows.k_defaultSamplerName);
 
 	VkDescriptorBufferInfo lightsUniformBufferInfo = {};
@@ -1021,45 +1086,30 @@ void Vulkan::VulkanRenderUnit::WriteFragmentSets(VkImageView textureImageView, V
 }
 
 //needs overhaul after creation of specialized uniform buffers
-void Vulkan::VulkanRenderUnit::UpdateShadowPassUniformbuffers(int objectIndex, glm::mat4 modelMatrix)
+void Vulkan::VulkanRenderUnit::UpdateShadowPassUniformbuffers(int objectIndex, glm::mat4 modelMatrix, glm::mat4 VPMatrix)
+{
+	VertexDepthMVP depthUBO = {};
+	depthUBO.depthMVP = VPMatrix * modelMatrix;
+	auto dataSize = sizeof(depthUBO);
+	shadowmapUniformStagingBuffer.Write(0, 0, dataSize, &depthUBO);
+
+	try
+	{
+		shadowmapUniformStagingBuffer.CopyTo(m_commandUnit, shadowmapUniformBuffers[objectIndex].buffer, 0, 0);
+	}
+	catch (...)
+	{
+		throw;
+	}
+}
+void Vulkan::VulkanRenderUnit::UpdateShadowPassUniformbuffers(int objectIndex, glm::mat4 modelMatrix, Vulkan::Light * light)
 {
 	//USING THIS TO TEST PROJECTED SHADOWS
 
 	VertexDepthMVP depthUBO = {};
-	glm::mat4 depthViewMatrix = glm::mat4();
-	glm::mat4 depthProjectionMatrix = glm::mat4();
-	if (m_cLights.size() > 0)
-	{
-		auto light = m_cLights.begin()->second;
-		depthViewMatrix = light->GetLightViewMatrix();
-		LightType type = light->GetType();
-		if (type == LightType::Directional)
-		{
-			depthProjectionMatrix = glm::ortho<float>(-15, 15, -15, 15, -30,
-				VkViewportDefaults::k_CameraZFar);
-		}
-		else if (type == LightType::Spot)
-		{
-			auto fov = light->angle +
-				VkShadowmapDefaults::k_lightFOVOffset;
-			if (fov > VkViewportDefaults::k_CameraMaxFov)
-			{
-				fov = glm::clamp(fov, VkShadowmapDefaults::k_lightFOVOffset,
-					VkViewportDefaults::k_CameraMaxFov);
-			}
 
-
-			depthProjectionMatrix = glm::perspective(glm::radians(fov),
-				1.0f, VkShadowmapDefaults::k_lightZNear, light->range);
-		}
-	}
-
-
-	
-
-
-	depthUBO.depthMVP = depthProjectionMatrix * depthViewMatrix * modelMatrix;
-	depthMVPs[objectIndex] = VkShadowmapDefaults::k_shadowBiasMatrix*depthUBO.depthMVP;
+	depthUBO.depthMVP = light->GetLightProjectionMatrix() * light->GetLightViewMatrix() * modelMatrix;
+	//depthMVPs[objectIndex] = VkShadowmapDefaults::k_shadowBiasMatrix*depthUBO.depthMVP;
 	auto dataSize = sizeof(depthUBO);
 	shadowmapUniformStagingBuffer.Write(0, 0, dataSize, &depthUBO);
 
@@ -1081,9 +1131,6 @@ void Vulkan::VulkanRenderUnit::UpdateMainPassUniformBuffers(int objectIndex, glm
 	Vulkan::VertexShaderMVP ubo = {};
 	ubo.model = modelMatrix;
 	ubo.ComputeMVP(view,proj);
-	//ubo.ComputeMatrices(depthViewMatrix, depthProjectionMatrix);
-	//ubo.modelViewProjection = depthMVPs[objectIndex];
-	ubo.depthMVP = depthMVPs[objectIndex];
 	size_t dataSize = sizeof(ubo);
 	vertShaderMVPStageBuffer.Write(0, 0, dataSize, &ubo);
 
@@ -1100,7 +1147,6 @@ void Vulkan::VulkanRenderUnit::UpdateMainPassUniformBuffers(int objectIndex, glm
 	lightsUbo.ambientLightColor = glm::vec4(0.1, 0.1, 0.1, 0.1);
 	lightsUbo.materialDiffuse = material->diffuseColor;
 	lightsUbo.specularity = material->specularity;
-	
 	uint32_t i = 0;
 	for(auto& l : m_cLights)
 	{
@@ -1117,6 +1163,8 @@ void Vulkan::VulkanRenderUnit::UpdateMainPassUniformBuffers(int objectIndex, glm
 			lightsUbo.lights[i].lightProps.intensity = l.second->intensity;
 			lightsUbo.lights[i].lightProps.falloff = l.second->range;
 			lightsUbo.lights[i].lightProps.angle = l.second->angle;
+			if(i < depthMVPs.size())
+				lightsUbo.lights[i].lightBiasedMVP = VkShadowmapDefaults::k_shadowBiasMatrix * (depthMVPs[i] * modelMatrix);
 			i++;
 		}
 		else

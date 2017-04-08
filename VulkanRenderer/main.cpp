@@ -72,6 +72,7 @@ bool a = false; //left
 bool d = false; //right
 bool q = false; // up
 bool z = false; // down
+bool f1 = false; // frameRate
 void SDL_INPUT()
 {
 	SDL_Event evt;
@@ -114,7 +115,11 @@ void SDL_INPUT()
 			break;
 		}
 
-
+		case SDLK_F1:
+		{
+			f1 = !f1;
+			break;
+		}
 
 		}
 		break;
@@ -162,6 +167,7 @@ int main()
 		std::shared_ptr<Vulkan::Camera> camera1;
 		std::shared_ptr<Vulkan::Camera> camera2;
 		std::shared_ptr<Vulkan::Light> light;
+		std::shared_ptr<Vulkan::Light> light1;
 		std::shared_ptr<Vulkan::Mesh> mesh;
 		std::shared_ptr<Vulkan::Mesh> planeMesh;
 		std::shared_ptr<Vulkan::Mesh> cubeMesh;
@@ -255,8 +261,9 @@ int main()
 			camera = renderer->CreateCamera({ 0, 1, -4 });
 			camera->LookAt({ 0,0,0 });
 			camera->SetAsMain();
-			camera1 = renderer->CreateCamera({ 0, 1, 3 });
+			camera1 = renderer->CreateCamera({ 0, 1, 4 });
 			camera1->SetViewport({ 0.0f,0.0f }, { 0.35f,0.35f });
+			//camera1->SetPositionRotation(camera1->m_position, { 15,180,0 });
 			camera1->LookAt({ 0,0.0,0.0 });
 
 			camera2 = renderer->CreateCamera({ 3,1,0 });
@@ -271,6 +278,14 @@ int main()
 			light->m_rotation = { 45,0,0 };
 			light->diffuseColor = glm::vec4(0.0, 0.65, 0.85, 1.0);
 
+			light1 = renderer->CreateLight({ 0.0,1.5, 3.0 });
+			light1->SetType(Vulkan::LightType::Spot);
+			light1->range = 10.0f;
+			light1->intensity = 1.0f;
+			light1->angle = 30;
+			light1->m_rotation = { 45,180,0 };
+			light1->diffuseColor = glm::vec4(0.65, 0.15, 0.25, 1.0);
+
 		}
 		//!Light Test
 
@@ -281,8 +296,12 @@ int main()
 			//input read
 			if (fpsTimer > 1)
 			{
-				//system("CLS");
-				//std::cout << "FPS: "<<fpsCount;
+				if(f1)
+				{
+					system("CLS");
+					std::cout << "FPS: "<<fpsCount;
+				}
+
 				fpsCount = 0;
 				fpsTimer = 0;
 			}

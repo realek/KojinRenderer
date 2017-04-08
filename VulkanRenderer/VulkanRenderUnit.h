@@ -48,7 +48,8 @@ namespace Vulkan
 		//will return true if succeded, will return false if swapchain needs to be recreated, throws if any other kind of error occurs.
 		bool RecordAndSubmitRenderPasses(uint32_t * bufferIndex);
 		void PresentFrame();	
-		void UpdateShadowPassUniformbuffers(int objectIndex, glm::mat4 modelMatrix);
+		void UpdateShadowPassUniformbuffers(int objectIndex, glm::mat4 modelMatrix, glm::mat4 VPMatrix);
+		void UpdateShadowPassUniformbuffers(int objectIndex, glm::mat4 modelMatrix, Vulkan::Light * light);
 		void UpdateMainPassUniformBuffers(int objectIndex, glm::mat4 modelMatrix, Material * material, glm::mat4& view, glm::mat4& proj);
 		void AddCamera(Camera* cam);
 		static void SetAsMainCamera(Vulkan::VulkanRenderUnit * renderUnit, Camera * cam);
@@ -75,7 +76,7 @@ namespace Vulkan
 		VkManagedRenderPass m_fwdOffScreenOmniShadows;
 
 		//layered shadowmap attachment
-		VkManagedImage * m_layeredProjectedShadowmaps;
+		VkManagedImage * m_layeredProjectedShadowmaps = nullptr;
 		//vector of cubemaps for omni-shadowmaps
 		std::vector<VkManagedImage*> m_omniDirectionalDhadowMaps;
 
@@ -85,6 +86,7 @@ namespace Vulkan
 		std::unordered_map<uint32_t, int> meshPartDraws;
 		std::vector<glm::mat4> meshTransforms;
 		std::vector<glm::mat4> depthMVPs;
+		std::unordered_map<uint32_t, glm::mat4> depthMVPIds;
 		std::vector<Material*> meshMaterials;
 		
 		
