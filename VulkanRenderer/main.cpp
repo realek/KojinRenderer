@@ -168,6 +168,8 @@ int main()
 		std::shared_ptr<Vulkan::Camera> camera2;
 		std::shared_ptr<Vulkan::Light> light;
 		std::shared_ptr<Vulkan::Light> light1;
+		std::shared_ptr<Vulkan::Light> light2;
+		std::shared_ptr<Vulkan::Light> lightDirectional;
 		std::shared_ptr<Vulkan::Mesh> mesh;
 		std::shared_ptr<Vulkan::Mesh> planeMesh;
 		std::shared_ptr<Vulkan::Mesh> cubeMesh;
@@ -270,21 +272,37 @@ int main()
 			camera2->SetViewport({ 0.65f,0.0f }, { 0.35f,0.35f });
 			camera2->LookAt({ 0,0,0 });
 
-			light = renderer->CreateLight({ 0.0,1.5, -3.0 });
+			light = renderer->CreateLight({ 0.0,2, -3.0 });
 			light->SetType(Vulkan::LightType::Spot);
 			light->range = 10.0f;
-			light->intensity = 1.0f;
+			light->intensity = 2.0f;
 			light->angle = 30;
 			light->m_rotation = { 45,0,0 };
 			light->diffuseColor = glm::vec4(0.0, 0.65, 0.85, 1.0);
 
-			light1 = renderer->CreateLight({ 0.0,1.5, 3.0 });
+			light1 = renderer->CreateLight({ 0.0,2, 3.0 });
 			light1->SetType(Vulkan::LightType::Spot);
 			light1->range = 10.0f;
-			light1->intensity = 1.0f;
+			light1->intensity = 2.0f;
 			light1->angle = 30;
 			light1->m_rotation = { 45,180,0 };
 			light1->diffuseColor = glm::vec4(0.65, 0.15, 0.25, 1.0);
+
+			light2 = renderer->CreateLight({ 2.0 ,2, 0.0 });
+			light2->SetType(Vulkan::LightType::Spot);
+			light2->range = 10.0f;
+			light2->intensity = 2.0f;
+			light2->angle = 30;
+			light2->m_rotation = { 45,-90,0 };
+			light2->diffuseColor = glm::vec4(0.25, 0.25, 0.65, 1.0);
+
+			lightDirectional = renderer->CreateLight({ 0,0, 0 });
+			lightDirectional->SetType(Vulkan::LightType::Directional);
+			lightDirectional->range = 10.0f;
+			lightDirectional->intensity = 0.4f;
+			lightDirectional->angle = 30;
+			lightDirectional->m_rotation = { 50,-30,0 };
+			lightDirectional->diffuseColor = glm::vec4(1.0, 1.0, 1.0, 1.0);
 
 		}
 		//!Light Test

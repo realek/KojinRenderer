@@ -1163,8 +1163,10 @@ void Vulkan::VulkanRenderUnit::UpdateMainPassUniformBuffers(int objectIndex, glm
 			lightsUbo.lights[i].lightProps.intensity = l.second->intensity;
 			lightsUbo.lights[i].lightProps.falloff = l.second->range;
 			lightsUbo.lights[i].lightProps.angle = l.second->angle;
-			if(i < depthMVPs.size())
+			if (i < depthMVPs.size())
 				lightsUbo.lights[i].lightBiasedMVP = VkShadowmapDefaults::k_shadowBiasMatrix * (depthMVPs[i] * modelMatrix);
+			else
+				lightsUbo.lights[i].lightBiasedMVP = glm::mat4(1);
 			i++;
 		}
 		else

@@ -94,20 +94,6 @@ float filterPCF(vec4 sc, int index)
 	return shadowFactor / count;
 }
 
-//float ComputeShadow(vec4 shadowCoord)
-//{
-//	float bias = 0.005;
-//	float visibility = 1.0;
-//	
-//	if((shadowCoord.x >= 0.0) && (shadowCoord.x <= 1.0f) && (shadowCoord.y >= 0.0) && (shadowCoord.y <= 1.0f) )
-//		{
-//				if ( texture( depthSampler, (shadowCoord.xy/shadowCoord.w) ).z < (shadowCoord.z-bias)/shadowCoord.w ){
-//					visibility = 0.1;
-//				}
-//		}
-//	return visibility;
-//}
-
 float LinearizeDepth(float depth)
 {
   float n = 1.0; // camera z near
@@ -123,20 +109,20 @@ void main()
     outColor = vec4(fragColor,1.0) * (ubo.materialDiffuse*texture(texSampler, fragTexCoord));
 	vec4 lightColor = vec4(0.0f,0.0f,0.0f,0.0f);
 	float diffuseFrac = 1.0 - ubo.ambientLightColor.w;
-	vec4 specular = vec4(0.0,0.0,0.0,0.0);
-	vec4 diffuse = vec4(0.0,0.0,0.0,0.0);
-	float atten = 1.0f;
+
 	vec3 N = normalize(fragNormal);
-	vec3 L; // fragment light dir
-	vec3 V; // fragment eye 
-	vec3 D; // light forward from rotation
-	
-	//float shadow = ComputeShadow(shadowFragPos/shadowFragPos.w);
-	float shadowCoef = 0.0f;
-	
+
 	for(int i = 0;i < 6;i++)
 	{
-
+		float shadowCoef = 1.0f;
+		vec4 specular = vec4(0.0,0.0,0.0,0.0);
+		vec4 diffuse = vec4(0.0,0.0,0.0,0.0);
+		vec3 L; // fragment light dir
+		vec3 V; // fragment eye 
+		vec3 D; // light forward from rotation
+		float atten = 1.0f;
+		float shadowAtten = 1.0f;
+		
 		D = normalize(-ubo.lights[i].direction.xyz);
 		if(ubo.lights[i].lightProps.lightType == 2)
 		{
@@ -150,28 +136,7 @@ void main()
 		}
 
 
-	    float intensity = ubo.lights[i].lightProps.intensity;
-		
-		
-		float incidenceAngle = max(0.0,dot(L, N));
-		if(incidenceAngle > 0.0)
-		{
-			diffuse = diffuseFrac * incidenceAngle * ubo.lights[i].color; // diffuse component		
-		}
-		
-		if(ubo.specularity > 0.0)
-		{
-			
-			vec3 H = normalize(L+V);
-			float specAngle = max(dot(H, N), 0.0);
-			if(specAngle > 0.0)
-			{
-				specular = pow(specAngle, ubo.specularity) * vec4(1.0f,1.0f,1.0f,1.0f);			
-				
-			}
-
-		}
-		
+	    float intensity = ubo.lights[i].lightProps.intensity;		
 		if(ubo.lights[i].lightProps.lightType == 0 || ubo.lights[i].lightProps.lightType == 1) //is point or spot
 		{
 			float dist = length(ubo.lights[i].position.xyz - fragPos);
@@ -194,19 +159,44 @@ void main()
 
 		}
 		
-		if(iMat == ubo.lights[i].lightBiasedMVP)
-			continue;
-		vec4 vertPos = ubo.lights[i].lightBiasedMVP * vertexPosition;
-		shadowCoef +=filterPCF(vertPos/vertPos.w,i); 
+		if(atten > 0.0f)
+		{
+			float incidenceAngle = max(0.0,dot(L, N));
+			if(incidenceAngle > 0.0)
+			{
+				diffuse = diffuseFrac * incidenceAngle * ubo.lights[i].color; // diffuse component		
+			}
+		
+			if(ubo.specularity > 0.0)
+			{
+			
+				vec3 H = normalize(L+V);
+				float specAngle = max(dot(H, N), 0.0);
+				if(specAngle > 0.0)
+				{
+					specular = pow(specAngle, ubo.specularity) * vec4(1.0f,1.0f,1.0f,1.0f);			
+				
+				}
 
-		lightColor += (atten*(intensity*(diffuse + specular)));
+			}
+		}
+		
+		
+		
+		
+		
+		if(iMat != ubo.lights[i].lightBiasedMVP)
+		{
+			vec4 vertPos = ubo.lights[i].lightBiasedMVP * vertexPosition;
+			shadowCoef = filterPCF(vertPos,i);
+		}
+
+		lightColor += atten*shadowCoef*intensity*(diffuse + specular);
+		
 	}
-		if(shadowCoef == 0.0f)
-			shadowCoef = 1.0f;
 
-		lightColor *= shadowCoef;
-		//outColor *=vec4(ubo.ambientLightColor.xyz,0.0f)+vec4(lightColor.xyz,1.0f);
 		outColor *=vec4(ubo.ambientLightColor.xyz,0.0f)+vec4(lightColor.xyz,1.0f);
+		outColor = vec4(clamp(outColor.x,0.0f,1.0f),clamp(outColor.y,0.0f,1.0f),clamp(outColor.z,0.0f,1.0f),outColor.w);
 		//SHADOWMAP VISUAL
 		//outColor = vec4(1.0-vec3(LinearizeDepth(texture(depthSampler, fragTexCoord).x)), 1.0);
 		//outColor.rgb = pow(outColor.rgb,vec3(1.0f/gamma));
