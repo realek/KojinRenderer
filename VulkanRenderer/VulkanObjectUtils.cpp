@@ -12,3 +12,13 @@ void Vulkan::MakeSemaphore(VulkanObjectContainer<VkSemaphore>& semaphore, VkDevi
 	if (result != VK_SUCCESS)
 		throw std::runtime_error("Unable to create semaphore. Reason: " + Vulkan::VkResultToString(result));
 }
+
+void Vulkan::MakeSemaphore(VulkanObjectContainer<VkSemaphore>& semaphore, VulkanObjectContainer<VkDevice> & device)
+{
+	VkSemaphoreCreateInfo semaphoreInfo = {};
+	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+	VkResult result = vkCreateSemaphore(device, &semaphoreInfo, nullptr, ++semaphore);
+	if (result != VK_SUCCESS)
+		throw std::runtime_error("Unable to create semaphore. Reason: " + Vulkan::VkResultToString(result));
+}

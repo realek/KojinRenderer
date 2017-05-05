@@ -19,6 +19,13 @@ Vulkan::VulkanRenderUnit::~VulkanRenderUnit()
 {
 	if (m_layeredProjectedShadowmaps != nullptr)
 		delete(m_layeredProjectedShadowmaps);
+	if(!m_omniDirectionalDhadowMaps.empty())
+	{
+		for(auto map : m_omniDirectionalDhadowMaps)
+		{
+			delete(map);
+		}
+	}
 }
 
 void Vulkan::VulkanRenderUnit::Initialize(std::weak_ptr<Vulkan::VulkanSystem> vkSystem, std::shared_ptr<VulkanImageUnit> vkImageUnit, std::shared_ptr<Vulkan::VulkanCommandUnit> vkCmdUnit, std::shared_ptr<Vulkan::VulkanSwapchainUnit> vkSCUnit)
@@ -57,13 +64,23 @@ void Vulkan::VulkanRenderUnit::Initialize(std::weak_ptr<Vulkan::VulkanSystem> vk
 			true
 		);
 		//offscreen shadows render pass
-		m_fwdOffScreenProjShadows.CreateAsForwardShadowmapPass(
+		m_fwdOffScreenProjShadows.CreateAsForwardProjectedShadowmapPass(
 			m_deviceHandle,
 			VkShadowmapDefaults::k_resolution,
 			VkShadowmapDefaults::k_resolution,
 			vkImageUnit,
 			vkCmdUnit,
 			VkShadowmapDefaults::k_attachmentDepthFormat);
+
+		m_fwdOffScreenOmniShadows.CreateAsForwardOmniShadowmapPass
+		(
+			m_deviceHandle,
+			VkShadowmapDefaults::k_resolution,
+			VkShadowmapDefaults::k_resolution,
+			vkImageUnit,
+			vkCmdUnit,
+			VkShadowmapDefaults::k_attachmentRGBFormat,
+			vkSCUnit->depthFormat);
 
 		//default pipelines
 		m_solidPipeline.Build(
@@ -79,13 +96,23 @@ void Vulkan::VulkanRenderUnit::Initialize(std::weak_ptr<Vulkan::VulkanSystem> vk
 			&m_fwdOffScreenProjShadows, PipelineMode::ProjectedShadows,
 			"shaders/vertexSkeleton.vert.spv",
 			"shaders/fragmentSkeleton.frag.spv",
-			std::vector<VkDynamicState>
 			{
 			VK_DYNAMIC_STATE_SCISSOR,
 			VK_DYNAMIC_STATE_VIEWPORT,
 			VK_DYNAMIC_STATE_DEPTH_BIAS
 			
 		});
+
+		//m_shadowOmniPipeline.Build(
+		//	&m_fwdOffScreenOmniShadows, PipelineMode::OmniDirectionalShadows,
+		//	"",
+		//	"",
+		//	std::vector<VkDynamicState>
+		//	{
+		//		VK_DYNAMIC_STATE_SCISSOR,
+		//		VK_DYNAMIC_STATE_VIEWPORT
+		//});
+
 
 
 	}
@@ -399,7 +426,6 @@ void Vulkan::VulkanRenderUnit::RecordPass(VkManagedRenderPass * pass, VkManagedP
 		{
 			renderPassInfo.framebuffer = frameBuffers[i];
 			vkCmdBeginRenderPass(cmdBuffers[i], &renderPassInfo, VkSubpassContents::VK_SUBPASS_CONTENTS_INLINE);
-
 			VkBuffer vertexBuffers[] = { vertexBuffer.buffer };
 			VkDeviceSize offsets[] = { 0 };
 			vkCmdBindVertexBuffers(cmdBuffers[i], 0, 1, vertexBuffers, offsets);
@@ -586,31 +612,75 @@ bool Vulkan::VulkanRenderUnit::RecordAndSubmitRenderPasses(uint32_t * bufferInde
 	if (imgUnit == nullptr)
 		throw std::runtime_error("Unable to lock weak ptr to Vulkan Image unit object.");
 
-	//================================================ SHADOW PASS PROJECTED =======================================//
+	//================================================ STORE-ATTACHMENTS ===================================================//
+	{
+		size_t cLightsSize = m_cLights.size();
+		if (m_layeredProjectedShadowmaps == nullptr || m_layeredProjectedShadowmaps->layers != static_cast<uint32_t>(cLightsSize))
+		{
+			if (m_layeredProjectedShadowmaps != nullptr)
+				delete m_layeredProjectedShadowmaps;
+
+			imgUnit->CreateVulkanManagedImageNoData
+			(
+				VkShadowmapDefaults::k_resolution,
+				VkShadowmapDefaults::k_resolution,
+				static_cast<uint32_t>(m_cLights.size()),
+				VkShadowmapDefaults::k_attachmentDepthFormat,
+				VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+				VK_IMAGE_TILING_OPTIMAL,
+				VK_IMAGE_ASPECT_DEPTH_BIT,
+				VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+				m_layeredProjectedShadowmaps
+			);
+		}
+		size_t omniSize = m_omniDirectionalDhadowMaps.size();
+
+		if (omniSize != cLightsSize)
+		{
+			size_t diff = 0;
+			if(omniSize < cLightsSize)
+			{
+				diff = cLightsSize - omniSize;
+				for (size_t i = 0; i < diff; i++)
+				{
+					VkManagedImage * map = nullptr;
+					imgUnit->CreateVulkanManagedImageNoData
+					(
+						VkShadowmapDefaults::k_resolution,
+						VkShadowmapDefaults::k_resolution,
+						6,
+						VkShadowmapDefaults::k_attachmentRGBFormat,
+						VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+						VK_IMAGE_TILING_OPTIMAL,
+						VK_IMAGE_ASPECT_COLOR_BIT,
+						VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+						map,
+						VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT
+					);
+					m_omniDirectionalDhadowMaps.push_back(map);
+				}
+			}
+			else
+			{
+				diff = omniSize - cLightsSize;
+				for(size_t i = 0; i < diff;i++)
+				{
+					auto map = m_omniDirectionalDhadowMaps.back();
+					delete map;
+					m_omniDirectionalDhadowMaps.pop_back();
+				}
+
+			}
+		}
+	}
+	//================================================ FORWARD SHADOW PASS PROJECTED =======================================//
 	std::array<VkClearValue, 2> clearValues = {};
 	std::array<std::vector<VkDescriptorSet>*, 2U> sets;
 
 	clearValues[0].depthStencil = { (uint32_t)1.0f, (uint32_t)0.0f };
 	clearValues[1].depthStencil = { (uint32_t)1.0f, (uint32_t)0.0f };
 
-	if (m_layeredProjectedShadowmaps == nullptr || m_layeredProjectedShadowmaps->layers != static_cast<uint32_t>(m_cLights.size()))
-	{
-		if (m_layeredProjectedShadowmaps != nullptr)
-			delete m_layeredProjectedShadowmaps;
 
-		imgUnit->CreateVulkanManagedImageNoData
-		(
-			VkShadowmapDefaults::k_resolution,
-			VkShadowmapDefaults::k_resolution,
-			static_cast<uint32_t>(m_cLights.size()),
-			VkShadowmapDefaults::k_attachmentDepthFormat,
-			VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-			VK_IMAGE_TILING_OPTIMAL,
-			VK_IMAGE_ASPECT_DEPTH_BIT,
-			VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-			m_layeredProjectedShadowmaps
-		);
-	}
 
 	uint32_t idx = 0;
 	depthMVPs.clear();
@@ -682,8 +752,12 @@ bool Vulkan::VulkanRenderUnit::RecordAndSubmitRenderPasses(uint32_t * bufferInde
 		idx++;
 	}
 	
+	//================================================= Forward Omni-Directional Shadows Pass =======================//
 
-	//================================================= MAIN PASS ==================================== //
+
+
+
+	//================================================= FORWARD MAIN PASS ==================================== //
 
 	clearValues[0].color = { 0,0,0.25f,1.0 };
 	clearValues[0].depthStencil = {};
@@ -1101,28 +1175,6 @@ void Vulkan::VulkanRenderUnit::UpdateShadowPassUniformbuffers(int objectIndex, g
 	{
 		throw;
 	}
-}
-void Vulkan::VulkanRenderUnit::UpdateShadowPassUniformbuffers(int objectIndex, glm::mat4 modelMatrix, Vulkan::Light * light)
-{
-	//USING THIS TO TEST PROJECTED SHADOWS
-
-	VertexDepthMVP depthUBO = {};
-
-	depthUBO.depthMVP = light->GetLightProjectionMatrix() * light->GetLightViewMatrix() * modelMatrix;
-	//depthMVPs[objectIndex] = VkShadowmapDefaults::k_shadowBiasMatrix*depthUBO.depthMVP;
-	auto dataSize = sizeof(depthUBO);
-	shadowmapUniformStagingBuffer.Write(0, 0, dataSize, &depthUBO);
-
-	try
-	{
-		shadowmapUniformStagingBuffer.CopyTo(m_commandUnit, shadowmapUniformBuffers[objectIndex].buffer, 0, 0);
-	}
-	catch (...)
-	{
-		throw;
-	}
-
-
 }
 
 void Vulkan::VulkanRenderUnit::UpdateMainPassUniformBuffers(int objectIndex, glm::mat4 modelMatrix,Material * material, glm::mat4& view, glm::mat4& proj) {

@@ -75,6 +75,45 @@
     <ClCompile Include="VkManagedFrameBuffer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="VkManagedDevice.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="VkManagedInstance.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="VkManagedQueue.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="VkManagedValidationLayers.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="VkManagedCommandPool.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="VkManagedCommandBuffer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="VkManagedSwapchain.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="VkManagedSampler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="VkManagedDescriptorPool.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="VkManagedDescriptorSet.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="VkManagedShaderModule.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Texture.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="VkManagedSemaphore.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Texture2D.h">
@@ -147,6 +186,51 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="VkManagedFrameBuffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="VkManagedDescriptorPool.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="VkManagedDevice.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="VkManagedInstance.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="VkManagedStructures.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="VkManagedQueue.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="VkManagedValidationLayers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="VkManagedCommandPool.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="VkManagedCommandBuffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="VkManagedSwapchain.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ManagedVulkan.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="VkManagedSampler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="VkManagedDescriptorSet.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="VkManagedShaderModule.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Texture.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="VkManagedSemaphore.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

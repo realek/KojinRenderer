@@ -9,6 +9,31 @@
 
 std::atomic<uint32_t> Vulkan::Camera::globalID = 0;
 
+Vulkan::Camera::Camera(VkExtent2D extent, bool perspective, CameraCallback callback) : id(++globalID)
+{
+	m_swapChainExtent = extent;
+	m_viewPort = {};
+	m_viewPort.width = static_cast<float>(extent.width);
+	m_viewPort.height = static_cast<float>(extent.height);
+	m_viewPort.x = 0;
+	m_viewPort.y = 0;
+	m_viewPort.minDepth = 0;
+	m_viewPort.maxDepth = 1;
+
+	m_scissor = {};
+	m_scissor.extent = extent;
+	m_scissor.offset = { 0,0 };
+
+	m_fov = VkViewportDefaults::k_CameraFov;
+	m_zNear = VkViewportDefaults::k_CameraZNear;
+	m_zFar = VkViewportDefaults::k_CameraZFar;
+
+	if (perspective)
+		SetPerspective();
+	else
+		SetOrthographic();
+}
+
 Vulkan::Camera::Camera(VkExtent2D extent, bool perspective, VulkanRenderUnit * rend, std::function<void(VulkanRenderUnit*, Camera*)> setMain, std::function<void(VulkanRenderUnit*, uint32_t)> deleter) : id(++globalID)
 {
 	m_swapChainExtent = extent;

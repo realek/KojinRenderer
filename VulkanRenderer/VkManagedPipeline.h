@@ -2,6 +2,7 @@
 #include "VulkanObject.h"
 #include <algorithm>
 #include <vector>
+#include "VkManagedStructures.h"
 namespace Vulkan
 {
 	enum PipelineMode
@@ -13,18 +14,30 @@ namespace Vulkan
 		Custom = 4
 	};
 
-	struct VkDepthBias
-	{
-		float constDepth;
-		float depthSlope;
-	};
-
+	struct VkDynamicStatesBlock;
+	class VkManagedDevice;
 	class VkManagedRenderPass;
 	class VkManagedPipeline
 	{
 	public:
+		VkManagedPipeline(VkManagedDevice * device);
 		VkManagedPipeline();
+		void Build(VkManagedRenderPass * renderPass, PipelineMode mode, const char * vertShader, const char * fragShader, std::vector<VkDynamicState> dynamicStates, std::vector<VkPushConstantRange> pushConstants);
 		void Build(VkManagedRenderPass * renderPass, PipelineMode mode, const char * vertShader, const char * fragShader, std::vector<VkDynamicState> dynamicStates);
+		
+		operator VkPipeline()
+		{
+			return m_pipeline;
+		}
+
+		operator VkPipelineLayout()
+		{
+			return m_pipelineLayout;
+		}
+		
+		//check if the pipeline was created with the provided pass
+		bool CreatedWithPass(VkRenderPass pass);
+
 		VkPipeline GetPipeline() const;
 		VkPipelineLayout GetLayout() const;
 		VkDescriptorSetLayout GetVertexLayout() const;
@@ -39,55 +52,21 @@ namespace Vulkan
 		template <>
 		bool SetDynamicState<VkDepthBias>(VkCommandBuffer buffer, VkDynamicState e, VkDepthBias& data);
 
+		VkResult SetDynamicState(VkCommandBuffer buffer, VkDynamicStatesBlock states);
+		void SetPushConstant(VkCommandBuffer buffer, std::vector<VkPushConstant> vector);
 	private:
 		void CreateDescriptorSetLayout_HARCODED();
 		void CreateShaderModule(std::string & code, VulkanObjectContainer<VkShaderModule>& shader);
 		std::string ReadBinaryFile(const char * filename);
 	private:
-		VkDevice m_device = VK_NULL_HANDLE;
-		VulkanObjectContainer<VkDescriptorSetLayout> m_vertSetLayout;
-		VulkanObjectContainer<VkDescriptorSetLayout> m_fragSetLayout;
-		VulkanObjectContainer<VkPipeline> m_pipeline;
-		VulkanObjectContainer<VkPipelineLayout> m_pipelineLayout;
+		VulkanObjectContainer<VkDevice> m_device{ vkDestroyDevice,false };
+		VulkanObjectContainer<VkDescriptorSetLayout> m_vertSetLayout{m_device,vkDestroyDescriptorSetLayout};
+		VulkanObjectContainer<VkDescriptorSetLayout> m_fragSetLayout{m_device,vkDestroyDescriptorSetLayout};
+		VulkanObjectContainer<VkPipeline> m_pipeline{ m_device,vkDestroyPipeline };
+		VulkanObjectContainer<VkPipelineLayout> m_pipelineLayout{ m_device, vkDestroyPipelineLayout };
+		VkRenderPass m_linkedPass = VK_NULL_HANDLE;
 		std::vector<VkDynamicState> m_activeDynamicStates;
 	};
-
-		/*	switch (e)
-			{
-			case VK_DYNAMIC_STATE_VIEWPORT:
-				vkCmdSetViewport(buffer, 0, 1, &data);
-				break;
-			case VK_DYNAMIC_STATE_SCISSOR:
-				vkCmdSetScissor(buffer, 0, 1, &data);
-				break;
-			case VK_DYNAMIC_STATE_LINE_WIDTH:
-				vkCmdSetLineWidth(buffer, data);
-				break;
-			case VK_DYNAMIC_STATE_DEPTH_BIAS:
-				vkCmdSetDepthBias(buffer, data.constDepth, 0.0f, data.depthSlope);
-				break;
-			case VK_DYNAMIC_STATE_BLEND_CONSTANTS:
-				vkCmdSetBlendConstants(buffer, data);
-				break;
-			case VK_DYNAMIC_STATE_DEPTH_BOUNDS:
-				vkCmdSetDepthBounds(buffer, data.minDepth, data.maxDepth);
-				break;
-			case VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK:
-				vkCmdSetStencilCompareMask(buffer, data.flags, data.mask);
-				break;
-			case VK_DYNAMIC_STATE_STENCIL_WRITE_MASK:
-				vkCmdSetStencilWriteMask(buffer, data.flags, data.mask);
-				break;
-			case VK_DYNAMIC_STATE_STENCIL_REFERENCE:
-				vkCmdSetStencilReference(buffer, data.flags, data.reference);
-				break;
-			case VK_DYNAMIC_STATE_VIEWPORT_W_SCALING_NV:
-				vkCmdSetViewportWScalingNV(buffer, 0, 1, &data);
-				break;
-			case VK_DYNAMIC_STATE_DISCARD_RECTANGLE_EXT:
-				vkCmdSetDiscardRectangleEXT(buffer, 0, data.count, data.rectangles);
-				break;
-			}*/
 
 	template<typename T>
 	inline bool VkManagedPipeline::SetDynamicState(VkCommandBuffer buffer, VkDynamicState e, T & data)

@@ -14,6 +14,7 @@ of the programmer.
 namespace Vulkan
 {
 
+	class VkManagedRefCounter;
 	template <typename T>
 	class VulkanObjectContainer
 	{
@@ -59,11 +60,13 @@ namespace Vulkan
 				Clean();
 		}
 
-
 		//prefix increment operator overloaded for use with vulkan api, in order to write on the object
 		T* operator ++()
 		{
-			Clean();
+			if (clear)
+				Clean();
+			else
+				object = VK_NULL_HANDLE;
 			return &object;
 		}
 		//prefix decrement operator overloaded to get internal object reference
@@ -74,7 +77,8 @@ namespace Vulkan
 
 		void operator=(T rhs) {
 			if (rhs != this->object) {
-				this->Clean();
+				if(this->clear)
+					this->Clean();
 				this->object = rhs;
 			}
 		}
@@ -88,13 +92,14 @@ namespace Vulkan
 		bool operator ==(C& other)
 		{
 			T* objPtr = &object;
-			C* otherPtr = other;
+			C* otherPtr = &other;
 			return objPtr == reinterpret_cast<T*>(otherPtr);
 		}
+		bool clear = false;
 
 	private:
 
-		bool clear = false;
+
 		T object{ VK_NULL_HANDLE };
 		std::function<void(T)> deleter;
 		void Clean();

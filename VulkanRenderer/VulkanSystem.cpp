@@ -76,7 +76,7 @@ Vulkan::VkQueueContainer Vulkan::VulkanSystem::GetQueues()
 	return m_currentLogicalDeviceQueues;
 }
 
-Vulkan::VkSwapChainSupportData * Vulkan::VulkanSystem::GetSwapChainSupportData()
+Vulkan::VkPhysicalDeviceSurfaceData * Vulkan::VulkanSystem::GetSwapChainSupportData()
 {
 	return &m_selectedPhysicalDeviceSCData;
 }
@@ -101,9 +101,10 @@ bool Vulkan::VulkanSystem::ReportValidationLayers()
 {
 	uint32_t layerCount = 0;
 	vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-	std::vector<VkLayerProperties> properties(layerCount);
 	if (layerCount == 0)
 		return false;
+
+	std::vector<VkLayerProperties> properties(layerCount);
 	vkEnumerateInstanceLayerProperties(&layerCount, properties.data());
 
 	for (const char* layerName : validationLayers) 
@@ -225,6 +226,7 @@ Vulkan::VkQueueFamilyIDs Vulkan::VulkanSystem::GetPhysicalDeviceQueueFamilies(Vk
 		if (reqs->hasSparseBindingQueue && queueFamily.queueCount > 0 && queueFamily.queueFlags & VK_QUEUE_SPARSE_BINDING_BIT)
 			indices.transferFamily = i;
 
+		//look here
 		if(reqs->hasPresentQueue)
 		{
 			VkBool32 presentSupport = false;
@@ -261,9 +263,9 @@ bool Vulkan::VulkanSystem::CheckPhysicalDeviceExtensions(const VkPhysicalDevice 
 	return reqExts.empty();
 }
 
-Vulkan::VkSwapChainSupportData Vulkan::VulkanSystem::GetPhysicalDeviceSwapChainSupport(const VkPhysicalDevice device)
+Vulkan::VkPhysicalDeviceSurfaceData Vulkan::VulkanSystem::GetPhysicalDeviceSwapChainSupport(const VkPhysicalDevice device)
 {
-	VkSwapChainSupportData data;
+	VkPhysicalDeviceSurfaceData data;
 
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, m_vulkanSurface, &data.capabilities);
 

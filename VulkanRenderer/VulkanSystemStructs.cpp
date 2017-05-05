@@ -21,7 +21,7 @@ bool Vulkan::VkQueueFamilyIDs::Validate(const Vulkan::VkPhysicalDeviceRequiredQu
 	return checks == reqs;
 }
 
-bool Vulkan::VkSwapChainSupportData::Validate()
+bool Vulkan::VkPhysicalDeviceSurfaceData::Validate()
 {
 	return formats.size() > 0 && presentModes.size() > 0;
 }
@@ -42,6 +42,6 @@ const glm::mat4 Vulkan::VkShadowmapDefaults::k_shadowBiasMatrix ={
 	0.5, 0.5, 0.0, 1.0};
 const float Vulkan::VkShadowmapDefaults::k_depthBias = 0.05f;
 const float Vulkan::VkShadowmapDefaults::k_depthBiasSlope = 0.25f;
-const uint32_t Vulkan::VkShadowmapDefaults::k_resolution = 512;
+const uint32_t Vulkan::VkShadowmapDefaults::k_resolution = 2048;
 const VkFormat Vulkan::VkShadowmapDefaults::k_attachmentRGBFormat = VK_FORMAT_R32_SFLOAT;
 const VkFormat Vulkan::VkShadowmapDefaults::k_attachmentDepthFormat = VK_FORMAT_D32_SFLOAT;

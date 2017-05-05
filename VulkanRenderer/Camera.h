@@ -10,12 +10,20 @@ functionality to the KojinRenderer class
 #include <atomic>
 namespace Vulkan
 {
+	enum CameraProjection
+	{
+		UNDEFINED = 0,
+		Perspective = 1,
+		Orthographic = 2
+	};
+
 	class KojinRenderer;
 	class VulkanRenderUnit;
+	///TODO: Add fov,znear,zfar changes to perspective/orthographic 
 	class Camera
 	{
 	public:
-
+		typedef std::function<void(Camera *)> CameraCallback;
 		~Camera();
 		const uint32_t id;
 		void SetOrthographic(float orthoSize = VkViewportDefaults::k_CameraOrthoSize);
@@ -27,6 +35,7 @@ namespace Vulkan
 		glm::vec3 m_position;
 		glm::vec3 m_rotation;
 	private:
+		Camera(VkExtent2D extent, bool perspective, CameraCallback callback);
 		Camera(VkExtent2D extent, bool perspective, VulkanRenderUnit * rend, std::function<void(VulkanRenderUnit*, Camera*)> onSetAsMain, std::function<void(VulkanRenderUnit*, uint32_t)> deleter);
 		void ComputeViewMatrix(glm::vec3 position, glm::vec3 rotation, glm::mat4& viewMatrix);
 

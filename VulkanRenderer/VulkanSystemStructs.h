@@ -63,7 +63,7 @@ namespace Vulkan
 		bool Validate(const VkPhysicalDeviceRequiredQueues * reqs);
 	};
 
-	struct VkSwapChainSupportData {
+	struct VkPhysicalDeviceSurfaceData {
 		VkSurfaceCapabilitiesKHR capabilities;
 		std::vector<VkSurfaceFormatKHR> formats;
 		std::vector<VkPresentModeKHR> presentModes;
@@ -189,7 +189,7 @@ namespace Vulkan
 		glm::mat4 normal;
 		//glm::mat4 depthMVP;
 
-		inline void ComputeMVP(glm::mat4& view, glm::mat4& proj)
+		inline void ComputeMVP(const glm::mat4& view, const glm::mat4& proj)
 		{
 			modelView = view*model;
 			normal = glm::transpose(glm::inverse(modelView));

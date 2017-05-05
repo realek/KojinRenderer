@@ -26,7 +26,7 @@ namespace Vulkan
 		uint32_t vertexCount;
 		uint32_t materialIndex; // to be used when creating materials via import
 	};
-
+	class Material;
 	struct VkVertex;
 	class Mesh
 	{
@@ -48,7 +48,7 @@ namespace Vulkan
 		static void WriteToInternalMesh(const char* filepath, std::vector<Vulkan::VkVertex>& verts, std::vector<uint32_t>& indices, std::shared_ptr<Vulkan::Mesh>& mesh);
 	
 	private:
-
+		Material * m_material = nullptr;
 		static std::atomic<uint32_t> globalID;
 		//default assimp import flags
 		static const int defaultFlags = aiProcess_FlipWindingOrder | aiProcess_Triangulate | aiProcess_PreTransformVertices | aiProcess_CalcTangentSpace | aiProcess_GenSmoothNormals;

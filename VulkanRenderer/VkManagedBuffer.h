@@ -4,13 +4,20 @@
 namespace Vulkan
 {
 	class VulkanCommandUnit;
+
+	class VkManagedDevice;
 	class VkManagedBuffer
 	{
 	
 	public:
 		VkManagedBuffer() {};
+		VkManagedBuffer(VkManagedDevice * device);
 		VkManagedBuffer(VkDevice device, VkDeviceSize bufferSize);
+		operator VkBuffer();
+		VkDeviceSize Size();
+		void Build(VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties, VkDeviceSize bufferSize, VkSharingMode sharingMode = VK_SHARING_MODE_EXCLUSIVE);
 		void Build(VkPhysicalDevice physDevice,VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
+		void CopyTo(VkCommandBuffer buffer, VkManagedBuffer * dst, uint32_t srcOffset, uint32_t dstOffset);
 		void CopyTo(std::weak_ptr<Vulkan::VulkanCommandUnit> commandUnit, VkBuffer dstBuffer, uint32_t srcOffset, uint32_t dstOffset);
 		void Write(VkDeviceSize offset, VkMemoryMapFlags flags, size_t srcSize, void * src);
 	public:
@@ -20,6 +27,11 @@ namespace Vulkan
 	private:
 		void* mappedMemory = nullptr;
 		VkDevice device = VK_NULL_HANDLE;
+
+		VkManagedDevice * m_mDevice = nullptr;
+		VulkanObjectContainer<VkDevice> m_device{ vkDestroyDevice,false };
+		VulkanObjectContainer<VkBuffer> m_buffer{ m_device,vkDestroyBuffer };
+		VulkanObjectContainer<VkDeviceMemory> m_memory{ m_device, vkFreeMemory };
 
 
 

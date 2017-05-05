@@ -19,7 +19,6 @@ const bool enableValidationLayers = true;
 const std::vector<const char*> validationLayers = {
 	"VK_LAYER_LUNARG_standard_validation"
 };
-
 const std::vector<const char*> deviceExtensions = {
 	VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
@@ -57,7 +56,7 @@ namespace Vulkan
 		VkSurfaceKHR GetSurface();
 		VkQueueFamilyIDs GetQueueFamilies();
 		VkQueueContainer GetQueues();
-		VkSwapChainSupportData * GetSwapChainSupportData();
+		VkPhysicalDeviceSurfaceData * GetSwapChainSupportData();
 		VkFormat GetDepthFormat();
 	private:
 		int m_width = 0;
@@ -67,7 +66,7 @@ namespace Vulkan
 		VkPhysicalDevice m_selectedPhysicalDevice = {VK_NULL_HANDLE};
 		VkQueueFamilyIDs m_selectedPhysicalDeviceQueueIds;
 		//swap chain data based on current device
-		VkSwapChainSupportData m_selectedPhysicalDeviceSCData;
+		VkPhysicalDeviceSurfaceData m_selectedPhysicalDeviceSCData;
 		VulkanObjectContainer<VkDevice> m_currentLogicalDevice{ vkDestroyDevice };
 		VulkanObjectContainer<VkSwapchainKHR> m_currentSwapChain{ m_currentLogicalDevice,vkDestroySwapchainKHR };
 		VkQueueContainer m_currentLogicalDeviceQueues;
@@ -81,7 +80,7 @@ namespace Vulkan
 		void GetPhysicalDevices();
 		VkQueueFamilyIDs GetPhysicalDeviceQueueFamilies(VkPhysicalDevice device, VkPhysicalDeviceRequiredQueues * reqs);
 		bool CheckPhysicalDeviceExtensions(const VkPhysicalDevice device);
-		VkSwapChainSupportData GetPhysicalDeviceSwapChainSupport(const VkPhysicalDevice device);
+		VkPhysicalDeviceSurfaceData GetPhysicalDeviceSwapChainSupport(const VkPhysicalDevice device);
 		void CreateLogicalDeviceFromSelectedPhysicalDevice(int physicalDeviceId, VkPhysicalDeviceRequiredQueues * queues);
 
 	};

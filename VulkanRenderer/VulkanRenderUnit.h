@@ -49,7 +49,6 @@ namespace Vulkan
 		bool RecordAndSubmitRenderPasses(uint32_t * bufferIndex);
 		void PresentFrame();	
 		void UpdateShadowPassUniformbuffers(int objectIndex, glm::mat4 modelMatrix, glm::mat4 VPMatrix);
-		void UpdateShadowPassUniformbuffers(int objectIndex, glm::mat4 modelMatrix, Vulkan::Light * light);
 		void UpdateMainPassUniformBuffers(int objectIndex, glm::mat4 modelMatrix, Material * material, glm::mat4& view, glm::mat4& proj);
 		void AddCamera(Camera* cam);
 		static void SetAsMainCamera(Vulkan::VulkanRenderUnit * renderUnit, Camera * cam);

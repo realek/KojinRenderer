@@ -9,7 +9,6 @@ from the Vulkan API. Creates and manages VkCommandBuffer objects.
 namespace Vulkan
 {
 	class VulkanSystem;
-	class VkManagedRenderPass;
 	class VulkanCommandUnit
 	{
 	public:
@@ -20,9 +19,6 @@ namespace Vulkan
 		std::vector<VkCommandBuffer> CreateCommandBuffers(VkCommandBufferLevel bufferLevel, size_t count);
 		VkCommandBuffer BeginOneTimeCommand();
 		void EndOneTimeCommand(VkCommandBuffer & commandBuffer);
-		
-
-
 
 	private:
 		void CreateSwapChainCommandBuffers(uint32_t count);

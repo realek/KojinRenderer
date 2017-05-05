@@ -8,6 +8,7 @@ shader uniforms to vulkan uniform buffers
 #include <memory>
 #include <atomic>
 #include <vulkan\vulkan.h>
+#include "Texture.h"
 //typedef uint64_t VkImageView;
 namespace Vulkan
 {
@@ -16,6 +17,8 @@ namespace Vulkan
 	public:
 		glm::vec4 diffuseColor;
 		VkImageView diffuseTexture;
+		Texture * albedo = nullptr;
+		Texture * normal = nullptr;
 		float specularity;
 		Material();
 		~Material();

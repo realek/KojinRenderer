@@ -20,6 +20,7 @@ namespace Vulkan
 	{
 
 	public:
+		typedef std::function<void(Light*)> LightCallback;
 		~Light();
 		glm::vec4 diffuseColor;
 		glm::vec3 m_position;
@@ -36,9 +37,11 @@ namespace Vulkan
 	private:
 
 		static std::atomic<uint32_t> globalID;
+		Light(glm::vec3 initialPosition, LightCallback callBack);
 		Light(VulkanRenderUnit* rend, std::function<void(VulkanRenderUnit*, int)> deleter, glm::vec3 initialPosition);
 		LightType m_lightType = LightType::Point;
 		std::function<void(Light*)> m_onDestroy;
+		LightCallback m_deletion;
 		bool m_bound = false;
 		friend class KojinRenderer;
 

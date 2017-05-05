@@ -36,7 +36,7 @@ HWND GetHwnd(SDL_Window * window) {
 	if (!SDL_GetWindowWMInfo(window, &windowinfo)) {
 		throw std::runtime_error("SDL2 Window Manager info couldn't be retrieved.");
 	}
-	return (HWND)windowinfo.subsystem;
+	return windowinfo.info.win.window;
 }
 
 #endif // _WIN32
@@ -163,13 +163,13 @@ int main()
 	{
 		int appVer[3] = { 0,0,0 };
 		std::shared_ptr<Vulkan::KojinRenderer> renderer;
-		std::shared_ptr<Vulkan::Camera> camera;
+		Vulkan::Camera * camera;
 		std::shared_ptr<Vulkan::Camera> camera1;
 		std::shared_ptr<Vulkan::Camera> camera2;
-		std::shared_ptr<Vulkan::Light> light;
-		std::shared_ptr<Vulkan::Light> light1;
-		std::shared_ptr<Vulkan::Light> light2;
-		std::shared_ptr<Vulkan::Light> lightDirectional;
+		Vulkan::Light* light;
+		Vulkan::Light* light1;
+		Vulkan::Light* light2;
+		Vulkan::Light* lightDirectional;
 		std::shared_ptr<Vulkan::Mesh> mesh;
 		std::shared_ptr<Vulkan::Mesh> planeMesh;
 		std::shared_ptr<Vulkan::Mesh> cubeMesh;
@@ -183,9 +183,10 @@ int main()
 		bool e = false;
 		try
 		{
-			renderer = std::make_shared<Vulkan::KojinRenderer>(Vulkan::KojinRenderer{ window,"Vulkan Tester",appVer });
+			renderer = std::make_shared<Vulkan::KojinRenderer>(window,"Vulkan Tester",appVer);
+
 			//testing stuff
-			whiteMaterial.diffuseTexture = Vulkan::Texture2D::GetWhiteTexture().lock()->ImageView();
+		/*	whiteMaterial.diffuseTexture = Vulkan::Texture2D::GetWhiteTexture().lock()->ImageView();
 			whiteMaterial.specularity = 1000;
 			cubeMesh = Vulkan::Mesh::GetCube();
 			planeMaterial.diffuseColor = { 0.4f,0.3f,0.0f,1.0f };
@@ -193,8 +194,10 @@ int main()
 			planeMaterial.specularity = 0;
 			planeMesh = Vulkan::Mesh::GetPlane();
 			sphereMesh = Vulkan::Mesh::GetSphere();
+			*/
 			mesh = Vulkan::Mesh::LoadMesh("models/Stormtrooper.obj");
-			material.diffuseTexture = Vulkan::Texture2D::CreateFromFile("textures/Stormtrooper_Diffuse.png").lock()->ImageView();
+			//material.diffuseTexture = Vulkan::Texture2D::CreateFromFile("textures/Stormtrooper_Diffuse.png").lock()->ImageView();
+			material.albedo = renderer->LoadTexture("textures/Stormtrooper_Diffuse.png",false);
 			material.specularity = 1000;
 
 
@@ -258,19 +261,19 @@ int main()
 		float fixedTimeStep = 1 / 60.0f;
 		float rotmod = 0;
 
-		//Light and camera Test
-		{
-			camera = renderer->CreateCamera({ 0, 1, -4 });
-			camera->LookAt({ 0,0,0 });
-			camera->SetAsMain();
-			camera1 = renderer->CreateCamera({ 0, 1, 4 });
-			camera1->SetViewport({ 0.0f,0.0f }, { 0.35f,0.35f });
-			//camera1->SetPositionRotation(camera1->m_position, { 15,180,0 });
-			camera1->LookAt({ 0,0.0,0.0 });
+		////Light and camera Test
+		//{
+		camera = renderer->CreateCamera({ 0, 1, -4 },true);
+		camera->LookAt({ 0,0,0 });
+		//	camera->SetAsMain();
+		//	camera1 = renderer->CreateCamera({ 0, 1, 4 });
+		//	camera1->SetViewport({ 0.0f,0.0f }, { 0.35f,0.35f });
+		//	//camera1->SetPositionRotation(camera1->m_position, { 15,180,0 });
+		//	camera1->LookAt({ 0,0.0,0.0 });
 
-			camera2 = renderer->CreateCamera({ 3,1,0 });
-			camera2->SetViewport({ 0.65f,0.0f }, { 0.35f,0.35f });
-			camera2->LookAt({ 0,0,0 });
+		//	camera2 = renderer->CreateCamera({ 3,1,0 });
+		//	camera2->SetViewport({ 0.65f,0.0f }, { 0.35f,0.35f });
+		//	camera2->LookAt({ 0,0,0 });
 
 			light = renderer->CreateLight({ 0.0,2, -3.0 });
 			light->SetType(Vulkan::LightType::Spot);
@@ -304,8 +307,8 @@ int main()
 			lightDirectional->m_rotation = { 50,-30,0 };
 			lightDirectional->diffuseColor = glm::vec4(1.0, 1.0, 1.0, 1.0);
 
-		}
-		//!Light Test
+		//}
+		////!Light Test
 
 		while (running)
 		{
@@ -343,9 +346,9 @@ int main()
 				SDL_Delay((uint32_t)(fixedTimeStep - frameDeltaTime));
 
 			mesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 0,0,0 }, { 0,rotmod,0 }, { 0.5,0.5,0.5 });
-			renderer->Load(mesh, &material);
-			planeMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 0,0,0 }, { 0, 0, 0 }, { 2,2,2 });
-			renderer->Load(planeMesh, &planeMaterial);
+			renderer->Draw({ mesh.get() }, { &material });
+			//planeMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 0,0,0 }, { 0, 0, 0 }, { 2,2,2 });
+			//renderer->Load(planeMesh, &planeMaterial);
 			//	cubeMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 2,1,2 }, { 45, rotmod, 0 }, { 1,1,1 });
 			//	renderer->Load(cubeMesh, &whiteMaterial);
 			//	sphereMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ -2,1,1 }, { 0,rotmod,0 }, { 1,1,1 });
