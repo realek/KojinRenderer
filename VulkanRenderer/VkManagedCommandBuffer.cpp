@@ -11,7 +11,7 @@ Vulkan::VkManagedCommandBuffer::VkManagedCommandBuffer(VkDevice device, VkComman
 	m_device = device;
 }
 
-void Vulkan::VkManagedCommandBuffer::Begin(VkCommandBufferUsageFlags usage, size_t index)
+VkCommandBuffer Vulkan::VkManagedCommandBuffer::Begin(VkCommandBufferUsageFlags usage, size_t index)
 {
 	assert(bufferLevel != VK_COMMAND_BUFFER_LEVEL_MAX_ENUM);
 
@@ -21,9 +21,10 @@ void Vulkan::VkManagedCommandBuffer::Begin(VkCommandBufferUsageFlags usage, size
 	VkResult result = vkBeginCommandBuffer(m_buffers[index], &cmdBufferBI);
 	if (result != VK_SUCCESS)
 		throw std::runtime_error("Failed to begin managed command buffer, reason: " + VkResultToString(result));
+	return m_buffers[index];
 }
 
-void Vulkan::VkManagedCommandBuffer::Begin(VkCommandBufferUsageFlags usage)
+std::vector<VkCommandBuffer> Vulkan::VkManagedCommandBuffer::Begin(VkCommandBufferUsageFlags usage)
 {
 	assert(bufferLevel != VK_COMMAND_BUFFER_LEVEL_MAX_ENUM);
 	for (VkCommandBuffer buffer : m_buffers)
@@ -35,6 +36,7 @@ void Vulkan::VkManagedCommandBuffer::Begin(VkCommandBufferUsageFlags usage)
 		if (result != VK_SUCCESS)
 			throw std::runtime_error("Failed to begin managed command buffer, reason: " + VkResultToString(result));
 	}
+	return m_buffers;
 }
 
 void Vulkan::VkManagedCommandBuffer::End(size_t index)

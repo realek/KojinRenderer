@@ -10,9 +10,9 @@ namespace Vulkan
 	public:
 
 		///beging a specific command buffer with the provided flag
-		void Begin(VkCommandBufferUsageFlags usage, size_t index);
+		VkCommandBuffer Begin(VkCommandBufferUsageFlags usage, size_t index);
 		///begin all command buffers with the provided flags
-		void Begin(VkCommandBufferUsageFlags usage);
+		std::vector<VkCommandBuffer> Begin(VkCommandBufferUsageFlags usage);
 		///End a specific command buffer
 		void End(size_t index);
 		///End all contained command buffers

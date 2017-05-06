@@ -29,10 +29,9 @@ struct VkLight
 };
 
 layout(set = 1, binding = 0) uniform sampler2D texSampler;
-layout(set = 1, binding = 1) uniform sampler2DArray depthSampler;
-layout(set = 1, binding = 2) uniform FragUbo {
+//layout(set = 1, binding = 1) uniform sampler2DArray depthSampler;
+layout(set = 1, binding = 1) uniform FragUbo {
 
-	//vec4 cameraPos;
 	VkLight lights[6];
 	vec4 ambientLightColor;
 	vec4 materialDiffuse;
@@ -51,48 +50,48 @@ mat4(
  0,0,0,1
 );
 
-float textureProj(vec4 P, vec2 off, int arrayIdx)
-{
-	float shadow = 1.0;
-	vec4 shadowCoord = P / P.w;
-	if ( shadowCoord.z > -1.0 && shadowCoord.z < 1.0 ) 
-	{
-		if((shadowCoord.x >= 0.0) && (shadowCoord.x <= 1.0f) && (shadowCoord.y >= 0.0) && (shadowCoord.y <= 1.0f) )
-		{
-			vec3 arrTexCoord = vec3(shadowCoord.xy + off,arrayIdx);
-			float dist = texture( depthSampler, arrTexCoord ).r;
-			if ( shadowCoord.w > 0.0 && dist < shadowCoord.z ) 
-			{
-				shadow = 0.1f;
-			}
-		}
+//float textureProj(vec4 P, vec2 off, int arrayIdx)
+//{
+//	float shadow = 1.0;
+//	vec4 shadowCoord = P / P.w;
+//	if ( shadowCoord.z > -1.0 && shadowCoord.z < 1.0 ) 
+//	{
+//		if((shadowCoord.x >= 0.0) && (shadowCoord.x <= 1.0f) && (shadowCoord.y >= 0.0) && (shadowCoord.y <= 1.0f) )
+//		{
+//			vec3 arrTexCoord = vec3(shadowCoord.xy + off,arrayIdx);
+//			float dist = texture( depthSampler, arrTexCoord ).r;
+//			if ( shadowCoord.w > 0.0 && dist < shadowCoord.z ) 
+//			{
+//				shadow = 0.1f;
+//			}
+//		}
 
-	}
-	return shadow;
-}
+//	}
+//	return shadow;
+//}
 
-float filterPCF(vec4 sc, int index)
-{
-	ivec2 texDim = textureSize(depthSampler, 0).xy;
-	float scale = 1.5;
-	float dx = scale * 1.0 / float(texDim.x);
-	float dy = scale * 1.0 / float(texDim.y);
-
-	float shadowFactor = 0.0;
-	int count = 0;
-	int range = 1;
-	
-	for (int x = -range; x <= range; x++)
-	{
-		for (int y = -range; y <= range; y++)
-		{
-			shadowFactor += textureProj(sc, vec2(dx*x, dy*y), index);
-			count++;
-		}
-	
-	}
-	return shadowFactor / count;
-}
+//float filterPCF(vec4 sc, int index)
+//{
+//	ivec2 texDim = textureSize(depthSampler, 0).xy;
+//	float scale = 1.5;
+//	float dx = scale * 1.0 / float(texDim.x);
+//	float dy = scale * 1.0 / float(texDim.y);
+//
+//	float shadowFactor = 0.0;
+//	int count = 0;
+//	int range = 1;
+//	
+//	for (int x = -range; x <= range; x++)
+//	{
+//		for (int y = -range; y <= range; y++)
+//		{
+//			shadowFactor += textureProj(sc, vec2(dx*x, dy*y), index);
+//			count++;
+//		}
+//	
+//	}
+//	return shadowFactor / count;
+//}
 
 float LinearizeDepth(float depth)
 {
@@ -121,7 +120,6 @@ void main()
 		vec3 V; // fragment eye 
 		vec3 D; // light forward from rotation
 		float atten = 1.0f;
-		float shadowAtten = 1.0f;
 		
 		D = normalize(-ubo.lights[i].direction.xyz);
 		if(ubo.lights[i].lightProps.lightType == 2)
@@ -185,11 +183,11 @@ void main()
 		
 		
 		
-		if(iMat != ubo.lights[i].lightBiasedMVP)
-		{
-			vec4 vertPos = ubo.lights[i].lightBiasedMVP * vertexPosition;
-			shadowCoef = filterPCF(vertPos,i);
-		}
+	//	if(iMat != ubo.lights[i].lightBiasedMVP)
+	//	{
+	//		vec4 vertPos = ubo.lights[i].lightBiasedMVP * vertexPosition;
+	//		shadowCoef = filterPCF(vertPos,i);
+	//	}
 
 		lightColor += atten*shadowCoef*intensity*(diffuse + specular);
 		

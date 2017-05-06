@@ -78,7 +78,7 @@ void Vulkan::VkManagedRenderPass::Build(VkExtent2D extent, VkFormat depthFormat)
 	m_extent = extent;
 	m_colorformat = VK_FORMAT_UNDEFINED;
 	m_depthFormat = depthFormat;
-
+	m_depthFinalLayout = depthAttachmentDesc.finalLayout;
 
 
 }
@@ -97,7 +97,7 @@ void Vulkan::VkManagedRenderPass::Build(VkExtent2D extent, VkFormat colorFormat,
 	colorAttachmentDesc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	colorAttachmentDesc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	colorAttachmentDesc.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
+	
 	VkAttachmentDescription depthAttachmentDesc = {};
 	depthAttachmentDesc.format = depthFormat;
 	depthAttachmentDesc.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -160,6 +160,8 @@ void Vulkan::VkManagedRenderPass::Build(VkExtent2D extent, VkFormat colorFormat,
 	m_extent = extent;
 	m_colorformat = colorFormat;
 	m_depthFormat = depthFormat;
+	m_colorFinalLayout = colorAttachmentDesc.finalLayout;
+	m_depthFinalLayout = depthAttachmentDesc.finalLayout;
 }
 
 void Vulkan::VkManagedRenderPass::SetPipeline(VkManagedPipeline * pipeline, VkDynamicStatesBlock dynamicStates, VkPipelineBindPoint bindPoint)
@@ -504,7 +506,7 @@ void Vulkan::VkManagedRenderPass::CreateAsForwardOmniShadowmapPass(VkDevice devi
 	SetFrameBufferCount(1);
 }
 
-void Vulkan::VkManagedRenderPass::SetFrameBufferCount(uint32_t count, bool sampleColor, bool copyColor, bool sampleDepth, bool copyDepth) 
+void Vulkan::VkManagedRenderPass::SetFrameBufferCount(uint32_t count, bool setFinalLayout, bool sampleColor, bool copyColor, bool sampleDepth, bool copyDepth) 
 {
 	uint32_t size = static_cast<uint32_t>(m_fbSize);
 	count = count - size;
@@ -517,12 +519,26 @@ void Vulkan::VkManagedRenderPass::SetFrameBufferCount(uint32_t count, bool sampl
 		{
 			m_fbs.push_back(new VkManagedFrameBuffer(m_mdevice, m_pass));
 			if (m_colorformat == VK_FORMAT_UNDEFINED)
+			{
 				m_fbs[size]->Build(m_extent, sampleDepth, copyDepth, m_depthFormat, VkManagedFrameBufferAttachment::DepthAttachment);
+				if(setFinalLayout)
+					m_fbs[size]->DepthAttachment()->layout = m_depthFinalLayout;
+			}
 			else if (m_depthFormat == VK_FORMAT_UNDEFINED)
+			{
 				m_fbs[size]->Build(m_extent, sampleColor, copyColor, m_colorformat, VkManagedFrameBufferAttachment::ColorAttachment);
+				if(setFinalLayout)
+					m_fbs[size]->ColorAttachment()->layout = m_colorFinalLayout;
+			}
 			else
 			{
 				m_fbs[size]->Build(m_extent, sampleColor, copyColor, sampleDepth, copyDepth, m_colorformat, m_depthFormat);
+				if(setFinalLayout)
+				{
+					m_fbs[size]->DepthAttachment()->layout = m_depthFinalLayout;
+					m_fbs[size]->ColorAttachment()->layout = m_colorFinalLayout;
+				}
+
 			}
 		}
 	}

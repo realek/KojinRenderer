@@ -600,6 +600,7 @@ void Vulkan::VkManagedPipeline::CreateDescriptorSetLayout_HARCODED()
 {
 	m_vertSetLayout = { m_device,vkDestroyDescriptorSetLayout };
 	m_fragSetLayout = { m_device, vkDestroyDescriptorSetLayout };
+
 	VkDescriptorSetLayoutBinding vertexUBLB = {};
 	vertexUBLB.binding = 0;
 	vertexUBLB.descriptorCount = 1;
@@ -625,21 +626,21 @@ void Vulkan::VkManagedPipeline::CreateDescriptorSetLayout_HARCODED()
 	fragmentSamplerLB.pImmutableSamplers = nullptr;
 	fragmentSamplerLB.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-	VkDescriptorSetLayoutBinding shadowDepthSamplerLB = {};
-	shadowDepthSamplerLB.binding = 1;
-	shadowDepthSamplerLB.descriptorCount = 1;
-	shadowDepthSamplerLB.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	shadowDepthSamplerLB.pImmutableSamplers = nullptr;
-	shadowDepthSamplerLB.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	//VkDescriptorSetLayoutBinding shadowDepthSamplerLB = {};
+	//shadowDepthSamplerLB.binding = 1;
+	//shadowDepthSamplerLB.descriptorCount = 1;
+	//shadowDepthSamplerLB.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	//shadowDepthSamplerLB.pImmutableSamplers = nullptr;
+	//shadowDepthSamplerLB.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
 	VkDescriptorSetLayoutBinding fragmentLightUBLB = {};
-	fragmentLightUBLB.binding = 2;
+	fragmentLightUBLB.binding = 1;
 	fragmentLightUBLB.descriptorCount = 1;
 	fragmentLightUBLB.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	fragmentLightUBLB.pImmutableSamplers = nullptr;
 	fragmentLightUBLB.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-	std::vector<VkDescriptorSetLayoutBinding> bindings = { fragmentSamplerLB, shadowDepthSamplerLB, fragmentLightUBLB };
+	std::vector<VkDescriptorSetLayoutBinding> bindings = { fragmentSamplerLB /*, shadowDepthSamplerLB*/, fragmentLightUBLB };
 	descSetLayoutCI.bindingCount = static_cast<uint32_t>(bindings.size());
 	descSetLayoutCI.pBindings = bindings.data();
 

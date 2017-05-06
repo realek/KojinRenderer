@@ -43,7 +43,7 @@ namespace Vulkan
 		void CreateAsForwardPass(VkDevice device, int32_t width, int32_t height, std::shared_ptr<VulkanImageUnit> imageUnit, std::shared_ptr<VulkanCommandUnit> cmdUnit, VkFormat imageFormat, VkFormat depthFormat, bool hasColorAttachment = true, bool hasDepthAttachment = true);
 		void CreateAsForwardProjectedShadowmapPass(VkDevice device, int32_t width, int32_t height, std::shared_ptr<VulkanImageUnit> imageUnit, std::shared_ptr<VulkanCommandUnit> cmdUnit, VkFormat depthFormat);
 		void CreateAsForwardOmniShadowmapPass(VkDevice device, int32_t with, int32_t height, std::shared_ptr<VulkanImageUnit> imageUnit, std::shared_ptr<VulkanCommandUnit> cmdUnit, VkFormat colorFormat, VkFormat depthFormat);
-		void SetFrameBufferCount(uint32_t count, bool sampleColor, bool copyColor, bool sampleDepth, bool copyDepth);
+		void SetFrameBufferCount(uint32_t count, bool setFinalLayout, bool sampleColor, bool copyColor, bool sampleDepth, bool copyDepth);
 		void SetFrameBufferCount(int32_t count);
 		void CreateTextureSampler(std::string name, VkBorderColor borderColor, float anisotrophy = 16, bool depthSampler = false);
 		void EditSampler(std::string name, float anisotrophy, VkBorderColor borderColor, bool depthSampler);
@@ -80,6 +80,8 @@ namespace Vulkan
 	
 	private:
 
+		VkImageLayout m_colorFinalLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		VkImageLayout m_depthFinalLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		VkDynamicStatesBlock m_currentPipelineStateBlock;
 		std::vector<VkClearValue> m_clearValues;
 		VkManagedPipeline * m_currentPipeline = nullptr;

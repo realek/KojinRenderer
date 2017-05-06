@@ -112,8 +112,8 @@ namespace Vulkan
 		VkManagedSemaphore * m_passSemaphore = nullptr;
 		VkManagedBuffer * m_meshVertexData = nullptr;
 		VkManagedBuffer * m_meshIndexData = nullptr;
-		VkManagedCommandBuffer * m_cmdBuffer = nullptr;
-		VkManagedSampler * m_fwdSampler = nullptr;
+		VkManagedCommandBuffer * m_swapChainbuffers = nullptr;
+		VkManagedSampler * m_colorSampler = nullptr;
 
 		std::unordered_map<uint32_t, int> m_meshDraws;
 		std::vector<glm::mat4> m_meshPartTransforms;

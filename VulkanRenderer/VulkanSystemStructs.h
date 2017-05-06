@@ -200,7 +200,6 @@ namespace Vulkan
 
 	struct LightingUniformBuffer
 	{
-		//glm::vec4 cameraPos;
 		VkLight lights[MAX_LIGHTS_PER_FRAGMENT];
 		glm::vec4 ambientLightColor;
 		glm::vec4 materialDiffuse;

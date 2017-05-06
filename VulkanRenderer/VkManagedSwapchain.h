@@ -11,7 +11,7 @@ namespace Vulkan
 	class VkManagedSwapchain
 	{
 	public:
-		VkManagedSwapchain(VkManagedDevice * device, VkManagedCommandPool * pool, VkImageUsageFlags aditionalFlags = 0);
+		VkManagedSwapchain(VkManagedDevice * device, VkManagedCommandPool * pool, VkFormat preferedFormat = VK_FORMAT_UNDEFINED, VkImageUsageFlags aditionalFlags = 0);
 		VkManagedSwapchain(const VkManagedSwapchain&) = delete;
 		VkManagedSwapchain& operator=(const VkManagedSwapchain&) = delete;
 		~VkManagedSwapchain();
@@ -19,9 +19,11 @@ namespace Vulkan
 		VkResult AcquireNextImage(uint32_t * imageIndex, VkSemaphore presentSemaphore);
 		VkResult PresentCurrentImage(uint32_t * imageIndex, Vulkan::VkManagedQueue * queue, std::vector<VkSemaphore> waitSemaphores);
 		Vulkan::VkManagedImage * SwapchainImage(size_t index);
-		void Remake(VkManagedDevice * device, VkManagedCommandPool * pool);
+		void Remake(VkManagedDevice * device, VkManagedCommandPool * pool, VkFormat preferedFormat = VK_FORMAT_UNDEFINED);
 		VkExtent2D Extent();
 		uint32_t ImageCount();
+
+		
 
 		operator VkSwapchainKHR()
 		{
@@ -33,7 +35,7 @@ namespace Vulkan
 		}
 
 	private:
-		VkSurfaceFormatKHR GetSupportedSurfaceFormat(const std::vector<VkSurfaceFormatKHR>* surfaceFormats);
+		VkSurfaceFormatKHR GetSupportedSurfaceFormat(const std::vector<VkSurfaceFormatKHR>* surfaceFormats, VkFormat prefered);
 		VkPresentModeKHR GetSupportedPresentMode(const std::vector<VkPresentModeKHR>* presentModes);
 		VkExtent2D GetActualExtent2D(const VkSurfaceCapabilitiesKHR * capabilities, VkExtent2D windowExtent);
 	

@@ -93,6 +93,7 @@ void Vulkan::VkManagedImage::Build(VkImageCreateInfo imageCI)
 	layers = imageCI.arrayLayers;
 	layout = imageCI.initialLayout;
 	format = imageCI.format;
+	m_imageExtent = imageCI.extent;
 	aspect = VK_IMAGE_ASPECT_COLOR_BIT;
 }
 
@@ -251,7 +252,7 @@ void Vulkan::VkManagedImage::Build(VkImage image, VkFormat format, VkExtent2D ex
 	m_image = image;
 }
 
-void Vulkan::VkManagedImage::LoadData(VkManagedCommandBuffer * buffer, VkManagedQueue * queue, void * pixels, uint32_t bitAlignment, uint32_t width, uint32_t height)
+void Vulkan::VkManagedImage::LoadData(VkManagedCommandBuffer * buffer, uint32_t bufferIndex, VkManagedQueue * submitQueue, void * pixels, uint32_t bitAlignment, uint32_t width, uint32_t height, VkImageLayout finalLayout)
 {
 	VkManagedImage stagingImage{ m_mdevice };
 
@@ -269,8 +270,6 @@ void Vulkan::VkManagedImage::LoadData(VkManagedCommandBuffer * buffer, VkManaged
 	imageCI.flags = 0;
 	imageCI.imageType = VK_IMAGE_TYPE_2D;
 	imageCI.tiling = VK_IMAGE_TILING_LINEAR;
-	imageCI.pQueueFamilyIndices = &queue->familyIndex;
-	imageCI.queueFamilyIndexCount = 1;
 
 	//build staging image and memory
 	stagingImage.Build(imageCI);
@@ -281,23 +280,16 @@ void Vulkan::VkManagedImage::LoadData(VkManagedCommandBuffer * buffer, VkManaged
 	vkMapMemory(m_device, stagingImage.m_imageMemory, 0, imageMemorySize, 0, &data);
 	memcpy(data, pixels, static_cast<size_t>(imageMemorySize));
 	vkUnmapMemory(m_device, stagingImage.m_imageMemory);
-
-	buffer->Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,0);
-	VkCommandBuffer cmdBuffer = buffer->Buffer();
-	VkImageLayout oldLayout = layout == VK_IMAGE_LAYOUT_UNDEFINED ? VK_IMAGE_LAYOUT_GENERAL : layout;
-	stagingImage.SetLayout(cmdBuffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0, stagingImage.layers, queue->familyIndex);
-	this->SetLayout(buffer->Buffer(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, layers, queue->familyIndex);
-	stagingImage.Copy(cmdBuffer, this, { 0,0,0 }, { 0,0,0 });
-	this->SetLayout(cmdBuffer, oldLayout, 0, layers, VK_QUEUE_FAMILY_IGNORED);
+	VkCommandBuffer recBuff = buffer->Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, bufferIndex);
+	this->SetLayout(recBuff, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0, layers, submitQueue->familyIndex);
+	stagingImage.Copy(recBuff, this, submitQueue->familyIndex);
 	buffer->End(0);
-	buffer->Submit(queue->queue, {}, {}, {});
-	vkQueueWaitIdle(queue->queue);
+	buffer->Submit(submitQueue->queue, {}, {}, {});
+	vkQueueWaitIdle(submitQueue->queue);
 }
 
 void Vulkan::VkManagedImage::SetLayout(VkCommandBuffer buffer, VkImageLayout newLayout,uint32_t baseLayer, uint32_t layerCount, uint32_t dstQueueFamily)
 {
-	if (layout == newLayout)
-		return;
 
 	VkImageMemoryBarrier imageMemoryBarrier = {};
 	imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -357,6 +349,10 @@ void Vulkan::VkManagedImage::SetLayout(VkCommandBuffer buffer, VkImageLayout new
 		imageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
 		imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
 	}
+	else if (layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+		imageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+		imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	}
 	else if (layout == VK_IMAGE_LAYOUT_PREINITIALIZED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
 		imageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
 		imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -370,6 +366,26 @@ void Vulkan::VkManagedImage::SetLayout(VkCommandBuffer buffer, VkImageLayout new
 		imageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
 		imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 	}
+	else if (layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+	{
+		imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+		imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	}
+	else if (layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+	{
+		imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	}
+	else if (layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+	{
+		imageMemoryBarrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+		imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+	}
+	else if (layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+	{
+		imageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+		imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	}
 	else if (layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
 		imageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
 		imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -377,6 +393,10 @@ void Vulkan::VkManagedImage::SetLayout(VkCommandBuffer buffer, VkImageLayout new
 	else if (layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
 		imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 		imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	}
+	else if (layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
+		imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		imageMemoryBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 	}
 	else if (layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
 
@@ -443,7 +463,7 @@ void Vulkan::VkManagedImage::SetLayout(VkCommandBuffer buffer, VkImageLayout new
 	layout = newLayout;
 }
 
-void Vulkan::VkManagedImage::Copy(VkCommandBuffer buffer, VkManagedImage * dst, VkOffset3D srcOffset, VkOffset3D dstOffset, VkImageSubresourceLayers srcLayers, VkImageSubresourceLayers dstLayers)
+void Vulkan::VkManagedImage::Copy(VkCommandBuffer buffer, VkManagedImage * dst, uint32_t queueFamily, VkOffset3D srcOffset, VkOffset3D dstOffset, VkImageSubresourceLayers srcLayers, VkImageSubresourceLayers dstLayers)
 {
 	VkImageCopy copyData = defaultCopySettings;
 	copyData.extent = m_imageExtent;
@@ -452,9 +472,13 @@ void Vulkan::VkManagedImage::Copy(VkCommandBuffer buffer, VkManagedImage * dst, 
 
 	//both images must have the same aspect mask and layouts must be set to source and destination respectively
 	assert(copyData.srcSubresource.aspectMask == copyData.dstSubresource.aspectMask);
-	assert(layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-	assert(dst->layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	assert(layout != VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+	assert(dst->layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	VkImageLayout oldLayout = layout == VK_IMAGE_LAYOUT_UNDEFINED || layout == VK_IMAGE_LAYOUT_PREINITIALIZED ? VK_IMAGE_LAYOUT_GENERAL : layout;
+	VkImageLayout dstOldLayout = (dst->layout == VK_IMAGE_LAYOUT_UNDEFINED || dst->layout == VK_IMAGE_LAYOUT_PREINITIALIZED) ? VK_IMAGE_LAYOUT_GENERAL : dst->layout;
 
+	SetLayout(buffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, srcLayers.baseArrayLayer, srcLayers.layerCount, queueFamily);
+	dst->SetLayout(buffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dstLayers.baseArrayLayer, dstLayers.layerCount, queueFamily);
 
 	if (srcLayers.layerCount != 0 && srcLayers.aspectMask != 0)
 		copyData.srcSubresource = srcLayers;
@@ -472,4 +496,6 @@ void Vulkan::VkManagedImage::Copy(VkCommandBuffer buffer, VkManagedImage * dst, 
 		1, &copyData
 	);
 
+	SetLayout(buffer, oldLayout, srcLayers.baseArrayLayer, srcLayers.layerCount, queueFamily);
+	dst->SetLayout(buffer, dstOldLayout, dstLayers.baseArrayLayer, dstLayers.layerCount, queueFamily);
 }

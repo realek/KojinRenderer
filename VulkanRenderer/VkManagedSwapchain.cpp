@@ -8,7 +8,7 @@
 #include <algorithm>
 #include <assert.h>
 
-Vulkan::VkManagedSwapchain::VkManagedSwapchain(VkManagedDevice * device, VkManagedCommandPool * pool, VkImageUsageFlags aditionalFlags)
+Vulkan::VkManagedSwapchain::VkManagedSwapchain(VkManagedDevice * device, VkManagedCommandPool * pool, VkFormat preferedFormat, VkImageUsageFlags aditionalFlags)
 {
 	assert(device != nullptr);
 	assert(pool != nullptr);
@@ -25,7 +25,7 @@ Vulkan::VkManagedSwapchain::VkManagedSwapchain(VkManagedDevice * device, VkManag
 	swapChainCI.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 	swapChainCI.surface = pDeviceData->deviceSurfaceData.surface;
 
-	VkSurfaceFormatKHR surfFormat = GetSupportedSurfaceFormat(&pDeviceData->deviceSurfaceData.formats);
+	VkSurfaceFormatKHR surfFormat = GetSupportedSurfaceFormat(&pDeviceData->deviceSurfaceData.formats,preferedFormat);
 	swapChainCI.minImageCount = minImageCount;
 	swapChainCI.imageFormat = surfFormat.format;
 	swapChainCI.imageColorSpace = surfFormat.colorSpace;
@@ -190,7 +190,7 @@ Vulkan::VkManagedImage * Vulkan::VkManagedSwapchain::SwapchainImage(size_t index
 	return m_scImages[index];
 }
 
-void Vulkan::VkManagedSwapchain::Remake(VkManagedDevice * device, VkManagedCommandPool * pool)
+void Vulkan::VkManagedSwapchain::Remake(VkManagedDevice * device, VkManagedCommandPool * pool, VkFormat preferedFormat)
 {
 	assert(device != nullptr);
 	assert(pool != nullptr);
@@ -217,7 +217,7 @@ void Vulkan::VkManagedSwapchain::Remake(VkManagedDevice * device, VkManagedComma
 	swapChainCI.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 	swapChainCI.surface = pDeviceData->deviceSurfaceData.surface;
 
-	VkSurfaceFormatKHR surfFormat = GetSupportedSurfaceFormat(&pDeviceData->deviceSurfaceData.formats);
+	VkSurfaceFormatKHR surfFormat = GetSupportedSurfaceFormat(&pDeviceData->deviceSurfaceData.formats,preferedFormat);
 	swapChainCI.minImageCount = minImageCount;
 	swapChainCI.imageFormat = surfFormat.format;
 	swapChainCI.imageColorSpace = surfFormat.colorSpace;
@@ -335,15 +335,38 @@ uint32_t Vulkan::VkManagedSwapchain::ImageCount()
 	return static_cast<uint32_t>(m_scImages.size());
 }
 
-VkSurfaceFormatKHR Vulkan::VkManagedSwapchain::GetSupportedSurfaceFormat(const std::vector<VkSurfaceFormatKHR>* surfaceFormats)
+VkSurfaceFormatKHR Vulkan::VkManagedSwapchain::GetSupportedSurfaceFormat(const std::vector<VkSurfaceFormatKHR>* surfaceFormats, VkFormat prefered)
 {
 	if (surfaceFormats->size() == 1 && surfaceFormats->at(0).format == VK_FORMAT_UNDEFINED)
-		return{ VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+	{
+		if (prefered == VK_FORMAT_UNDEFINED)
+			return{ VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+		else
+		{
+			return{ prefered, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+		}
+	}
 
+	std::vector<VkSurfaceFormatKHR>::const_iterator alternateit = surfaceFormats->end();
 	for (auto it = surfaceFormats->begin(); it != surfaceFormats->end(); ++it)
-		if (it->format == VK_FORMAT_B8G8R8A8_UNORM && it->colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+	{
+		if (it->format == prefered && it->colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+		{
 			return *it;
+			break;
+		}
 
+		if(it->format == VK_FORMAT_B8G8R8A8_UNORM && it->colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR && alternateit != surfaceFormats->end())
+		{
+			alternateit = it;
+		}
+
+	}
+
+	if (alternateit != surfaceFormats->end())
+		return *alternateit;
+
+	//extend so that we can rank formats, at the moment if no good format is found just return first format
 	return surfaceFormats->at(0);
 }
 
