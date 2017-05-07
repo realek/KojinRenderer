@@ -3,8 +3,6 @@
 #include <memory>
 namespace Vulkan
 {
-	class VulkanCommandUnit;
-
 	class VkManagedDevice;
 	class VkManagedBuffer
 	{
@@ -17,8 +15,7 @@ namespace Vulkan
 		VkDeviceSize Size();
 		void Build(VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties, VkDeviceSize bufferSize, VkSharingMode sharingMode = VK_SHARING_MODE_EXCLUSIVE);
 		void Build(VkPhysicalDevice physDevice,VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
-		void CopyTo(VkCommandBuffer buffer, VkManagedBuffer * dst, uint32_t srcOffset, uint32_t dstOffset);
-		void CopyTo(std::weak_ptr<Vulkan::VulkanCommandUnit> commandUnit, VkBuffer dstBuffer, uint32_t srcOffset, uint32_t dstOffset);
+		void CopyTo(VkCommandBuffer buffer, VkManagedBuffer * dst, VkDeviceSize srcOffset, VkDeviceSize dstOffset, VkDeviceSize copySize);
 		void Write(VkDeviceSize offset, VkMemoryMapFlags flags, size_t srcSize, void * src);
 	public:
 		VulkanObjectContainer<VkBuffer> buffer = VK_NULL_HANDLE;

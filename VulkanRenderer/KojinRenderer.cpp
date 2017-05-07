@@ -10,13 +10,10 @@
 #include "VkManagedDescriptorSet.h"
 #include "VkManagedSemaphore.h"
 #include "VkManagedSampler.h"
+#include "VkManagedRenderPass.h"
+#include "VkManagedPipeline.h"
 
 #include "SPIRVShader.h"
-#include "VulkanSystem.h"
-#include "VulkanCommandUnit.h"
-#include "VulkanImageUnit.h"
-#include "VulkanSwapChainUnit.h"
-#include "VulkanRenderUnit.h"
 #include "Camera.h"
 #include "Light.h"
 #include "Mesh.h"
@@ -53,9 +50,9 @@ Vulkan::KojinRenderer::KojinRenderer(SDL_Window * window, const char * appName, 
 		m_vkDevice = m_vkInstance->CreateVkManagedDevice(0, { VK_KHR_SWAPCHAIN_EXTENSION_NAME }, true, true, false, false, false);
 		m_vkPresentQueue = m_vkDevice->GetQueue(VK_QUEUE_GRAPHICS_BIT, true, false, true);
 		m_vkMainCmdPool = new VkManagedCommandPool(m_vkDevice, m_vkDevice->GetQueue(VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT, false, false, true));
-		m_vkSwapchain = new VkManagedSwapchain(m_vkDevice, m_vkMainCmdPool, VK_FORMAT_UNDEFINED, VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+		m_vkSwapchain = new VkManagedSwapchain(m_vkDevice, m_vkMainCmdPool, VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_FORMAT_UNDEFINED);
 		m_vkRenderpassFWD = new VkManagedRenderPass(m_vkDevice);
-		m_vkRenderpassFWD->Build(m_vkSwapchain->Extent(), VK_FORMAT_R8G8B8A8_UNORM, m_vkDevice->Depthformat());
+		m_vkRenderpassFWD->Build(m_vkSwapchain->Extent(), VK_FORMAT_B8G8R8A8_UNORM, m_vkDevice->Depthformat());
 		m_vkRenderpassFWD->SetFrameBufferCount(1, true, false, true, false, false);
 		m_vkPipelineFWD = new VkManagedPipeline(m_vkDevice);
 		m_vkPipelineFWD->Build(
@@ -153,16 +150,6 @@ void Vulkan::KojinRenderer::Draw(std::vector<Mesh*> meshes, std::vector<Material
 //	m_meshPartTransforms.push_back(lockedMesh->modelMatrix);
 //}
 
-//std::shared_ptr<Vulkan::Camera> Vulkan::KojinRenderer::CreateCamera(glm::vec3 initialPosition, bool perspective)
-//{
-//	//std::shared_ptr<Camera> camera = std::make_shared<Camera>(Camera(m_swapChainUnit->swapChainExtent2D, perspective, m_renderUnit.get(),VulkanRenderUnit::SetAsMainCamera, VulkanRenderUnit::RemoveCamera));
-//	//camera->m_bound = true;
-//	//camera->SetPositionRotation(initialPosition, { 0,0,0 });
-//	//m_renderUnit->AddCamera(camera.get());
-//
-//	return nullptr;
-//}
-
 Vulkan::Camera * Vulkan::KojinRenderer::CreateCamera(glm::vec3 initialPosition, bool perspective)
 {
 	Camera * c = new Camera(m_vkSwapchain->Extent(), perspective, std::bind(&KojinRenderer::FreeCamera, this, _1));
@@ -191,12 +178,10 @@ void Vulkan::KojinRenderer::Clean()
 		std::vector<void*> clears;
 		if (m_cameras.size() > 0)
 		{
-
 			for (auto& cam : m_cameras)
 			{
 				clears.push_back(cam.second);
 			}
-
 		}
 
 		if (m_lights.size() > 0)
@@ -283,10 +268,29 @@ Vulkan::Texture * Vulkan::KojinRenderer::LoadTexture(std::string filepath, bool 
 	SDL_free(surf);
 	return texture;
 }
+Vulkan::Texture * Vulkan::KojinRenderer::GetTextureWhite()
+{
+	if (m_whiteTexture != nullptr)
+		return m_whiteTexture;
 
+	uint32_t w, h;
+	w = h = 512;
+	std::vector<unsigned char> pixels(w * h * 4, (char)0xff);
+	m_whiteTexture = new Vulkan::Texture(nullptr, w, h, 4);
+	auto image = std::make_shared<VkManagedImage>(m_vkDevice);
+	m_deviceLoadedTextures.insert(std::make_pair(m_whiteTexture->id, image));
+	image->Build({w,h }, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 1, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+	VkManagedCommandBuffer cmdbuff = m_vkMainCmdPool->CreateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
+	VkManagedQueue * cmdPoolQueue = m_vkMainCmdPool->PoolQueue();
+	image->LoadData(&cmdbuff, 0, cmdPoolQueue, pixels.data(), 4, w, h, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	cmdbuff.Free();
+
+	return m_whiteTexture;
+}
 void Vulkan::KojinRenderer::FreeTexture(Texture * tex) 
 {
 	assert(tex != nullptr);
+	assert(tex->id != m_whiteTexture->id); // can't delete internal texture
 	assert(m_deviceLoadedTextures.count(tex->id) != 0);
 	m_deviceLoadedTextures.erase(tex->id);
 	delete tex;
@@ -322,6 +326,8 @@ void Vulkan::KojinRenderer::Render()
 		rebuild = true;
 	}
 	UpdateShadowmapLayers();
+
+	//update uniform buffers
 
 	//write descriptors here!
 	for (uint32_t oc = 0; oc < m_objectCountOld; ++oc)
@@ -382,22 +388,11 @@ void Vulkan::KojinRenderer::Render()
 			//copy pass result
 			VkManagedImage* passColor = m_vkRenderpassFWD->GetAttachment(0, VkImageUsageFlagBits::VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
 			VkManagedImage* scImage = m_vkSwapchain->SwapchainImage(cmdIndex);
-		//	auto layoutOldA = passColor->layout;
-		//	auto layoutOldB = scImage->layout;
-		//	passColor->SetLayout(cBuffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0, passColor->layers, VK_QUEUE_FAMILY_IGNORED);
-		//	scImage->SetLayout(cBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, scImage->layers, VK_QUEUE_FAMILY_IGNORED);
 			passColor->Copy(cBuffer, scImage);
-			//passColor->SetLayout(cBuffer, layoutOldA, 0, passColor->layers, VK_QUEUE_FAMILY_IGNORED);
-		//	scImage->SetLayout(cBuffer, layoutOldB, 0, scImage->layers, VK_QUEUE_FAMILY_IGNORED);
-
 		}
 	}
 
 	m_swapChainbuffers->End();
-
-	//	UpdateUniformBuffers();
-	// write update method
-
 
 	//submit & wait
 
@@ -405,21 +400,6 @@ void Vulkan::KojinRenderer::Render()
 	//present
 	m_vkSwapchain->PresentCurrentImage(&scImage, m_vkPresentQueue, { m_semaphores->Last()}); // pass waiting semaphores
 
-	////m_renderUnit->SetLights(m_lights);
-	//m_renderUnit->ConsumeMesh(
-	//	Mesh::m_iMeshVertices.data(),
-	//	static_cast<uint32_t>(Mesh::m_iMeshVertices.size()),
-	//	Mesh::m_iMeshIndices.data(),
-	//	static_cast<uint32_t>(Mesh::m_iMeshIndices.size()),
-	//	m_meshDraws,
-	//	m_objectCount);
-	//m_renderUnit->SetTransformsAndMaterials(m_meshPartTransforms, m_meshPartMaterials);
-	////m_renderUnit->RecordAndSubmitRenderPasses();
-	//m_meshDraws.clear();
-	//m_meshPartTransforms.clear();
-	//m_meshPartMaterials.clear();
-	//m_objectCount = 0;
-	//m_renderUnit->PresentFrame();
 	m_objectCount = 0;
 	m_meshDraws.clear();
 	m_meshPartMaterials.clear();
@@ -442,41 +422,6 @@ void Vulkan::KojinRenderer::UpdateInternalMesh(VkManagedCommandPool * commandPoo
 		m_meshIndexData = new VkManagedBuffer{ m_vkDevice };
 		m_meshVertexData = new VkManagedBuffer{ m_vkDevice };
 	}
-
-	//vertexBuffer = { m_deviceHandle, vertexSize };
-	//indiceBuffer = { m_deviceHandle, indiceSize };
-
-	//create descriptor pool and get references also clear existing desc set references
-
-	//	if (m_mainPassVertDescSets.size() > 0)
-	//	{
-	//		m_mainPassVertDescSets.clear();
-	//		m_mainPassFragDescSets.clear();
-	//		m_shadowPassVertDescSets.clear();
-	//	}
-
-	//	CreateDescriptorPool(objectCount + 1);
-	//allocate vertex & fragment descriptor sets
-	//	for (uint32_t i = 0; i <objectCount; i++)
-	//	{
-	//
-	//		m_mainPassFragDescSets.push_back(CreateDescriptorSet({ m_dummyFragSetLayout }, 1));
-	//		m_mainPassVertDescSets.push_back(CreateDescriptorSet({ m_dummyVertSetLayout }, 1));
-	//		m_shadowPassVertDescSets.push_back(CreateDescriptorSet({ m_dummyVertSetLayout }, 1));
-	//	}
-
-
-	//	if (vertShaderMVPBuffers.size() > 0)
-	//	{
-	//		vertShaderMVPBuffers.clear();
-	//		fragShaderLightBuffer.clear();
-	//		shadowmapUniformBuffers.clear();
-	//	}
-
-	//	CreateVertexUniformBuffers(objectCount);
-	//	CreateFragmentUniformBuffers(objectCount);
-	//	CreateShadowmapUniformBuffers(objectCount);
-
 	//create vertex and index buffers for the mesh
 	//declare staging buffers
 	VkManagedBuffer vertexStagingBuffer(m_vkDevice);
@@ -485,8 +430,6 @@ void Vulkan::KojinRenderer::UpdateInternalMesh(VkManagedCommandPool * commandPoo
 	//create staging buffers
 	vertexStagingBuffer.Build(VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertexSize);
 	indiceStagingBuffer.Build(VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, indiceSize);
-	//vertexStagingBuffer.Build(m_currentPhysicalDevice, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-	//indiceStagingBuffer.Build(m_currentPhysicalDevice, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 	//copy data into staging buffers
 	vertexStagingBuffer.Write(0, 0, (size_t)vertexStagingBuffer.bufferSize, vertexData);
@@ -499,8 +442,8 @@ void Vulkan::KojinRenderer::UpdateInternalMesh(VkManagedCommandPool * commandPoo
 	VkManagedCommandBuffer cmdBuff = commandPool->CreateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
 	cmdBuff.Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, 0);
 	VkCommandBuffer buffer = cmdBuff.Buffer();
-	vertexStagingBuffer.CopyTo(buffer, m_meshVertexData, 0, 0);
-	indiceStagingBuffer.CopyTo(buffer, m_meshIndexData, 0, 0);
+	vertexStagingBuffer.CopyTo(buffer, m_meshVertexData, 0, 0, vertexSize);
+	indiceStagingBuffer.CopyTo(buffer, m_meshIndexData, 0, 0, indiceSize);
 	cmdBuff.End(0);
 	cmdBuff.Submit(commandPool->PoolQueue()->queue, {}, {}, {}, 0);
 	m_vkDevice->WaitForIdle();
@@ -517,7 +460,7 @@ void Vulkan::KojinRenderer::UpdateUniformBuffer(VkCommandBuffer recordBuffer, ui
 
 	try
 	{
-		m_uniformVStagingBufferFWD->CopyTo(recordBuffer, m_uniformVBuffersFWD[bufferIndex], 0, 0);
+		m_uniformVStagingBufferFWD->CopyTo(recordBuffer, m_uniformVBuffersFWD[bufferIndex], 0, 0,dataSize);
 	}
 	catch (...)
 	{
@@ -558,7 +501,7 @@ void Vulkan::KojinRenderer::UpdateUniformBuffer(VkCommandBuffer recordBuffer, ui
 
 	try
 	{
-		m_uniformFStagingBufferFWD->CopyTo(recordBuffer, m_uniformFBuffersFWD[bufferIndex], 0, 0);
+		m_uniformFStagingBufferFWD->CopyTo(recordBuffer, m_uniformFBuffersFWD[bufferIndex], 0, 0,dataSize);
 	}
 	catch (...)
 	{

@@ -1,6 +1,6 @@
 #include "VkManagedBuffer.h"
 #include "VkManagedDevice.h"
-#include "VulkanCommandUnit.h"
+#include <assert.h>
 
 Vulkan::VkManagedBuffer::VkManagedBuffer(VkManagedDevice * device)
 {
@@ -52,6 +52,14 @@ void Vulkan::VkManagedBuffer::Build(VkBufferUsageFlags usage, VkMemoryPropertyFl
 	result = vkAllocateMemory(m_device, &allocInfo, nullptr, ++m_memory);
 	if (result != VK_SUCCESS)
 		throw std::runtime_error("Unable to allocate buffer memory from local device. Reason: " + Vulkan::VkResultToString(result));
+	
+	///TODO: Compute offset multiplier based on usage flags
+	/*
+	VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT = 0x00000004,
+	VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT = 0x00000008,
+	VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT = 0x00000010,
+	VK_BUFFER_USAGE_STORAGE_BUFFER_BIT = 0x00000020,
+	*/
 
 	result = vkBindBufferMemory(m_device, m_buffer, m_memory, 0);
 	if (result != VK_SUCCESS)
@@ -91,54 +99,27 @@ void Vulkan::VkManagedBuffer::Build(VkPhysicalDevice physDevice,VkBufferUsageFla
 		throw std::runtime_error("Unable to bind buffer memory from local device. Reason: " + Vulkan::VkResultToString(result));
 }
 
-void Vulkan::VkManagedBuffer::CopyTo(VkCommandBuffer buffer, VkManagedBuffer * dst, uint32_t srcOffset, uint32_t dstOffset)
+void Vulkan::VkManagedBuffer::CopyTo(VkCommandBuffer buffer, VkManagedBuffer * dst, VkDeviceSize srcOffset, VkDeviceSize dstOffset, VkDeviceSize copySize)
 {
 	assert(dst != nullptr);
 	assert(dst->m_buffer != VK_NULL_HANDLE);
 	assert(dst->m_memory != VK_NULL_HANDLE);
 	assert(m_buffer != VK_NULL_HANDLE);
 	assert(m_memory != VK_NULL_HANDLE);
-	assert(srcOffset < bufferSize - 1);
-	assert(dstOffset < dst->bufferSize - 1);
-
-	if ((dst->bufferSize - dstOffset) + srcOffset > bufferSize)
-		throw std::exception("Destination buffer memory range is smaller than source buffer memory range.");
+	assert(copySize <= dst->bufferSize);
 
 	VkBufferCopy copyRegion = {};
-	copyRegion.size = bufferSize;
+	copyRegion.size = copySize;
 	copyRegion.srcOffset = srcOffset;
 	copyRegion.dstOffset = dstOffset;
 	vkCmdCopyBuffer(buffer, m_buffer, dst->m_buffer, 1, &copyRegion);
 
 }
 
-void Vulkan::VkManagedBuffer::CopyTo(std::weak_ptr<Vulkan::VulkanCommandUnit> commandUnit,VkBuffer dstBuffer,uint32_t srcOffset, uint32_t dstOffset) {
-
-	auto cmdUnit = commandUnit.lock();
-	if (!cmdUnit)
-		throw std::runtime_error("Unable to lock weak ptr to Command unit object.");
-	VkCommandBuffer cmd = cmdUnit->BeginOneTimeCommand();
-	VkBufferCopy copyRegion = {};
-	copyRegion.size = bufferSize;
-	copyRegion.srcOffset = srcOffset;
-	copyRegion.dstOffset = dstOffset;
-	vkCmdCopyBuffer(cmd, buffer, dstBuffer, 1, &copyRegion);
-
-	try
-	{
-		cmdUnit->EndOneTimeCommand(cmd);
-	}
-	catch (...)
-	{
-		throw;
-	}
-
-}
-
 void Vulkan::VkManagedBuffer::Write(VkDeviceSize offset, VkMemoryMapFlags flags,size_t srcSize, void * src)
 {
-	assert(offset < bufferSize - 1);
-	vkMapMemory(m_device, m_memory, offset, bufferSize, flags, &mappedMemory);
+	assert(srcSize <= bufferSize-offset);
+	vkMapMemory(m_device, m_memory, offset, srcSize, flags, &mappedMemory);
 	memcpy(mappedMemory, src, srcSize);
 	vkUnmapMemory(m_device, m_memory);
 	mappedMemory = nullptr;

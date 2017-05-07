@@ -43,15 +43,6 @@ namespace Vulkan
 		VkDescriptorSetLayout GetVertexLayout() const;
 		VkDescriptorSetLayout GetFragmentLayout() const;
 		std::vector<VkDynamicState> GetDynamicStates();
-		template <typename T>
-		bool SetDynamicState(VkCommandBuffer buffer, VkDynamicState e, T& data);
-		template <>
-		bool SetDynamicState<VkViewport>(VkCommandBuffer buffer, VkDynamicState e, VkViewport& data);
-		template <>
-		bool SetDynamicState<VkRect2D>(VkCommandBuffer buffer, VkDynamicState e, VkRect2D& data);
-		template <>
-		bool SetDynamicState<VkDepthBias>(VkCommandBuffer buffer, VkDynamicState e, VkDepthBias& data);
-
 		VkResult SetDynamicState(VkCommandBuffer buffer, VkDynamicStatesBlock states);
 		void SetPushConstant(VkCommandBuffer buffer, std::vector<VkPushConstant> vector);
 	private:
@@ -67,45 +58,5 @@ namespace Vulkan
 		VkRenderPass m_linkedPass = VK_NULL_HANDLE;
 		std::vector<VkDynamicState> m_activeDynamicStates;
 	};
-
-	template<typename T>
-	inline bool VkManagedPipeline::SetDynamicState(VkCommandBuffer buffer, VkDynamicState e, T & data)
-	{
-		//unspecialized //unused
-		return false;
-	}
-
-	template<>
-	inline bool VkManagedPipeline::SetDynamicState(VkCommandBuffer buffer, VkDynamicState e, VkViewport & data)
-	{
-		auto iter = std::find(m_activeDynamicStates.begin(), m_activeDynamicStates.end(), e);
-		if (iter==m_activeDynamicStates.end())
-			return false;
-
-		vkCmdSetViewport(buffer, 0, 1, &data);
-		return true;
-	}
-
-	template<>
-	inline bool VkManagedPipeline::SetDynamicState(VkCommandBuffer buffer, VkDynamicState e, VkRect2D & data)
-	{
-		auto iter = std::find(m_activeDynamicStates.begin(), m_activeDynamicStates.end(), e);
-		if (iter == m_activeDynamicStates.end())
-			return false;
-
-		vkCmdSetScissor(buffer, 0, 1, &data);
-		return true;
-	}
-
-	template<>
-	inline bool VkManagedPipeline::SetDynamicState(VkCommandBuffer buffer, VkDynamicState e, VkDepthBias & data)
-	{
-		auto iter = std::find(m_activeDynamicStates.begin(), m_activeDynamicStates.end(), e);
-		if (iter == m_activeDynamicStates.end())
-			return false;
-
-		vkCmdSetDepthBias(buffer, data.constDepth, 0.0f, data.depthSlope);
-		return true;
-	}
 
 }

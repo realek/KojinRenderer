@@ -10,7 +10,6 @@ namespace Vulkan
 	};
 
 	class VkManagedImage;
-	class VulkanImageUnit;
 	class VkManagedDevice;
 	class VkManagedFrameBuffer
 	{
@@ -20,10 +19,7 @@ namespace Vulkan
 		void Build(VkExtent2D extent, bool sampleColor, bool copyColor, bool sampleDepth, bool copyDepth, VkFormat colorFormat, VkFormat depthFormat);
 		VkManagedFrameBuffer(const VkManagedFrameBuffer&) = delete;
 		VkManagedFrameBuffer& operator=(const VkManagedFrameBuffer&) = delete;
-		VkManagedFrameBuffer(std::weak_ptr<VulkanImageUnit> imageUnit);
 		~VkManagedFrameBuffer();
-		void SetupAttachment(VkManagedFrameBufferAttachment type, VkExtent2D extent, VkFormat format, bool canSample, bool stencil, bool canCopy);
-		void Build(VkExtent2D extent, VkDevice device, VkRenderPass pass);
 		void Clear();
 		operator VkFramebuffer()
 		{
@@ -34,7 +30,6 @@ namespace Vulkan
 		VkManagedImage * DepthAttachment() const;
 	private:
 
-		std::weak_ptr<VulkanImageUnit> m_imageUnit;
 		VkManagedImage * m_colorAttachment = nullptr;
 		VkManagedImage * m_depthAttachment = nullptr;
 		VkManagedDevice * m_mdevice = nullptr;

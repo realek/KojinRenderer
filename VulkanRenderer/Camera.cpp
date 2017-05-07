@@ -1,7 +1,6 @@
 
 #include "VKWorldSpace.h"
 #include "Camera.h"
-#include "VulkanRenderUnit.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/rotate_vector.hpp>
 #include <glm\gtx\euler_angles.hpp>
@@ -32,43 +31,7 @@ Vulkan::Camera::Camera(VkExtent2D extent, bool perspective, CameraCallback callb
 		SetPerspective();
 	else
 		SetOrthographic();
-}
-
-Vulkan::Camera::Camera(VkExtent2D extent, bool perspective, VulkanRenderUnit * rend, std::function<void(VulkanRenderUnit*, Camera*)> setMain, std::function<void(VulkanRenderUnit*, uint32_t)> deleter) : id(++globalID)
-{
-	m_swapChainExtent = extent;
-	m_viewPort = {};
-	m_viewPort.width = static_cast<float>(extent.width);
-	m_viewPort.height = static_cast<float>(extent.height);
-	m_viewPort.x = 0;
-	m_viewPort.y = 0;
-	m_viewPort.minDepth = 0;
-	m_viewPort.maxDepth = 1;
-
-	m_scissor = {};
-	m_scissor.extent = extent;
-	m_scissor.offset = { 0,0 };
-
-	m_fov = VkViewportDefaults::k_CameraFov;
-	m_zNear = VkViewportDefaults::k_CameraZNear;
-	m_zFar = VkViewportDefaults::k_CameraZFar;
-
-	m_rotation = { 0,0,0 };
-
-	if (perspective)
-		SetPerspective();
-	else
-		SetOrthographic();
-
-	onDestroy = [rend, deleter](Camera* camera)
-	{
-		deleter(rend, camera->id);
-	};
-
-	this->onSetAsMain = [rend,setMain](Camera* camera)
-	{
-		setMain(rend, camera);
-	};
+	m_onDestroy = callback;
 }
 
 void Vulkan::Camera::ComputeViewMatrix(glm::vec3 position, glm::vec3 rotation, glm::mat4 & viewMatrix)
@@ -87,7 +50,7 @@ void Vulkan::Camera::ComputeViewMatrix(glm::vec3 position, glm::vec3 rotation, g
 Vulkan::Camera::~Camera()
 {
 	if(m_bound)
-		onDestroy(this);
+		m_onDestroy(this);
 }
 
 void Vulkan::Camera::SetOrthographic(float orthoSize)
@@ -101,11 +64,6 @@ void Vulkan::Camera::SetPerspective()
 {
 	float aspect = (float)this->m_swapChainExtent.width / (float)this->m_swapChainExtent.height;
 	m_projectionMatrix = glm::perspective(glm::radians(m_fov), aspect, m_zNear, m_zFar);
-}
-
-void Vulkan::Camera::SetAsMain()
-{
-	onSetAsMain(this);
 }
 
 void Vulkan::Camera::SetPositionRotation(glm::vec3 position, glm::vec3 rotation)

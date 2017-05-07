@@ -162,7 +162,6 @@
     <ClCompile Include="Material.cpp" />
     <ClCompile Include="SPIRVShader.cpp" />
     <ClCompile Include="Texture.cpp" />
-    <ClCompile Include="Texture2D.cpp" />
     <ClCompile Include="Mesh.cpp" />
     <ClCompile Include="VkManagedBuffer.cpp" />
     <ClCompile Include="VkManagedCommandBuffer.cpp" />
@@ -182,11 +181,7 @@
     <ClCompile Include="VkManagedSwapchain.cpp" />
     <ClCompile Include="VkManagedValidationLayers.cpp" />
     <ClCompile Include="VulkanObjectUtils.cpp" />
-    <ClCompile Include="VulkanCommandUnit.cpp" />
-    <ClCompile Include="VulkanImageUnit.cpp" />
     <ClCompile Include="VulkanRenderUnit.cpp" />
-    <ClCompile Include="VulkanSwapChainUnit.cpp" />
-    <ClCompile Include="VulkanSystem.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="VulkanSystemStructs.cpp" />
   </ItemGroup>
@@ -200,7 +195,6 @@
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="SPIRVShader.h" />
     <ClInclude Include="Texture.h" />
-    <ClInclude Include="Texture2D.h" />
     <ClInclude Include="VkManagedBuffer.h" />
     <ClInclude Include="VkManagedCommandBuffer.h" />
     <ClInclude Include="VkManagedCommandPool.h" />
@@ -222,13 +216,8 @@
     <ClInclude Include="VulkanObjectUtils.h" />
     <ClInclude Include="VKWorldSpace.h" />
     <ClInclude Include="VulkanHash.h" />
-    <ClInclude Include="VulkanImageUnit.h" />
     <ClInclude Include="VulkanSystemStructs.h" />
-    <ClInclude Include="VulkanCommandUnit.h" />
     <ClInclude Include="VulkanObject.h" />
-    <ClInclude Include="VulkanRenderUnit.h" />
-    <ClInclude Include="VulkanSwapChainUnit.h" />
-    <ClInclude Include="VulkanSystem.h" />
     <ClInclude Include="VulkanUtils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

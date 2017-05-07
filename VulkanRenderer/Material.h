@@ -16,7 +16,7 @@ namespace Vulkan
 	{
 	public:
 		glm::vec4 diffuseColor;
-		VkImageView diffuseTexture;
+	//	VkImageView diffuseTexture;
 		Texture * albedo = nullptr;
 		Texture * normal = nullptr;
 		float specularity;

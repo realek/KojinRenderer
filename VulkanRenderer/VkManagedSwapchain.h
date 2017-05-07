@@ -4,6 +4,12 @@
 
 namespace Vulkan
 {
+	enum VkManagedSyncMode
+	{
+		VK_VKM_NONE,
+		VK_VKM_VSYNC,
+		VK_VKM_AVSYNC
+	};
 	class VkManagedDevice;
 	class VkManagedImage;
 	class VkManagedQueue;
@@ -11,7 +17,7 @@ namespace Vulkan
 	class VkManagedSwapchain
 	{
 	public:
-		VkManagedSwapchain(VkManagedDevice * device, VkManagedCommandPool * pool, VkFormat preferedFormat = VK_FORMAT_UNDEFINED, VkImageUsageFlags aditionalFlags = 0);
+		VkManagedSwapchain(VkManagedDevice * device, VkManagedCommandPool * pool, VkImageUsageFlags aditionalFlags = 0, VkFormat preferedFormat = VK_FORMAT_UNDEFINED, VkManagedSyncMode mode = VK_VKM_NONE);
 		VkManagedSwapchain(const VkManagedSwapchain&) = delete;
 		VkManagedSwapchain& operator=(const VkManagedSwapchain&) = delete;
 		~VkManagedSwapchain();
@@ -19,7 +25,7 @@ namespace Vulkan
 		VkResult AcquireNextImage(uint32_t * imageIndex, VkSemaphore presentSemaphore);
 		VkResult PresentCurrentImage(uint32_t * imageIndex, Vulkan::VkManagedQueue * queue, std::vector<VkSemaphore> waitSemaphores);
 		Vulkan::VkManagedImage * SwapchainImage(size_t index);
-		void Remake(VkManagedDevice * device, VkManagedCommandPool * pool, VkFormat preferedFormat = VK_FORMAT_UNDEFINED);
+		void Remake(VkManagedDevice * device, VkManagedCommandPool * pool, VkManagedSyncMode mode = VK_VKM_NONE, VkFormat preferedFormat = VK_FORMAT_UNDEFINED);
 		VkExtent2D Extent();
 		uint32_t ImageCount();
 
@@ -36,7 +42,7 @@ namespace Vulkan
 
 	private:
 		VkSurfaceFormatKHR GetSupportedSurfaceFormat(const std::vector<VkSurfaceFormatKHR>* surfaceFormats, VkFormat prefered);
-		VkPresentModeKHR GetSupportedPresentMode(const std::vector<VkPresentModeKHR>* presentModes);
+		VkPresentModeKHR GetSupportedPresentMode(const std::vector<VkPresentModeKHR>* presentModes, VkManagedSyncMode mode);
 		VkExtent2D GetActualExtent2D(const VkSurfaceCapabilitiesKHR * capabilities, VkExtent2D windowExtent);
 	
 	private:

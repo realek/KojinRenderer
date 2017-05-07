@@ -8,7 +8,6 @@ ENTRY POINT - Used to test current functionality of the renderer.
 #include "KojinRenderer.h"
 #include "Camera.h"
 #include "Light.h"
-#include "Texture2D.h"
 #include "Material.h"
 #include "Mesh.h"
 #include "SPIRVShader.h"
@@ -186,8 +185,7 @@ int main()
 			renderer = std::make_shared<Vulkan::KojinRenderer>(window,"Vulkan Tester",appVer);
 
 			//testing stuff
-		/*	whiteMaterial.diffuseTexture = Vulkan::Texture2D::GetWhiteTexture().lock()->ImageView();
-			whiteMaterial.specularity = 1000;
+		/*	
 			cubeMesh = Vulkan::Mesh::GetCube();
 			planeMaterial.diffuseColor = { 0.4f,0.3f,0.0f,1.0f };
 			planeMaterial.diffuseTexture = Vulkan::Texture2D::GetWhiteTexture().lock()->ImageView();
@@ -199,7 +197,9 @@ int main()
 			//material.diffuseTexture = Vulkan::Texture2D::CreateFromFile("textures/Stormtrooper_Diffuse.png").lock()->ImageView();
 			material.albedo = renderer->LoadTexture("textures/Stormtrooper_Diffuse.png",false);
 			material.specularity = 1000;
-
+			whiteMaterial.albedo = renderer->GetTextureWhite();
+			whiteMaterial.specularity = 1000;
+			planeMesh = Vulkan::Mesh::GetPlane();
 
 		}
 		catch (const std::runtime_error& re)
@@ -346,8 +346,9 @@ int main()
 				SDL_Delay((uint32_t)(fixedTimeStep - frameDeltaTime));
 
 			mesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 0,0,0 }, { 0,rotmod,0 }, { 0.5,0.5,0.5 });
-			renderer->Draw({ mesh.get() }, { &material });
-			//planeMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 0,0,0 }, { 0, 0, 0 }, { 2,2,2 });
+			planeMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 0,0,0 }, { 0, 0, 0 }, { 2,2,2 });
+			renderer->Draw({ mesh.get(),planeMesh.get() }, { &material,&whiteMaterial});
+
 			//renderer->Load(planeMesh, &planeMaterial);
 			//	cubeMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 2,1,2 }, { 45, rotmod, 0 }, { 1,1,1 });
 			//	renderer->Load(cubeMesh, &whiteMaterial);

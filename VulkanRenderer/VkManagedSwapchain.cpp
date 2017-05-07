@@ -8,7 +8,7 @@
 #include <algorithm>
 #include <assert.h>
 
-Vulkan::VkManagedSwapchain::VkManagedSwapchain(VkManagedDevice * device, VkManagedCommandPool * pool, VkFormat preferedFormat, VkImageUsageFlags aditionalFlags)
+Vulkan::VkManagedSwapchain::VkManagedSwapchain(VkManagedDevice * device, VkManagedCommandPool * pool, VkImageUsageFlags aditionalFlags, VkFormat preferedFormat, VkManagedSyncMode mode)
 {
 	assert(device != nullptr);
 	assert(pool != nullptr);
@@ -34,7 +34,7 @@ Vulkan::VkManagedSwapchain::VkManagedSwapchain(VkManagedDevice * device, VkManag
 	swapChainCI.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | aditionalFlags;
 	swapChainCI.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
 	swapChainCI.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-	swapChainCI.presentMode = GetSupportedPresentMode(&pDeviceData->deviceSurfaceData.presentModes);
+	swapChainCI.presentMode = GetSupportedPresentMode(&pDeviceData->deviceSurfaceData.presentModes,mode);
 	swapChainCI.clipped = VK_TRUE;
 	swapChainCI.oldSwapchain = VK_NULL_HANDLE;
 	
@@ -190,7 +190,7 @@ Vulkan::VkManagedImage * Vulkan::VkManagedSwapchain::SwapchainImage(size_t index
 	return m_scImages[index];
 }
 
-void Vulkan::VkManagedSwapchain::Remake(VkManagedDevice * device, VkManagedCommandPool * pool, VkFormat preferedFormat)
+void Vulkan::VkManagedSwapchain::Remake(VkManagedDevice * device, VkManagedCommandPool * pool, VkManagedSyncMode mode, VkFormat preferedFormat)
 {
 	assert(device != nullptr);
 	assert(pool != nullptr);
@@ -226,7 +226,7 @@ void Vulkan::VkManagedSwapchain::Remake(VkManagedDevice * device, VkManagedComma
 	swapChainCI.imageUsage = m_imageUsage;
 	swapChainCI.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
 	swapChainCI.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-	swapChainCI.presentMode = GetSupportedPresentMode(&pDeviceData->deviceSurfaceData.presentModes);
+	swapChainCI.presentMode = GetSupportedPresentMode(&pDeviceData->deviceSurfaceData.presentModes,mode);
 	swapChainCI.clipped = VK_TRUE;
 	VkSwapchainKHR oldSc = m_sc;
 	swapChainCI.oldSwapchain = oldSc;
@@ -370,13 +370,61 @@ VkSurfaceFormatKHR Vulkan::VkManagedSwapchain::GetSupportedSurfaceFormat(const s
 	return surfaceFormats->at(0);
 }
 
-VkPresentModeKHR Vulkan::VkManagedSwapchain::GetSupportedPresentMode(const std::vector<VkPresentModeKHR>* presentModes)
+VkPresentModeKHR Vulkan::VkManagedSwapchain::GetSupportedPresentMode(const std::vector<VkPresentModeKHR>* presentModes, VkManagedSyncMode mode)
 {
-	for (auto it = presentModes->begin(); it != presentModes->end(); ++it)
-		if (*it == VK_PRESENT_MODE_MAILBOX_KHR)
-			return VK_PRESENT_MODE_MAILBOX_KHR;
+	VkPresentModeKHR foundMode = VK_PRESENT_MODE_MAX_ENUM_KHR; //invalid value
 
-	return VK_PRESENT_MODE_FIFO_KHR;
+	switch (mode)
+	{
+	case Vulkan::VK_VKM_NONE:
+		for (auto it = presentModes->begin(); it != presentModes->end(); ++it)
+		{
+			if (*it == VK_PRESENT_MODE_IMMEDIATE_KHR)
+			{
+				foundMode = VK_PRESENT_MODE_IMMEDIATE_KHR; //AMD supported
+				break;
+			}
+			else if (*it == VK_PRESENT_MODE_MAILBOX_KHR)
+			{
+				foundMode = VK_PRESENT_MODE_MAILBOX_KHR; //NVIDIA supported
+				break;
+			}
+		}
+
+		break;
+	case Vulkan::VK_VKM_VSYNC:
+		for (auto it = presentModes->begin(); it != presentModes->end(); ++it)
+		{
+			if (*it == VK_PRESENT_MODE_FIFO_KHR)
+			{
+				foundMode = VK_PRESENT_MODE_FIFO_KHR; //always supported
+				break;
+			}
+		}
+
+		break;
+	case Vulkan::VK_VKM_AVSYNC:
+		for (auto it = presentModes->begin(); it != presentModes->end(); ++it)
+		{
+			if (*it == VK_PRESENT_MODE_FIFO_RELAXED_KHR)
+			{
+				foundMode = *it;
+				break;
+			}
+			else if (*it == VK_PRESENT_MODE_FIFO_KHR)
+			{
+				foundMode = VK_PRESENT_MODE_FIFO_KHR; //always supported
+			}
+		}
+		break;
+	default:
+		break;
+	}
+
+	//if desired modes are not present default to FIFO_KHR as it is always supported
+
+
+	return foundMode;
 }
 
 VkExtent2D Vulkan::VkManagedSwapchain::GetActualExtent2D(const VkSurfaceCapabilitiesKHR * capabilities, VkExtent2D windowExtent)

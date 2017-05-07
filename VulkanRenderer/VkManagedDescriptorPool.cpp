@@ -52,7 +52,8 @@ void Vulkan::VkManagedDescriptorPool::AllocateDescriptorSet(uint32_t setCount, V
 	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	allocInfo.descriptorPool = m_descriptorPool;
 	allocInfo.descriptorSetCount = setCount;
-	allocInfo.pSetLayouts = &layout;
+	std::vector<VkDescriptorSetLayout> layouts(setCount,layout);
+	allocInfo.pSetLayouts = layouts.data();
 	vkAllocateDescriptorSets(m_device, &allocInfo, descriptors.data());
 	descriptorSet = new VkManagedDescriptorSet(m_device,m_descriptorPool,descriptors,m_descriptorCounts);
 	m_setAllocation.currentlyAllocated += setCount;

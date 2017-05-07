@@ -74,6 +74,7 @@ namespace Vulkan
 		Vulkan::Camera * CreateCamera(glm::vec3 initialPosition, bool perspective);
 		Vulkan::Light * CreateLight(glm::vec3 initialPosition);
 		Vulkan::Texture * LoadTexture(std::string filepath, bool readWrite);
+		Vulkan::Texture * GetTextureWhite();
 		void FreeTexture(Texture * tex);
 		void Render();
 		void WaitForIdle();
@@ -131,12 +132,7 @@ namespace Vulkan
 		std::unordered_map<uint32_t, Light*> m_lights;
 		std::unordered_map<uint32_t, Camera*> m_cameras;
 		std::unordered_map<uint32_t, Texture*> m_virtualTextures;
-	
-	private:
-
-
-		
-
+		Texture * m_whiteTexture = nullptr;
 
 	};
 }

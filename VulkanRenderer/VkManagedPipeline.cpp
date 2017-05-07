@@ -214,7 +214,7 @@ void Vulkan::VkManagedPipeline::Build(VkManagedRenderPass * renderPass, Pipeline
 	graphicsPipelineCI.pColorBlendState = &colorBlendingStateCI;
 	graphicsPipelineCI.pDynamicState = &dynamicStateCI;
 	graphicsPipelineCI.layout = m_pipelineLayout;
-	graphicsPipelineCI.renderPass = renderPass->GetPass();
+	graphicsPipelineCI.renderPass = *renderPass;
 	graphicsPipelineCI.subpass = 0;
 	graphicsPipelineCI.basePipelineHandle = VK_NULL_HANDLE;
 
@@ -420,7 +420,7 @@ void Vulkan::VkManagedPipeline::Build(VkManagedRenderPass * renderPass, Pipeline
 	graphicsPipelineCI.pColorBlendState = &colorBlendingStateCI;
 	graphicsPipelineCI.pDynamicState = &dynamicStateCI;
 	graphicsPipelineCI.layout = m_pipelineLayout;
-	graphicsPipelineCI.renderPass = renderPass->GetPass();
+	graphicsPipelineCI.renderPass = *renderPass;
 	graphicsPipelineCI.subpass = 0;
 	graphicsPipelineCI.basePipelineHandle = VK_NULL_HANDLE;
 
