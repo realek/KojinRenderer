@@ -55,13 +55,23 @@ Vulkan::KojinRenderer::KojinRenderer(SDL_Window * window, const char * appName, 
 		m_vkRenderpassFWD->Build(m_vkSwapchain->Extent(), VK_FORMAT_B8G8R8A8_UNORM, m_vkDevice->Depthformat());
 		m_vkRenderpassFWD->SetFrameBufferCount(1, true, false, true, false, false);
 		m_vkPipelineFWD = new VkManagedPipeline(m_vkDevice);
+		
+		VkPushConstantRange rangeView;
+		rangeView.offset = 0;
+		rangeView.size = 64;
+		rangeView.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+		VkPushConstantRange rangeProj;
+		rangeProj.offset = 64;
+		rangeProj.size = 128;
+		rangeProj.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
 		m_vkPipelineFWD->Build(
 			m_vkRenderpassFWD, PipelineMode::Solid,
 			"shaders/vertex.vert.spv",
 			"shaders/fragment.frag.spv",
 			{ VK_DYNAMIC_STATE_SCISSOR,
 			VK_DYNAMIC_STATE_VIEWPORT
-			});
+			}, {rangeView,rangeProj});
 
 		//m_vkRenderPassSDWProj = new VkManagedRenderPass(m_vkDevice);
 		//m_vkRenderPassSDWProj->Build({ VkShadowmapDefaults::k_resolution,VkShadowmapDefaults::k_resolution }, VkShadowmapDefaults::k_attachmentDepthFormat);
@@ -359,7 +369,6 @@ void Vulkan::KojinRenderer::Render()
 
 		}
 	}
-	std::vector<VkPushConstant> constants;
 	//set states for the forward render pipeline
 	VkDynamicStatesBlock states;
 	states.viewports.resize(1);
@@ -383,6 +392,15 @@ void Vulkan::KojinRenderer::Render()
 
 			m_vkRenderpassFWD->SetPipeline(m_vkPipelineFWD, states, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS);
 			m_vkRenderpassFWD->PreRecordData(cBuffer, 0); //we have 1 framebuffer
+			std::vector<VkPushConstant> constants(2);
+			constants[0].data = &camera.second->m_viewMatrix;
+			constants[0].offset = 0;
+			constants[0].size = sizeof(camera.second->m_viewMatrix);
+			constants[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+			constants[1].data = &camera.second->m_projectionMatrix;
+			constants[1].offset = constants[0].size;
+			constants[1].size = sizeof(camera.second->m_projectionMatrix);
+			constants[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 			m_vkRenderpassFWD->Record(clearValues, { m_vDescriptorSetFWD,m_fDescriptorSetFWD }, constants, m_meshIndexData, m_meshVertexData, indexdraws);
 
 			//copy pass result

@@ -3,11 +3,12 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
-layout(location = 0) in vec3 fragColor;
-layout(location = 1) in vec2 fragTexCoord;
-layout(location = 2) in vec3 fragNormal;
-layout(location = 3) in vec3 fragPos;
-layout(location = 4) in vec4 vertexPosition;
+layout(location = 0) in vec3 inColor;
+layout(location = 1) in vec2 inTexCoord;
+layout(location = 2) in vec3 inNormal;
+layout(location = 3) in vec4 vertex;
+layout(location = 4) in mat4 inView;
+layout(location = 8) in mat4 inModelView;
 
 struct VkLightProps
 {
@@ -24,7 +25,6 @@ struct VkLight
 	vec4 direction;
 	VkLightProps lightProps;
 	mat4 lightBiasedMVP;
-//	float range;
 
 };
 
@@ -103,9 +103,11 @@ float LinearizeDepth(float depth)
 
 void main() 
 {
-
-
-    outColor = vec4(fragColor,1.0) * (ubo.materialDiffuse*texture(texSampler, fragTexCoord));
+	vec4 vPos = inModelView*vertex;
+	vec3 fragPos = vec3(vPos)/vPos.w;
+    vec3 fragNormal = vec3(transpose(inverse(inModelView)) * vec4(inNormal,1.0));
+	
+	outColor = vec4(inColor,1.0) * (ubo.materialDiffuse*texture(texSampler, inTexCoord));
 	vec4 lightColor = vec4(0.0f,0.0f,0.0f,0.0f);
 	float diffuseFrac = 1.0 - ubo.ambientLightColor.w;
 
