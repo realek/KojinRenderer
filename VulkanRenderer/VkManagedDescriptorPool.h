@@ -19,8 +19,8 @@ namespace Vulkan
 		void BuildPool(uint32_t maxSets);
 
 	private:
-		VulkanObjectContainer<VkDevice> m_device{ vkDestroyDevice,false };
-		VulkanObjectContainer<VkDescriptorPool> m_descriptorPool{ m_device, vkDestroyDescriptorPool };
+		VkManagedObject<VkDevice> m_device{ vkDestroyDevice,false };
+		VkManagedObject<VkDescriptorPool> m_descriptorPool{ m_device, vkDestroyDescriptorPool };
 		uint32_t m_descriptorCounts[11]{ 0 };
 		struct
 		{

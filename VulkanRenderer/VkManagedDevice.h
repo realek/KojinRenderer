@@ -35,7 +35,7 @@ namespace Vulkan
 		friend class VkManagedInstance;
 
 	private:
-		VulkanObjectContainer<VkDevice> m_device{vkDestroyDevice};
+		VkManagedObject<VkDevice> m_device{vkDestroyDevice};
 		std::vector<std::vector<VkManagedQueue*>> m_queues;
 		VkFormat m_depthFormat;
 		VkPhysicalDeviceData * m_physicalDevice = nullptr;

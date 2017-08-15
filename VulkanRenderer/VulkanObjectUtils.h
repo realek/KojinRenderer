@@ -4,9 +4,9 @@
 namespace Vulkan
 {
 	template<class T>
-	class VulkanObjectContainer;
+	class VkManagedObject;
 
 	//Init a VulkanObject Container of type VkSemaphore
-	void MakeSemaphore(VulkanObjectContainer<VkSemaphore>& semaphore, VkDevice& device);
-	void MakeSemaphore(VulkanObjectContainer<VkSemaphore>& semaphore, VulkanObjectContainer<VkDevice>& device);
+	void MakeSemaphore(VkManagedObject<VkSemaphore>& semaphore, VkDevice& device);
+	void MakeSemaphore(VkManagedObject<VkSemaphore>& semaphore, VkManagedObject<VkDevice>& device);
 }

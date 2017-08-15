@@ -16,8 +16,8 @@ namespace Vulkan
 		VkSemaphore Last();
 		VkSemaphore GetSemaphore(uint32_t index);
 	private:
-		VulkanObjectContainer<VkDevice> m_device{ vkDestroyDevice,false };
-		std::vector<VulkanObjectContainer<VkSemaphore>> m_semaphores;
+		VkManagedObject<VkDevice> m_device{ vkDestroyDevice,false };
+		std::vector<VkManagedObject<VkSemaphore>> m_semaphores;
 		std::atomic<int> m_lastUsed = -1;
 
 	};

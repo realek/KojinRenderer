@@ -47,14 +47,14 @@ namespace Vulkan
 		void SetPushConstant(VkCommandBuffer buffer, std::vector<VkPushConstant> vector);
 	private:
 		void CreateDescriptorSetLayout_HARCODED();
-		void CreateShaderModule(std::string & code, VulkanObjectContainer<VkShaderModule>& shader);
+		void CreateShaderModule(std::string & code, VkManagedObject<VkShaderModule>& shader);
 		std::string ReadBinaryFile(const char * filename);
 	private:
-		VulkanObjectContainer<VkDevice> m_device{ vkDestroyDevice,false };
-		VulkanObjectContainer<VkDescriptorSetLayout> m_vertSetLayout{m_device,vkDestroyDescriptorSetLayout};
-		VulkanObjectContainer<VkDescriptorSetLayout> m_fragSetLayout{m_device,vkDestroyDescriptorSetLayout};
-		VulkanObjectContainer<VkPipeline> m_pipeline{ m_device,vkDestroyPipeline };
-		VulkanObjectContainer<VkPipelineLayout> m_pipelineLayout{ m_device, vkDestroyPipelineLayout };
+		VkManagedObject<VkDevice> m_device{ vkDestroyDevice,false };
+		VkManagedObject<VkDescriptorSetLayout> m_vertSetLayout{m_device,vkDestroyDescriptorSetLayout};
+		VkManagedObject<VkDescriptorSetLayout> m_fragSetLayout{m_device,vkDestroyDescriptorSetLayout};
+		VkManagedObject<VkPipeline> m_pipeline{ m_device,vkDestroyPipeline };
+		VkManagedObject<VkPipelineLayout> m_pipelineLayout{ m_device, vkDestroyPipelineLayout };
 		VkRenderPass m_linkedPass = VK_NULL_HANDLE;
 		std::vector<VkDynamicState> m_activeDynamicStates;
 	};

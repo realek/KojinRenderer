@@ -9,7 +9,7 @@ errors to the user or retrieving data from Vulkan objects.
 namespace Vulkan
 {
 	template<class T>
-	class VulkanObjectContainer;
+	class VkManagedObject;
 	//Converts VkResult enums used to represent errors to string
 	inline static std::string VkResultToString(VkResult errorCode)
 	{

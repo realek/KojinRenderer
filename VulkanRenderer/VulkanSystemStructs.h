@@ -135,14 +135,7 @@ namespace Vulkan
 		glm::vec4 color;
 		glm::vec4 m_position;
 		glm::vec4 direction;
-		struct
-		{
-			int32_t lightType;
-			float intensity;
-			float falloff;
-			float angle;
-
-		}lightProps;
+		glm::vec4 lightProps;
 		glm::mat4 lightBiasedMVP;
 
 	};
@@ -181,7 +174,7 @@ namespace Vulkan
 		VertexDepthMVP(const VertexDepthMVP& other) = delete;
 	};
 
-	struct VertexShaderMVP
+	struct modelData
 	{
 		glm::mat4 model;
 		glm::mat4 modelView;
@@ -194,19 +187,25 @@ namespace Vulkan
 			normal = glm::transpose(glm::inverse(modelView));
 			modelViewProjection = proj*modelView;
 		}
-		VertexShaderMVP(const VertexShaderMVP& other) = delete;
+		modelData(const modelData& other) = delete;
 	};
 
-	struct LightingUniformBuffer
+	struct materialData
+	{
+		glm::vec4 materialDiffuse;
+		float specularity;
+		materialData(const materialData& other) = delete;
+
+	};
+
+
+	struct forward_lightingData
 	{
 		VkLight lights[MAX_LIGHTS_PER_FRAGMENT];
 		glm::vec4 ambientLightColor;
-		glm::vec4 materialDiffuse;
-		float specularity;
-		LightingUniformBuffer(const LightingUniformBuffer& other) = delete;
+		forward_lightingData(const forward_lightingData& other) = delete;
 
 	};
-
 }
 
 

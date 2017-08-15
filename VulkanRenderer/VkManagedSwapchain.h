@@ -46,8 +46,8 @@ namespace Vulkan
 		VkExtent2D GetActualExtent2D(const VkSurfaceCapabilitiesKHR * capabilities, VkExtent2D windowExtent);
 	
 	private:
-		VulkanObjectContainer<VkDevice> m_device{ vkDestroyDevice,false };
-		VulkanObjectContainer<VkSwapchainKHR> m_sc{ m_device,vkDestroySwapchainKHR };
+		VkManagedObject<VkDevice> m_device{ vkDestroyDevice,false };
+		VkManagedObject<VkSwapchainKHR> m_sc{ m_device,vkDestroySwapchainKHR };
 		std::vector<VkManagedImage*> m_scImages;
 		std::vector<uint32_t> m_usedQueueFamilies;
 		VkImageUsageFlags m_imageUsage = 0;

@@ -21,8 +21,8 @@ namespace Vulkan
 		void MipMapEdit(VkFilter magfilter, VkFilter minFilter, VkSamplerMipmapMode mipmapMode, bool apply);
 		operator VkSampler() const;
 	private:
-		VulkanObjectContainer<VkDevice> m_device{ vkDestroyDevice, false };
-		VulkanObjectContainer<VkSampler> m_sampler{ m_device, vkDestroySampler };
+		VkManagedObject<VkDevice> m_device{ vkDestroyDevice, false };
+		VkManagedObject<VkSampler> m_sampler{ m_device, vkDestroySampler };
 		VkSamplerCreateInfo m_cSamplerInfo = {};
 		VkManagedSamplerMode m_cMode = UNDEFINED_UNDEFINED_COORDINATES;
 	};

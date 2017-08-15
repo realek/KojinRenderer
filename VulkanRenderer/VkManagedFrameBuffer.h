@@ -33,8 +33,8 @@ namespace Vulkan
 		VkManagedImage * m_colorAttachment = nullptr;
 		VkManagedImage * m_depthAttachment = nullptr;
 		VkManagedDevice * m_mdevice = nullptr;
-		VulkanObjectContainer<VkDevice> m_device{ vkDestroyDevice,false };
-		VulkanObjectContainer<VkFramebuffer> m_framebuffer { m_device, vkDestroyFramebuffer };
+		VkManagedObject<VkDevice> m_device{ vkDestroyDevice,false };
+		VkManagedObject<VkFramebuffer> m_framebuffer { m_device, vkDestroyFramebuffer };
 		VkRenderPass m_pass = VK_NULL_HANDLE;
 
 	};

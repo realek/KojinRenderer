@@ -3,7 +3,7 @@
 #include "VulkanUtils.h"
 #include <stdexcept>
 
-void Vulkan::MakeSemaphore(VulkanObjectContainer<VkSemaphore>& semaphore, VkDevice & device)
+void Vulkan::MakeSemaphore(VkManagedObject<VkSemaphore>& semaphore, VkDevice & device)
 {
 	VkSemaphoreCreateInfo semaphoreInfo = {};
 	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -13,7 +13,7 @@ void Vulkan::MakeSemaphore(VulkanObjectContainer<VkSemaphore>& semaphore, VkDevi
 		throw std::runtime_error("Unable to create semaphore. Reason: " + Vulkan::VkResultToString(result));
 }
 
-void Vulkan::MakeSemaphore(VulkanObjectContainer<VkSemaphore>& semaphore, VulkanObjectContainer<VkDevice> & device)
+void Vulkan::MakeSemaphore(VkManagedObject<VkSemaphore>& semaphore, VkManagedObject<VkDevice> & device)
 {
 	VkSemaphoreCreateInfo semaphoreInfo = {};
 	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;

@@ -18,8 +18,8 @@ namespace Vulkan
 		operator VkCommandPool() const;
 	private:
 
-		VulkanObjectContainer<VkDevice> m_device{ vkDestroyDevice, false };
-		VulkanObjectContainer<VkCommandPool> m_commandPool{ m_device, vkDestroyCommandPool };
+		VkManagedObject<VkDevice> m_device{ vkDestroyDevice, false };
+		VkManagedObject<VkCommandPool> m_commandPool{ m_device, vkDestroyCommandPool };
 		VkManagedQueue * m_submitQueue = nullptr;
 	};
 }

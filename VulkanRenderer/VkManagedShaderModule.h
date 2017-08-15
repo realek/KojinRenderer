@@ -14,9 +14,9 @@ namespace Vulkan
 		void Reload();
 		VkPipelineShaderStageCreateInfo GetShaderStageCreateInfo();
 	private:
-		VulkanObjectContainer<VkDevice> m_device{ vkDestroyDevice,false };
-		VulkanObjectContainer<VkShaderModule> m_shader {m_device,vkDestroyShaderModule};
-		VulkanObjectContainer<VkDescriptorSetLayout> m_shaderLayout{ m_device,vkDestroyDescriptorSetLayout };
+		VkManagedObject<VkDevice> m_device{ vkDestroyDevice,false };
+		VkManagedObject<VkShaderModule> m_shader {m_device,vkDestroyShaderModule};
+		VkManagedObject<VkDescriptorSetLayout> m_shaderLayout{ m_device,vkDestroyDescriptorSetLayout };
 		std::unordered_map<VkDescriptorType, uint32_t> m_shaderBindingMap;
 	};
 }

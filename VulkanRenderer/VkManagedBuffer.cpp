@@ -2,19 +2,13 @@
 #include "VkManagedDevice.h"
 #include <assert.h>
 
+#define MAX_DYNAMIC_UNIFORM_BLOCK_SIZE 256U //as per vulkan specification
+
 Vulkan::VkManagedBuffer::VkManagedBuffer(VkManagedDevice * device)
 {
 	assert(device != nullptr);
 	m_device = *device;
 	m_mDevice = device;
-}
-
-Vulkan::VkManagedBuffer::VkManagedBuffer(VkDevice device, VkDeviceSize bufferSize)
-{
-	this->device = device;
-	this->bufferSize = bufferSize;
-	buffer = VulkanObjectContainer<VkBuffer>{ this->device,vkDestroyBuffer };
-	memory = VulkanObjectContainer<VkDeviceMemory>{ this->device, vkFreeMemory };
 }
 
 Vulkan::VkManagedBuffer::operator VkBuffer()
@@ -24,16 +18,53 @@ Vulkan::VkManagedBuffer::operator VkBuffer()
 
 VkDeviceSize Vulkan::VkManagedBuffer::Size()
 {
-	return bufferSize;
+	return m_bufferSize;
 }
 
-void Vulkan::VkManagedBuffer::Build(VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties, VkDeviceSize bufferSize, VkSharingMode sharingMode)
+VkDeviceSize Vulkan::VkManagedBuffer::AlignedSize()
 {
+	return m_alignedDataSize;
+}
+
+void Vulkan::VkManagedBuffer::Build(VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties, VkDeviceSize dataSize, size_t dataInstances, VkBool32 dynamicBuffer, VkSharingMode sharingMode)
+{
+
+	//number of instances must always be bigger than 0
+	assert(dataInstances > 0);
+
 	VkResult result;
 
+
+	VkDeviceSize alignedSize = 0;
 	VkBufferCreateInfo bufferInfo = {};
 	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	bufferInfo.size = bufferSize;
+	if (dynamicBuffer)
+	{
+		//memory needs to be visible to host
+		assert(memoryProperties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+		assert(dataSize <= MAX_DYNAMIC_UNIFORM_BLOCK_SIZE);
+		VkDeviceSize uboAlignment = 0;
+		if (usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
+		{
+			uboAlignment = m_mDevice->GetPhysicalDeviceLimits().minUniformBufferOffsetAlignment;
+		}
+		else if (usage & VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT)
+		{
+			uboAlignment = m_mDevice->GetPhysicalDeviceLimits().minTexelBufferOffsetAlignment;
+		}
+		else if (usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT || usage & VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT)
+		{
+			uboAlignment = m_mDevice->GetPhysicalDeviceLimits().minStorageBufferOffsetAlignment;
+		}
+
+		alignedSize = (dataSize / uboAlignment) * uboAlignment + ((dataSize % uboAlignment) > 0 ? uboAlignment : 0);
+		bufferInfo.size = alignedSize*dataInstances;
+	}
+	else
+	{
+		bufferInfo.size = dataSize*dataInstances;
+	}
+
 	bufferInfo.usage = usage;
 	bufferInfo.sharingMode = sharingMode;
 
@@ -52,53 +83,17 @@ void Vulkan::VkManagedBuffer::Build(VkBufferUsageFlags usage, VkMemoryPropertyFl
 	result = vkAllocateMemory(m_device, &allocInfo, nullptr, ++m_memory);
 	if (result != VK_SUCCESS)
 		throw std::runtime_error("Unable to allocate buffer memory from local device. Reason: " + Vulkan::VkResultToString(result));
-	
-	///TODO: Compute offset multiplier based on usage flags
-	/*
-	VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT = 0x00000004,
-	VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT = 0x00000008,
-	VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT = 0x00000010,
-	VK_BUFFER_USAGE_STORAGE_BUFFER_BIT = 0x00000020,
-	*/
 
 	result = vkBindBufferMemory(m_device, m_buffer, m_memory, 0);
 	if (result != VK_SUCCESS)
 		throw std::runtime_error("Unable to bind buffer memory from local device. Reason: " + Vulkan::VkResultToString(result));
-	this->bufferSize = bufferSize;
 
+	m_alignedDataSize = alignedSize;
+	m_bufferSize = bufferInfo.size;
+	m_isDynamic = dynamicBuffer;
 }
 
-void Vulkan::VkManagedBuffer::Build(VkPhysicalDevice physDevice,VkBufferUsageFlags usage, VkMemoryPropertyFlags properties){
-
-	VkResult result;
-
-	VkBufferCreateInfo bufferInfo = {};
-	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	bufferInfo.size = bufferSize;
-	bufferInfo.usage = usage;
-	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-	result = vkCreateBuffer(device, &bufferInfo, nullptr, ++buffer);
-	if (result != VK_SUCCESS)
-		throw std::runtime_error("Unable to create buffer. Reason: " + Vulkan::VkResultToString(result));
-
-	VkMemoryRequirements memRequirements;
-	vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
-
-	VkMemoryAllocateInfo allocInfo = {};
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = VkGetMemoryType(memRequirements.memoryTypeBits, properties, physDevice);
-
-	result = vkAllocateMemory(device, &allocInfo, nullptr, ++memory);
-	if (result != VK_SUCCESS)
-		throw std::runtime_error("Unable to allocate buffer memory from local device. Reason: " + Vulkan::VkResultToString(result));
-
-	result = vkBindBufferMemory(device, buffer, memory, 0);
-	if (result != VK_SUCCESS)
-		throw std::runtime_error("Unable to bind buffer memory from local device. Reason: " + Vulkan::VkResultToString(result));
-}
-
+///TODO: Multiple copy regions
 void Vulkan::VkManagedBuffer::CopyTo(VkCommandBuffer buffer, VkManagedBuffer * dst, VkDeviceSize srcOffset, VkDeviceSize dstOffset, VkDeviceSize copySize)
 {
 	assert(dst != nullptr);
@@ -106,7 +101,16 @@ void Vulkan::VkManagedBuffer::CopyTo(VkCommandBuffer buffer, VkManagedBuffer * d
 	assert(dst->m_memory != VK_NULL_HANDLE);
 	assert(m_buffer != VK_NULL_HANDLE);
 	assert(m_memory != VK_NULL_HANDLE);
-	assert(copySize <= dst->bufferSize);
+	assert(copySize <= dst->m_bufferSize);
+
+	if (m_isDynamic)
+	{
+		assert(srcOffset % m_alignedDataSize == 0);
+	}
+	if (dst->m_isDynamic)
+	{
+		assert(dstOffset % dst->m_alignedDataSize == 0);
+	}
 
 	VkBufferCopy copyRegion = {};
 	copyRegion.size = copySize;
@@ -116,11 +120,29 @@ void Vulkan::VkManagedBuffer::CopyTo(VkCommandBuffer buffer, VkManagedBuffer * d
 
 }
 
-void Vulkan::VkManagedBuffer::Write(VkDeviceSize offset, VkMemoryMapFlags flags,size_t srcSize, void * src)
+void Vulkan::VkManagedBuffer::Write(VkDeviceSize offset, VkMemoryMapFlags flags, VkDeviceSize srcSize, void * src)
 {
-	assert(srcSize <= bufferSize-offset);
-	vkMapMemory(m_device, m_memory, offset, srcSize, flags, &mappedMemory);
-	memcpy(mappedMemory, src, srcSize);
+
+	assert(srcSize + offset <= m_bufferSize);
+	assert(src != nullptr && src != NULL);
+	if (m_isDynamic)
+	{
+		assert(offset % m_alignedDataSize == 0); //offset must be a multiple of aligned data size
+		assert(srcSize % m_alignedDataSize == 0); //srcSize must be a multiple of aligned data size
+	}
+	vkMapMemory(m_device, m_memory, offset, srcSize, flags, &m_mappedMemory);
+	memcpy(m_mappedMemory, src, srcSize);
+
+	if (m_isDynamic)
+	{
+		VkMappedMemoryRange memoryRange = {};
+		memoryRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+		memoryRange.memory = m_memory;
+		memoryRange.offset = offset;
+		memoryRange.size = srcSize;
+		vkFlushMappedMemoryRanges(m_device, 1, &memoryRange);
+	}
+
 	vkUnmapMemory(m_device, m_memory);
-	mappedMemory = nullptr;
+	m_mappedMemory = nullptr;
 }

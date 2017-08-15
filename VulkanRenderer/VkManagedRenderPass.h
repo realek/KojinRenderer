@@ -78,8 +78,8 @@ namespace Vulkan
 		VkFormat m_depthFormat;
 		VkExtent2D m_extent;
 		VkManagedDevice * m_mdevice = nullptr;
-		VulkanObjectContainer<VkDevice> m_device{ vkDestroyDevice, false };
-		VulkanObjectContainer<VkRenderPass> m_pass{ m_device, vkDestroyRenderPass };
+		VkManagedObject<VkDevice> m_device{ vkDestroyDevice, false };
+		VkManagedObject<VkRenderPass> m_pass{ m_device, vkDestroyRenderPass };
 		std::vector<VkManagedFrameBuffer*> m_fbs;
 		size_t m_fbSize = 0;
 

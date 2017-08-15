@@ -25,40 +25,6 @@ Vulkan::VkManagedImage::VkManagedImage(VkManagedDevice * device, bool clearInter
 	}
 }
 
-Vulkan::VkManagedImage::VkManagedImage(VkDevice device, VkManagedImageFlag imageFlag, VkManagedImageFlag memoryFlag, VkManagedImageFlag viewFlag)
-{
-	m_deviceHandle = device;
-	switch (imageFlag)
-	{
-	case VkManagedImageFlag::DontClear:
-		image = VulkanObjectContainer<VkImage>{ m_deviceHandle,vkDestroyImage, false };
-		break;
-	case VkManagedImageFlag::Clear:
-		image = VulkanObjectContainer<VkImage>{ m_deviceHandle,vkDestroyImage };
-		break;
-	}
-
-	switch (memoryFlag)
-	{
-	case VkManagedImageFlag::DontClear:
-		imageMemory = VulkanObjectContainer<VkDeviceMemory>{ m_deviceHandle,vkFreeMemory, false };
-		break;
-	case VkManagedImageFlag::Clear:
-		imageMemory = VulkanObjectContainer<VkDeviceMemory>{ m_deviceHandle,vkFreeMemory };
-		break;
-	}
-
-	switch (viewFlag)
-	{
-	case VkManagedImageFlag::DontClear:
-		imageView = VulkanObjectContainer<VkImageView>{ m_deviceHandle,vkDestroyImageView, false };
-		break;
-	case VkManagedImageFlag::Clear:
-		imageView = VulkanObjectContainer<VkImageView>{ m_deviceHandle,vkDestroyImageView };
-		break;
-	}
-}
-
 Vulkan::VkManagedImage::operator VkImage()
 {
 	return m_image;
@@ -114,7 +80,7 @@ void Vulkan::VkManagedImage::Build(VkExtent2D extent, VkMemoryPropertyFlags memP
 	{
 		imageCI.initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
 	}
-	else if(tiling == VK_IMAGE_TILING_OPTIMAL)
+	else if (tiling == VK_IMAGE_TILING_OPTIMAL)
 	{
 		imageCI.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	}
@@ -190,7 +156,7 @@ void Vulkan::VkManagedImage::Clear()
 	aspect = 0;
 	layers = 0;
 	m_imageExtent = {};
-	
+
 }
 
 void Vulkan::VkManagedImage::UpdateDependency(VkManagedDevice * device, bool clearInternalImage)
@@ -213,7 +179,7 @@ void Vulkan::VkManagedImage::UpdateDependency(VkManagedDevice * device, bool cle
 	m_imageExtent = {};
 }
 
-void Vulkan::VkManagedImage::Build(VkImage image, VkFormat format, VkExtent2D extent, uint32_t layers, VkImageAspectFlags aspect, VkImageLayout layout, VkImageCreateFlags flags) 
+void Vulkan::VkManagedImage::Build(VkImage image, VkFormat format, VkExtent2D extent, uint32_t layers, VkImageAspectFlags aspect, VkImageLayout layout, VkImageCreateFlags flags)
 {
 	VkResult result;
 	VkImageViewCreateInfo viewCI = {};
@@ -273,7 +239,7 @@ void Vulkan::VkManagedImage::LoadData(VkManagedCommandBuffer * buffer, uint32_t 
 
 	//build staging image and memory
 	stagingImage.Build(imageCI);
-	
+
 	//copy data to staging image
 	VkDeviceSize imageMemorySize = width * height * bitAlignment;
 	void * data = nullptr;
@@ -288,21 +254,21 @@ void Vulkan::VkManagedImage::LoadData(VkManagedCommandBuffer * buffer, uint32_t 
 	vkQueueWaitIdle(submitQueue->queue);
 }
 
-void Vulkan::VkManagedImage::SetLayout(VkCommandBuffer buffer, VkImageLayout newLayout,uint32_t baseLayer, uint32_t layerCount, uint32_t dstQueueFamily)
+void Vulkan::VkManagedImage::SetLayout(VkCommandBuffer buffer, VkImageLayout newLayout, uint32_t baseLayer, uint32_t layerCount, uint32_t dstQueueFamily)
 {
 
 	VkImageMemoryBarrier imageMemoryBarrier = {};
 	imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 	imageMemoryBarrier.oldLayout = layout;
 	imageMemoryBarrier.newLayout = newLayout;
-	if (dstQueueFamily == VK_QUEUE_FAMILY_IGNORED || (dstQueueFamily =! VK_QUEUE_FAMILY_IGNORED && dstQueueFamily == m_srcQueueFamily))
+	if (dstQueueFamily == VK_QUEUE_FAMILY_IGNORED || (dstQueueFamily = !VK_QUEUE_FAMILY_IGNORED && dstQueueFamily == m_srcQueueFamily))
 	{
 		imageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		imageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	}
 	else
 	{
-		if(m_srcQueueFamily == VK_QUEUE_FAMILY_IGNORED)
+		if (m_srcQueueFamily == VK_QUEUE_FAMILY_IGNORED)
 		{
 			imageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			imageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;

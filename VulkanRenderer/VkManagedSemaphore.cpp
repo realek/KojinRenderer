@@ -7,9 +7,9 @@ Vulkan::VkManagedSemaphore::VkManagedSemaphore(VkManagedDevice * device, uint32_
 	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 	semaphoreInfo.flags = 0;
 	m_device = *device;
-	m_semaphores.resize(semaphoreCount, VulkanObjectContainer<VkSemaphore>{m_device, vkDestroySemaphore});
+	m_semaphores.resize(semaphoreCount, VkManagedObject<VkSemaphore>{m_device, vkDestroySemaphore});
 
-	for(VulkanObjectContainer<VkSemaphore>& semaphore : m_semaphores)
+	for(VkManagedObject<VkSemaphore>& semaphore : m_semaphores)
 	{
 		VkResult result = vkCreateSemaphore(m_device, &semaphoreInfo, nullptr, ++semaphore);
 		if (result != VK_SUCCESS)

@@ -27,8 +27,8 @@ void Vulkan::VkManagedPipeline::Build(VkManagedRenderPass * renderPass, Pipeline
 	std::string vertCodeSPV = ReadBinaryFile(vertShader);
 	std::string fragCodeSPV = ReadBinaryFile(fragShader);
 
-	VulkanObjectContainer<VkShaderModule> vertShaderModule{ m_device, vkDestroyShaderModule };
-	VulkanObjectContainer<VkShaderModule> fragShaderModule{ m_device, vkDestroyShaderModule };
+	VkManagedObject<VkShaderModule> vertShaderModule{ m_device, vkDestroyShaderModule };
+	VkManagedObject<VkShaderModule> fragShaderModule{ m_device, vkDestroyShaderModule };
 
 	try
 	{
@@ -236,8 +236,8 @@ void Vulkan::VkManagedPipeline::Build(VkManagedRenderPass * renderPass, Pipeline
 	std::string vertCodeSPV = ReadBinaryFile(vertShader);
 	std::string fragCodeSPV = ReadBinaryFile(fragShader);
 
-	VulkanObjectContainer<VkShaderModule> vertShaderModule{ m_device, vkDestroyShaderModule };
-	VulkanObjectContainer<VkShaderModule> fragShaderModule{ m_device, vkDestroyShaderModule };
+	VkManagedObject<VkShaderModule> vertShaderModule{ m_device, vkDestroyShaderModule };
+	VkManagedObject<VkShaderModule> fragShaderModule{ m_device, vkDestroyShaderModule };
 
 	try
 	{
@@ -601,17 +601,32 @@ void Vulkan::VkManagedPipeline::CreateDescriptorSetLayout_HARCODED()
 	m_vertSetLayout = { m_device,vkDestroyDescriptorSetLayout };
 	m_fragSetLayout = { m_device, vkDestroyDescriptorSetLayout };
 
-	VkDescriptorSetLayoutBinding vertexUBLB = {};
-	vertexUBLB.binding = 0;
-	vertexUBLB.descriptorCount = 1;
-	vertexUBLB.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	vertexUBLB.pImmutableSamplers = nullptr;
-	vertexUBLB.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	std::vector<VkDescriptorSetLayoutBinding> vertexBindings(3);
+	{
+		vertexBindings[0].binding = 0;
+		vertexBindings[0].descriptorCount = 1;
+		vertexBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		vertexBindings[0].pImmutableSamplers = nullptr;
+		vertexBindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+		vertexBindings[1].binding = 1;
+		vertexBindings[1].descriptorCount = 1;
+		vertexBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		vertexBindings[1].pImmutableSamplers = nullptr;
+		vertexBindings[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+		vertexBindings[2].binding = 2;
+		vertexBindings[2].descriptorCount = 1;
+		vertexBindings[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		vertexBindings[2].pImmutableSamplers = nullptr;
+		vertexBindings[2].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+	}
 
 	VkDescriptorSetLayoutCreateInfo descSetLayoutCI = {};
 	descSetLayoutCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	descSetLayoutCI.bindingCount = 1;
-	descSetLayoutCI.pBindings = &vertexUBLB;
+	descSetLayoutCI.bindingCount = (uint32_t)vertexBindings.size();
+	descSetLayoutCI.pBindings = vertexBindings.data();
 
 
 	VkResult result = vkCreateDescriptorSetLayout(m_device, &descSetLayoutCI, nullptr, ++m_vertSetLayout);
@@ -633,15 +648,10 @@ void Vulkan::VkManagedPipeline::CreateDescriptorSetLayout_HARCODED()
 	//shadowDepthSamplerLB.pImmutableSamplers = nullptr;
 	//shadowDepthSamplerLB.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-	VkDescriptorSetLayoutBinding fragmentLightUBLB = {};
-	fragmentLightUBLB.binding = 1;
-	fragmentLightUBLB.descriptorCount = 1;
-	fragmentLightUBLB.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	fragmentLightUBLB.pImmutableSamplers = nullptr;
-	fragmentLightUBLB.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-	std::vector<VkDescriptorSetLayoutBinding> bindings = { fragmentSamplerLB /*, shadowDepthSamplerLB*/, fragmentLightUBLB };
-	descSetLayoutCI.bindingCount = static_cast<uint32_t>(bindings.size());
+
+	std::vector<VkDescriptorSetLayoutBinding> bindings = { fragmentSamplerLB /*, shadowDepthSamplerLB*/ /*, fragmentLightUBLB*/ };
+	descSetLayoutCI.bindingCount = (uint32_t)(bindings.size());
 	descSetLayoutCI.pBindings = bindings.data();
 
 	result = vkCreateDescriptorSetLayout(m_device, &descSetLayoutCI, nullptr, ++m_fragSetLayout);
@@ -649,7 +659,7 @@ void Vulkan::VkManagedPipeline::CreateDescriptorSetLayout_HARCODED()
 		throw std::runtime_error("Unable to create fragment descriptor set layout. Reason: " + Vulkan::VkResultToString(result));
 }
 
-void Vulkan::VkManagedPipeline::CreateShaderModule(std::string& code, VulkanObjectContainer<VkShaderModule>& shader)
+void Vulkan::VkManagedPipeline::CreateShaderModule(std::string& code, VkManagedObject<VkShaderModule>& shader)
 {
 	VkResult result;
 	VkShaderModuleCreateInfo shaderModuleCI = {};
