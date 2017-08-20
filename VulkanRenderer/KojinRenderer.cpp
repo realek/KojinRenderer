@@ -91,6 +91,7 @@ Vulkan::KojinRenderer::KojinRenderer(SDL_Window * window, const char * appName, 
 		m_semaphores = new VkManagedSemaphore(m_vkDevice, 2); // 1 present and 2 pass 
 		m_vkMainCmdPool->CreateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, m_vkSwapchain->ImageCount(), m_swapChainbuffers);
 		m_vkMainCmdPool->CreateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1, m_uniformBufferUpdater);
+		m_vkMainCmdPool->CreateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1, m_shadowPassCommands);
 		m_colorSampler = new VkManagedSampler(m_vkDevice, VkManagedSamplerMode::COLOR_NORMALIZED_COORDINATES, 16, VK_BORDER_COLOR_INT_OPAQUE_BLACK);
 		m_depthSampler = new VkManagedSampler(m_vkDevice, VkManagedSamplerMode::DEPTH_NORMALIZED_COORDINATES, 0, VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE);
 		m_layeredShadowMap = new VkManagedImage(m_vkDevice); //shadowmap_image
@@ -148,21 +149,6 @@ void Vulkan::KojinRenderer::Draw(std::vector<Mesh*> meshes, std::vector<Material
 		m_meshPartMaterials.push_back(mat);;
 	
 }
-//void Vulkan::KojinRenderer::Load(std::weak_ptr<Vulkan::Mesh> mesh, Vulkan::Material * material)
-//{
-//	auto lockedMesh = mesh.lock();
-//
-//	if (!lockedMesh)
-//		throw std::runtime_error("Unable to lock weak ptr to provided mesh");
-//
-//	if (m_meshDraws.count(lockedMesh->id) == 0)
-//		m_meshDraws.insert(std::make_pair(lockedMesh->id,1));
-//	else
-//		m_meshDraws[lockedMesh->id]++;
-//	m_objectCount++;
-//	m_meshPartMaterials.push_back(material);
-//	m_meshPartTransforms.push_back(lockedMesh->modelMatrix);
-//}
 
 Vulkan::Camera * Vulkan::KojinRenderer::CreateCamera(glm::vec3 initialPosition, bool perspective)
 {
@@ -187,7 +173,6 @@ Vulkan::Light * Vulkan::KojinRenderer::CreateLight(glm::vec3 initialPosition)
 
 void Vulkan::KojinRenderer::Clean()
 {
-	//if resources werent deallocated clean them
 	{
 		std::vector<void*> clears;
 		if (m_cameras.size() > 0)
@@ -227,7 +212,6 @@ void Vulkan::KojinRenderer::Clean()
 
 void Vulkan::KojinRenderer::FreeLight(Light * light)
 {
-	//auto res = std::find_if(m_lights.begin(), m_lights.end(), [&light](std::pair<const uint32_t, Vulkan::Light *> a)->bool { return a.first == light->id; });
 	m_lights.erase(light->id);
 }
 
@@ -353,8 +337,8 @@ void Vulkan::KojinRenderer::Render()
 
 	//update model uniform buffers
 	m_uniformBufferUpdater->Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-	VkCommandBuffer uniformCmdBuffer = m_uniformBufferUpdater->Buffer();
 	{
+		VkCommandBuffer uniformCmdBuffer = m_uniformBufferUpdater->Buffer();
 		if (m_layeredShadowMap->layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) 
 		{
 			m_layeredShadowMap->SetLayout(uniformCmdBuffer, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 0, m_layeredShadowMap->layers, VK_QUEUE_FAMILY_IGNORED);
@@ -373,8 +357,8 @@ void Vulkan::KojinRenderer::Render()
 		create_lighting_data_forward(data);
 		staged_update_uniformBuffer(uniformCmdBuffer, m_uniformLightingstagingBufferFWD, m_uniformLightingBufferFWD, &data, sizeof(data));
 	}
-	m_uniformBufferUpdater->End(0);
-	m_uniformBufferUpdater->Submit(m_vkMainCmdPool->PoolQueue()->queue, { VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT }, { m_semaphores->Next()}, { m_semaphores->Last()});
+	m_uniformBufferUpdater->End();
+	m_uniformBufferUpdater->Submit(m_vkMainCmdPool->PoolQueue()->queue, { VK_PIPELINE_STAGE_HOST_BIT }, { m_semaphores->Next()}, { m_semaphores->Last()});
 
 	std::vector<VkIndexedDraw> indexdraws;
 	indexdraws.resize(m_objectCount);
@@ -401,24 +385,18 @@ void Vulkan::KojinRenderer::Render()
 	states.scissors.resize(1);
 	states.hasViewport = VK_TRUE;
 	states.hasScissor = VK_TRUE;
-
-
-
-
 	//clear values
 	std::vector<VkClearValue> clearValues;
 	clearValues.resize(2);
-
-
-	m_swapChainbuffers->Begin(VkCommandBufferUsageFlagBits::VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
-
-	for(uint32_t cmdIndex = 0; cmdIndex < m_swapChainbuffers->Size(); ++cmdIndex)
+	clearValues[0].color = { 0,0.15f,0.1f,1.0f };
+	clearValues[1].depthStencil = { (uint32_t)1.0f, (uint32_t)0.0f };
+	m_shadowPassCommands->Begin(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
 	{
-		VkCommandBuffer cBuffer = m_swapChainbuffers->Buffer(cmdIndex);
-		clearValues[0].depthStencil = { (uint32_t)1.0f, (uint32_t)0.0f };
-		clearValues[1].depthStencil = { (uint32_t)1.0f, (uint32_t)0.0f };
+		VkCommandBuffer shadowCmds = m_shadowPassCommands->Buffer();
+
 		states.hasDepthBias = VK_TRUE;
 		uint32_t i = 0;
+
 		for (std::pair<uint32_t, Light*> l : m_lights)
 		{
 			states.scissors[0].extent = m_vkRenderPassSDWProj->GetExtent();
@@ -428,9 +406,10 @@ void Vulkan::KojinRenderer::Render()
 
 			states.depthBias.constDepth = VkShadowmapDefaults::k_depthBias;
 			states.depthBias.depthSlope = VkShadowmapDefaults::k_depthBiasSlope;
+			states.depthBias.depthClamp = 0.0f;
 
 			m_vkRenderPassSDWProj->SetPipeline(m_vkPipelineSDWProj, states, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS);
-			m_vkRenderPassSDWProj->PreRecordData(cBuffer, 0); //we have 1 framebuffer
+			m_vkRenderPassSDWProj->PreRecordData(shadowCmds, 0); //we have 1 framebuffer
 			std::vector<VkPushConstant> constants(2);
 			constants[0].data = &l.second->GetLightViewMatrix();
 			constants[0].offset = 0;
@@ -440,11 +419,11 @@ void Vulkan::KojinRenderer::Render()
 			constants[1].offset = constants[0].size;
 			constants[1].size = sizeof(glm::mat4);
 			constants[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-			m_vkRenderPassSDWProj->Record(clearValues, { m_vDescriptorSetSDWProj }, constants, m_meshIndexData, m_meshVertexData, indexdraws);
+			m_vkRenderPassSDWProj->Record(VkShadowmapDefaults::k_clearValues, { m_vDescriptorSetSDWProj }, constants, m_meshIndexData, m_meshVertexData, indexdraws);
 
 			//copy pass result
 			VkManagedImage* passDepth = m_vkRenderPassSDWProj->GetAttachment(0, VkImageUsageFlagBits::VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
-			
+
 			VkImageSubresourceLayers dstRes;
 			dstRes.aspectMask = m_layeredShadowMap->aspect;
 			dstRes.baseArrayLayer = i;
@@ -455,53 +434,65 @@ void Vulkan::KojinRenderer::Render()
 			copyExtent.depth = 1.0f;
 			copyExtent.height = VkShadowmapDefaults::k_resolution;
 			copyExtent.width = copyExtent.height;
-			passDepth->Copy(cBuffer, copyExtent, m_layeredShadowMap, m_vkPresentQueue->familyIndex, { 0,0,0 }, { 0,0,0 }, {(0),(0),(0),(1)},dstRes); //needs per layer setup here
+			passDepth->Copy(shadowCmds, copyExtent, m_layeredShadowMap, m_vkPresentQueue->familyIndex, { 0,0,0 }, { 0,0,0 }, { (0),(0),(0),(1) }, dstRes); //needs per layer setup here
 			i++;
 		}
 
-		states.hasDepthBias = VK_FALSE;
-		clearValues[0] = {};
-		clearValues[0].color = { 0,0,0,1.0 };
-		uint32_t u = 0;
-		for (std::pair<uint32_t, Camera*> camera : m_cameras)
+	}
+	m_shadowPassCommands->End();
+	m_shadowPassCommands->Submit(m_vkPresentQueue->queue, { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT }, { m_semaphores->Next() }, { m_semaphores->Last() });
+
+	m_vkDevice->WaitForIdle();
+	m_vkDevice->WaitForIdle();
+
+	m_swapChainbuffers->Begin(VkCommandBufferUsageFlagBits::VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
+	{
+		for (uint32_t cmdIndex = 0; cmdIndex < m_swapChainbuffers->Size(); ++cmdIndex)
 		{
-			states.viewports[0] = camera.second->m_viewPort;
-			states.scissors[0] = camera.second->m_scissor;
+			VkCommandBuffer cBuffer = m_swapChainbuffers->Buffer(cmdIndex);
 
-			m_vkRenderpassFWD->SetPipeline(m_vkPipelineFWD, states, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS);
-			m_vkRenderpassFWD->PreRecordData(cBuffer, 0); //we have 1 framebuffer
-			std::vector<VkPushConstant> constants(2);
-			constants[0].data = &camera.second->m_viewMatrix;
-			constants[0].offset = 0;
-			constants[0].size = sizeof(camera.second->m_viewMatrix);
-			constants[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-			constants[1].data = &camera.second->m_projectionMatrix;
-			constants[1].offset = constants[0].size;
-			constants[1].size = sizeof(camera.second->m_projectionMatrix);
-			constants[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-			m_vkRenderpassFWD->Record(clearValues, { m_vDescriptorSetFWD,m_fDescriptorSetFWD }, constants, m_meshIndexData, m_meshVertexData, indexdraws);
 
-			//copy pass result
+			states.hasDepthBias = VK_FALSE;
 
-			VkManagedImage* passColor = m_vkRenderpassFWD->GetAttachment(0, VkImageUsageFlagBits::VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
-			VkManagedImage* scImage = m_vkSwapchain->SwapchainImage(cmdIndex);
+			uint32_t u = 0;
+			for (std::pair<uint32_t, Camera*> camera : m_cameras)
+			{
+				states.viewports[0] = camera.second->m_viewPort;
+				states.scissors[0] = camera.second->m_scissor;
 
-			VkExtent3D copyExtent = {};
-			copyExtent.depth = 1.0f;
-			copyExtent.width = states.viewports[0].width;
-			copyExtent.height = states.viewports[0].height;
-			passColor->Copy(cBuffer, copyExtent, scImage);
+				m_vkRenderpassFWD->SetPipeline(m_vkPipelineFWD, states, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS);
+				m_vkRenderpassFWD->PreRecordData(cBuffer, 0); //we have 1 framebuffer
+				std::vector<VkPushConstant> constants(2);
+				constants[0].data = &camera.second->m_viewMatrix;
+				constants[0].offset = 0;
+				constants[0].size = sizeof(camera.second->m_viewMatrix);
+				constants[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+				constants[1].data = &camera.second->m_projectionMatrix;
+				constants[1].offset = constants[0].size;
+				constants[1].size = sizeof(camera.second->m_projectionMatrix);
+				constants[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+				m_vkRenderpassFWD->Record(clearValues, { m_vDescriptorSetFWD,m_fDescriptorSetFWD }, constants, m_meshIndexData, m_meshVertexData, indexdraws);
+
+				//copy pass result
+
+				VkManagedImage* passColor = m_vkRenderpassFWD->GetAttachment(0, VkImageUsageFlagBits::VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+				VkManagedImage* scImage = m_vkSwapchain->SwapchainImage(cmdIndex);
+
+				VkExtent3D copyExtent = {};
+				copyExtent.depth = 1.0f;
+				copyExtent.width = states.viewports[0].width;
+				copyExtent.height = states.viewports[0].height;
+				passColor->Copy(cBuffer, copyExtent, scImage);
+			}
 		}
 	}
-
 	m_swapChainbuffers->End();
-
-	//submit & wait
-
 	m_swapChainbuffers->Submit(m_vkPresentQueue->queue, { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT }, { m_semaphores->Next() }, { m_semaphores->Last() });
+	
 	//present
 	m_vkSwapchain->PresentCurrentImage(&scImage, m_vkPresentQueue, { m_semaphores->Last()}); // pass waiting semaphores
 
+	//clean
 	m_objectCount = 0;
 	m_meshDraws.clear();
 	m_meshPartMaterials.clear();
@@ -732,7 +723,7 @@ bool Vulkan::KojinRenderer::UpdateShadowmapLayers()
 		ext.width = VkShadowmapDefaults::k_resolution;
 
 		m_layeredShadowMap->Build(ext, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
-			(uint32_t)m_lightCount+1, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_D32_SFLOAT, 
+			(uint32_t)m_lightCount, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_D32_SFLOAT, 
 			VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 		return true;
 	}

@@ -124,7 +124,7 @@ namespace Vulkan
 		VkManagedBuffer * m_meshVertexData = nullptr;
 		VkManagedBuffer * m_meshIndexData = nullptr;
 
-		VkManagedCommandBuffer * m_shadowPassBuffers = nullptr;
+		VkManagedCommandBuffer * m_shadowPassCommands = nullptr;
 		VkManagedCommandBuffer * m_swapChainbuffers = nullptr;
 		VkManagedCommandBuffer * m_uniformBufferUpdater = nullptr;
 

@@ -75,6 +75,7 @@ void Vulkan::VkManagedRenderPass::Build(VkExtent2D extent, VkFormat depthFormat)
 	m_extent = extent;
 	m_colorformat = VK_FORMAT_UNDEFINED;
 	m_depthFormat = depthFormat;
+	m_colorFinalLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	m_depthFinalLayout = depthAttachmentDesc.finalLayout;
 
 
@@ -189,14 +190,14 @@ void Vulkan::VkManagedRenderPass::PreRecordData(VkCommandBuffer commandBuffer, u
 	m_currentFBindex = frameBufferIndex;
 }
 
-void Vulkan::VkManagedRenderPass::Record(std::vector<VkClearValue> values,std::vector<VkManagedDescriptorSet*> descriptors, std::vector<VkPushConstant>& pushConstants, VkManagedBuffer * indexBuffer, VkManagedBuffer * vertexBuffer, std::vector<VkIndexedDraw>& draws)
+void Vulkan::VkManagedRenderPass::Record(const std::vector<VkClearValue>& values,std::vector<VkManagedDescriptorSet*> descriptors, std::vector<VkPushConstant>& pushConstants, VkManagedBuffer * indexBuffer, VkManagedBuffer * vertexBuffer, std::vector<VkIndexedDraw>& draws)
 {
 	assert(m_currentCommandBuffer != VK_NULL_HANDLE);
 	assert(m_currentPipeline != nullptr);
 
 	VkRenderPassBeginInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassInfo.clearValueCount = static_cast<uint32_t>(values.size());
+	renderPassInfo.clearValueCount = (uint32_t)values.size();
 	renderPassInfo.pClearValues = values.data();
 	renderPassInfo.renderPass = m_pass;
 	renderPassInfo.renderArea.offset = { 0, 0 };

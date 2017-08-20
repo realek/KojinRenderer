@@ -111,6 +111,7 @@ void main()
 		float atten = 1.0f;
 		float shadowCoef = 1.0f;
 		D = normalize(-inLights[i].direction.xyz);
+		
 		if(inLights[i].lightProps[0] == 2)
 		{
 			V = normalize(-inLights[i].direction.xyz - inFragPos);
@@ -169,7 +170,7 @@ void main()
 		if(inLights[i].lightBiasedMVP != iMat)
 		{
 			vec4 sVertPos = inLights[i].lightBiasedMVP*inVertex;
-            shadowCoef = filterPCF(sVertPos/sVertPos.w,i);
+            shadowCoef = filterPCF(sVertPos,i);
 		}
 		lightColor += shadowCoef*atten*intensity*(diffuse+specular);
 

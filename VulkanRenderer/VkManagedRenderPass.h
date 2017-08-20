@@ -37,7 +37,7 @@ namespace Vulkan
 		void SetPipeline(VkManagedPipeline * pipeline, VkDynamicStatesBlock dynamicStates, VkPipelineBindPoint bindPoint);
 		void UpdateDynamicStates(VkDynamicStatesBlock dynamicStates);
 		void PreRecordData(VkCommandBuffer commandBuffer, uint32_t frameBufferIndex);
-		void Record(std::vector<VkClearValue> values, std::vector<VkManagedDescriptorSet*> descriptors, std::vector<VkPushConstant>& pushConstants, VkManagedBuffer * indexBuffer, VkManagedBuffer * vertexBuffer, std::vector<VkIndexedDraw>& draws);
+		void Record(const std::vector<VkClearValue>& values, std::vector<VkManagedDescriptorSet*> descriptors, std::vector<VkPushConstant>& pushConstants, VkManagedBuffer * indexBuffer, VkManagedBuffer * vertexBuffer, std::vector<VkIndexedDraw>& draws);
 		VkManagedRenderPass();
 		~VkManagedRenderPass();
 		void SetFrameBufferCount(uint32_t count, bool setFinalLayout, bool sampleColor, bool copyColor, bool sampleDepth, bool copyDepth);

@@ -162,6 +162,7 @@ namespace Vulkan
 		static const uint32_t k_resolution;
 		static const VkFormat k_attachmentRGBFormat;
 		static const VkFormat k_attachmentDepthFormat;
+		static const std::vector<VkClearValue> k_clearValues;
 
 	private:
 		VkShadowmapDefaults() = delete;

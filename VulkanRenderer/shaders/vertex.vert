@@ -84,7 +84,10 @@ void main() {
 		iLights[i].position = camera_data.view*lights_data.lights[i].position;
 		iLights[i].direction = camera_data.view*lights_data.lights[i].direction;
 		if(lights_data.lights[i].lightBiasedMVP != iMat)
-			iLights[i].lightBiasedMVP = lights_data.lights[i].lightBiasedMVP * model_data.model;
+		{
+			iLights[i].lightBiasedMVP = lights_data.lights[i].lightBiasedMVP * model_data.model;		
+		}
+
 
 	}
 	outLights = iLights;
