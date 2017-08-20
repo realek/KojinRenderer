@@ -59,11 +59,11 @@ namespace Vulkan
 	class VkManagedSampler;
 	class VkManagedCommandBuffer;
 	struct VkVertex;
-	struct forward_lightingData;
+	struct vec4x4x6_vec4_container;
+	struct mat4_vec4_float_container;
+	struct mat4x6_container;
 	class VkManagedBuffer;
 	
-	template<typename T>
-	class dynamic_aligned_vector;
 
 	class KojinRenderer
 	{
@@ -73,8 +73,6 @@ namespace Vulkan
 		KojinRenderer& operator=(const KojinRenderer&) = delete;
 		~KojinRenderer();
 		void Draw(std::vector<Mesh*> meshes, std::vector<Material*> materials);
-		//void Load(std::weak_ptr<Vulkan::Mesh> mesh, Vulkan::Material * material);
-		//std::shared_ptr<Vulkan::Light> CreateLight(glm::vec3 initialPosition);
 		Vulkan::Camera * CreateCamera(glm::vec3 initialPosition, bool perspective);
 		Vulkan::Light * CreateLight(glm::vec3 initialPosition);
 		Vulkan::Texture * LoadTexture(std::string filepath, bool readWrite);
@@ -96,7 +94,7 @@ namespace Vulkan
 		template<typename T>
 		void update_dynamic_uniformBuffer(VkManagedBuffer * dyn_buffer, std::vector<T>& data);
 		void staged_update_uniformBuffer(VkCommandBuffer recordBuffer, VkManagedBuffer * stagingBuffer, VkManagedBuffer * targetBuffer, void * data, size_t dataSize);
-		void create_lighting_data_forward(forward_lightingData & lightingUBO);
+		void create_lighting_data_forward(vec4x4x6_vec4_container & lightingUBO, mat4x6_container & shadowUBO);
 		void WriteShadowDescriptorSet(uint32_t objectIndex);
 		void WriteDescriptors(uint32_t objIndex);
 		bool UpdateShadowmapLayers();
@@ -132,19 +130,18 @@ namespace Vulkan
 		VkManagedSampler * m_depthSampler = nullptr;
 
 		std::unordered_map<uint32_t, int> m_meshDraws;
-		std::vector<glm::mat4> m_meshPartTransforms;
-		std::vector<Material*> m_meshPartMaterials;
-		VkManagedBuffer * m_uniformVStagingBufferFWD = nullptr;
-		std::vector<VkManagedBuffer*> m_uniformVBuffersFWD;
+		//one transform matrix, one color vector and one float for specularity
+		std::vector<mat4_vec4_float_container> m_meshPartData;
+		std::vector<uint32_t> m_meshPartTextures;
 
 		VkManagedBuffer * m_uniformVModelDynamicBuffer = nullptr;
 		void * m_uniformVModelDynamicBufferAlignedData = nullptr;
 
-		VkManagedBuffer * m_uniformVMaterialDynamicBuffer = nullptr;
-		void * m_uniformVMaterialDynamicBufferAlignedData = nullptr;
-
 		VkManagedBuffer * m_uniformLightingstagingBufferFWD = nullptr;
 		VkManagedBuffer * m_uniformLightingBufferFWD = nullptr;
+
+		VkManagedBuffer * m_uniformShadowstagingBufferFWD = nullptr;
+		VkManagedBuffer * m_uniformShadowBufferFWD = nullptr;
 
 		int m_objectCount = 0;
 		int m_objectCountOld = 0;

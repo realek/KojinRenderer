@@ -641,7 +641,7 @@ void Vulkan::VkManagedPipeline::CreateDescriptorSetLayout_HARCDODED()
 	m_vertSetLayout = { m_device,vkDestroyDescriptorSetLayout };
 	m_fragSetLayout = { m_device, vkDestroyDescriptorSetLayout };
 
-	std::vector<VkDescriptorSetLayoutBinding> vertexBindings(3);
+	std::vector<VkDescriptorSetLayoutBinding> vertexBindings(2);
 	{
 		vertexBindings[0].binding = 0;
 		vertexBindings[0].descriptorCount = 1;
@@ -651,15 +651,9 @@ void Vulkan::VkManagedPipeline::CreateDescriptorSetLayout_HARCDODED()
 
 		vertexBindings[1].binding = 1;
 		vertexBindings[1].descriptorCount = 1;
-		vertexBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+		vertexBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		vertexBindings[1].pImmutableSamplers = nullptr;
 		vertexBindings[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-
-		vertexBindings[2].binding = 2;
-		vertexBindings[2].descriptorCount = 1;
-		vertexBindings[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		vertexBindings[2].pImmutableSamplers = nullptr;
-		vertexBindings[2].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
 	}
 
@@ -674,25 +668,31 @@ void Vulkan::VkManagedPipeline::CreateDescriptorSetLayout_HARCDODED()
 		throw std::runtime_error("Unable to create vertex descriptor set layout. Reason: " + Vulkan::VkResultToString(result));
 
 
-	VkDescriptorSetLayoutBinding fragmentSamplerLB = {};
-	fragmentSamplerLB.binding = 0;
-	fragmentSamplerLB.descriptorCount = 1;
-	fragmentSamplerLB.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	fragmentSamplerLB.pImmutableSamplers = nullptr;
-	fragmentSamplerLB.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-	VkDescriptorSetLayoutBinding shadowDepthSamplerLB = {};
-	shadowDepthSamplerLB.binding = 1;
-	shadowDepthSamplerLB.descriptorCount = 1;
-	shadowDepthSamplerLB.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	shadowDepthSamplerLB.pImmutableSamplers = nullptr;
-	shadowDepthSamplerLB.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	std::vector<VkDescriptorSetLayoutBinding> fragmentBindings(3);
+	{
+		fragmentBindings[0].binding = 0;
+		fragmentBindings[0].descriptorCount = 1;
+		fragmentBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		fragmentBindings[0].pImmutableSamplers = nullptr;
+		fragmentBindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
 
+		fragmentBindings[1].binding = 1;
+		fragmentBindings[1].descriptorCount = 1;
+		fragmentBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		fragmentBindings[1].pImmutableSamplers = nullptr;
+		fragmentBindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-	std::vector<VkDescriptorSetLayoutBinding> bindings = { fragmentSamplerLB , shadowDepthSamplerLB };
-	descSetLayoutCI.bindingCount = (uint32_t)(bindings.size());
-	descSetLayoutCI.pBindings = bindings.data();
+		fragmentBindings[2].binding = 2;
+		fragmentBindings[2].descriptorCount = 1;
+		fragmentBindings[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		fragmentBindings[2].pImmutableSamplers = nullptr;
+		fragmentBindings[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	}
+
+	descSetLayoutCI.bindingCount = (uint32_t)(fragmentBindings.size());
+	descSetLayoutCI.pBindings = fragmentBindings.data();
 
 	result = vkCreateDescriptorSetLayout(m_device, &descSetLayoutCI, nullptr, ++m_fragSetLayout);
 	if (result != VK_SUCCESS)

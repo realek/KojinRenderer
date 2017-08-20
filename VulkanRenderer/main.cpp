@@ -168,6 +168,8 @@ int main()
 		Vulkan::Light* light;
 		Vulkan::Light* light1;
 		Vulkan::Light* light2;
+		Vulkan::Light* light3;
+		Vulkan::Light* light4;
 		Vulkan::Light* lightDirectional;
 		std::shared_ptr<Vulkan::Mesh> mesh;
 		std::shared_ptr<Vulkan::Mesh> planeMesh;
@@ -293,22 +295,37 @@ int main()
 		lightDirectional->m_rotation = { 50 , -30, 0 };
 		lightDirectional->diffuseColor = glm::vec4(1.0, 1.0, 1.0, 1.0);
 
-        //light1 = renderer->CreateLight({ 0.0,2, 3.0 });
-        //light1->SetType(Vulkan::LightType::Spot);
-        //light1->range = 10.0f;
-        //light1->intensity = 1.0f;
-        //light1->angle = 30;
-        //light1->m_rotation = { 45,180,0 };
-        //light1->diffuseColor = glm::vec4(0.65, 0.15, 0.25, 1.0);
+        light1 = renderer->CreateLight({ 0.0,2, 3.0 });
+        light1->SetType(Vulkan::LightType::Spot);
+        light1->range = 10.0f;
+        light1->intensity = 1.0f;
+        light1->angle = 30;
+        light1->m_rotation = { 45,180,0 };
+        light1->diffuseColor = glm::vec4(0.65, 0.15, 0.25, 1.0);
 
-        //light2 = renderer->CreateLight({ 2.0 ,2, 0.0 });
-        //light2->SetType(Vulkan::LightType::Spot);
-        //light2->range = 10.0f;
-        //light2->intensity = 1.0f;
-        //light2->angle = 30;
-        //light2->m_rotation = { 45,-90,0 };
-        //light2->diffuseColor = glm::vec4(0.25, 0.25, 0.65, 1.0);
+        light2 = renderer->CreateLight({ 2.0 ,2, 0.0 });
+        light2->SetType(Vulkan::LightType::Spot);
+        light2->range = 10.0f;
+        light2->intensity = 1.0f;
+        light2->angle = 30;
+        light2->m_rotation = { 45,-90,0 };
+        light2->diffuseColor = glm::vec4(0.25, 0.25, 0.65, 1.0);
 
+		light3 = renderer->CreateLight({ -2.0 ,2, 0.0 });
+		light3->SetType(Vulkan::LightType::Spot);
+		light3->range = 10.0f;
+		light3->intensity = 1.0f;
+		light3->angle = 30;
+		light3->m_rotation = { 45,0,0 };
+		light3->diffuseColor = glm::vec4(0.35, 0.85, 0, 1.0);
+
+		light4 = renderer->CreateLight({ 0.0 ,2, 2.0 });
+		light4->SetType(Vulkan::LightType::Spot);
+		light4->range = 10.0f;
+		light4->intensity = 1.0f;
+		light4->angle = 30;
+		light4->m_rotation = { 45, 180 ,0 };
+		light4->diffuseColor = glm::vec4(0.55, 0.25, 0.15, 1.0);
 		
 
 		//}
@@ -324,7 +341,8 @@ int main()
 				if(f1)
 				{
 					system("CLS");
-					std::cout << "FPS: "<<fpsCount;
+					std::cout << "FPS: "<<fpsCount<<std::endl;
+					std::cout << "AVG ms: " << (fpsTimer / fpsCount);
 				}
 
 				fpsCount = 0;
@@ -338,12 +356,8 @@ int main()
 			else if (q) light->m_position.y += frameDeltaTime * 2;
 			else if (z) light->m_position.y -= frameDeltaTime * 2;
 			//update objects here
-			rotmod += 5 * frameDeltaTime;
-			//renderer->Update(currentDelta);
-			//if (currentDelta == fixedTimeStep)
-			//{
-			//	//update physics
-			//}
+			rotmod += 15 * frameDeltaTime;
+
 			RESET_INPUT();
 			running = SDLExitInput();
 			if (frameDeltaTime < fixedTimeStep)

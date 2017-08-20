@@ -19,68 +19,6 @@ use them.
 #define MAX_LIGHTS_PER_FRAGMENT 6
 namespace Vulkan
 {
-
-	struct VkPhysicalDeviceRequiredQueues
-	{
-		bool hasGraphicsQueue;
-		bool hasPresentQueue;
-		bool hasComputeQueue;
-		bool hasTransferQueue;
-		bool hasSparseBindingQueue;
-
-		bool operator ==(VkPhysicalDeviceRequiredQueues rhs)
-		{
-			return hasComputeQueue == rhs.hasComputeQueue && hasGraphicsQueue == rhs.hasGraphicsQueue
-				&& hasPresentQueue == rhs.hasPresentQueue && hasTransferQueue == rhs.hasTransferQueue
-				&& hasSparseBindingQueue == rhs.hasSparseBindingQueue;
-		}
-
-
-		bool operator ==(VkPhysicalDeviceRequiredQueues * rhs)
-		{
-			return hasComputeQueue == rhs->hasComputeQueue && hasGraphicsQueue == rhs->hasGraphicsQueue
-				&& hasPresentQueue == rhs->hasPresentQueue && hasTransferQueue == rhs->hasTransferQueue
-				&& hasSparseBindingQueue == rhs->hasSparseBindingQueue;
-		}
-
-		bool operator ==(const VkPhysicalDeviceRequiredQueues * rhs)
-		{
-			return hasComputeQueue == rhs->hasComputeQueue && hasGraphicsQueue == rhs->hasGraphicsQueue
-				&& hasPresentQueue == rhs->hasPresentQueue && hasTransferQueue == rhs->hasTransferQueue
-				&& hasSparseBindingQueue == rhs->hasSparseBindingQueue;
-		}
-
-	};
-
-	struct VkQueueFamilyIDs
-	{
-		uint32_t graphicsFamily = -1;
-		uint32_t presentFamily = -1;
-		uint32_t computeFamily = -1;
-		uint32_t transferFamily = -1;
-		uint32_t sparseBindingFamily = -1;
-
-		bool Validate(const VkPhysicalDeviceRequiredQueues * reqs);
-	};
-
-	struct VkPhysicalDeviceSurfaceData {
-		VkSurfaceCapabilitiesKHR capabilities;
-		std::vector<VkSurfaceFormatKHR> formats;
-		std::vector<VkPresentModeKHR> presentModes;
-
-		bool Validate();
-	};
-
-	struct VkQueueContainer
-	{
-		VkQueue graphicsQueue{ VK_NULL_HANDLE };
-		VkQueue presentQueue{ VK_NULL_HANDLE };
-		VkQueue transferQueue{ VK_NULL_HANDLE };
-		VkQueue computeQueue{ VK_NULL_HANDLE };
-		VkQueue sparseBindingQueue{ VK_NULL_HANDLE };
-
-	};
-
 	struct VkVertex
 	{
 		
@@ -128,18 +66,7 @@ namespace Vulkan
 			return pos == other.pos && normal == other.normal && color == other.color && texCoord == other.texCoord;
 		}
 	};
-
-	struct VkLight
-	{
-
-		glm::vec4 color;
-		glm::vec4 m_position;
-		glm::vec4 direction;
-		glm::vec4 lightProps;
-		glm::mat4 lightBiasedMVP;
-
-	};
-
+	
 	struct VkViewportDefaults
 	{
 		static const float k_CameraZFar;
@@ -164,22 +91,8 @@ namespace Vulkan
 		static const VkFormat k_attachmentDepthFormat;
 		static const std::vector<VkClearValue> k_clearValues;
 
-	private:
 		VkShadowmapDefaults() = delete;
 		VkShadowmapDefaults(const VkShadowmapDefaults& other) = delete;
-	};
-
-	struct VertexDepthMVP
-	{
-		glm::mat4 depthMVP;
-		VertexDepthMVP(const VertexDepthMVP& other) = delete;
-	};
-
-	struct modelData
-	{
-		glm::mat4 model;
-
-		modelData(const modelData& other) = delete;
 	};
 
 	struct materialData
@@ -187,17 +100,38 @@ namespace Vulkan
 		materialData() : materialDiffuse(0),specularity(0) {}
 		glm::vec4 materialDiffuse;
 		float specularity;
-		materialData(const materialData& other) = delete;
 
 	};
 
-
-	struct forward_lightingData
+	struct vec4x4_container
 	{
-		VkLight lights[MAX_LIGHTS_PER_FRAGMENT];
-		glm::vec4 ambientLightColor;
-		forward_lightingData(const forward_lightingData& other) = delete;
+		glm::vec4 va;
+		glm::vec4 vb;
+		glm::vec4 vc;
+		glm::vec4 vd;
+	};
 
+	struct mat4_container
+	{
+		glm::mat4 matrix;
+	};
+
+	struct mat4_vec4_float_container
+	{
+		glm::mat4 matrix;
+		glm::vec4 vector;
+		float floatValue;
+	};
+
+	struct mat4x6_container
+	{
+		glm::mat4 matrices[6];
+	};
+
+	struct vec4x4x6_vec4_container
+	{
+		vec4x4_container vec4x4x6[6];
+		glm::vec4 va;
 	};
 }
 

@@ -7,8 +7,6 @@ struct VkLight
 	vec4 position;
 	vec4 direction;
 	vec4 lightProps; //type, intensity, falloff, angle
-	mat4 lightBiasedMVP;
-
 };
 
 
@@ -23,17 +21,12 @@ mat4(
 layout(set = 0, binding = 0) uniform Model {
 	
 	mat4 model;
+	vec4 materialDiffuse;
+	float specularity;
 
 } model_data;
 
-layout(set = 0, binding = 1) uniform Material {
-
-	vec4 materialDiffuse;
-	float specularity;
-	
-} material_data;
-
-layout(set = 0, binding = 2) uniform Lights {
+layout(set = 0, binding = 1) uniform Lights {
 
 	VkLight lights[6];
 	vec4 ambientLightColor;
@@ -67,27 +60,24 @@ out gl_PerVertex {
 
 void main() {
 
-	outVertex = vec4(inPosition, 1.0);
 	mat4 modelView = camera_data.view * model_data.model;
 	outColor = vec4(inColor,1.0f);
     outTexCoord = inTexCoord;
-	outMaterialColor = material_data.materialDiffuse;
+	outMaterialColor = model_data.materialDiffuse;
 	outAmbientLight = lights_data.ambientLightColor;
 	
-	vec4 vPos = modelView*outVertex;
+	outVertex = model_data.model * vec4(inPosition, 1.0);
+	vec4 vPos = modelView*vec4(inPosition, 1.0);
 	outFragPos = vec3(vPos)/vPos.w;
     outFragNormal = vec3(transpose(inverse(modelView)) * vec4(inNormal,1.0));
+	outMaterialSpecularity = model_data.specularity;
+	
 	VkLight iLights[6] = lights_data.lights;
 	for(int i = 0;i < 6;++i)
 	{
 
 		iLights[i].position = camera_data.view*lights_data.lights[i].position;
 		iLights[i].direction = camera_data.view*lights_data.lights[i].direction;
-		if(lights_data.lights[i].lightBiasedMVP != iMat)
-		{
-			iLights[i].lightBiasedMVP = lights_data.lights[i].lightBiasedMVP * model_data.model;		
-		}
-
 
 	}
 	outLights = iLights;

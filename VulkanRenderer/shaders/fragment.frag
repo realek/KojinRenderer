@@ -9,8 +9,6 @@ struct VkLight
 	vec4 position;
 	vec4 direction;
 	vec4 lightProps; //type, intensity, falloff, angle
-	mat4 lightBiasedMVP;
-
 };
 
 const mat4 iMat = 
@@ -34,7 +32,11 @@ layout(location = 8) flat in VkLight inLights[6];
 
 layout(set = 1, binding = 0) uniform sampler2D texSampler;
 layout(set = 1, binding = 1) uniform sampler2DArray depthSampler;
-
+layout(set = 1, binding = 2) uniform BiasMatrices
+{
+	mat4 biasVP[6];
+	
+} shadow_data;
 
 layout(location = 0) out vec4 outColor;
 
@@ -91,6 +93,14 @@ float filterPCF(vec4 sc, int index)
 //  return (2.0 * n) / (f + n - z * (f - n));	
 //}
 
+vec3 Clamp(vec3 value, float min, float max)
+{
+	value.x = clamp(value.x, min, max);
+	value.y = clamp(value.y, min, max);
+	value.z = clamp(value.z, min, max);
+	return value;
+}
+
 void main() 
 {
 	outColor = inColor * (inMaterialColor*texture(texSampler, inTexCoord));
@@ -109,7 +119,6 @@ void main()
 		vec3 V; // fragment eye 
 		vec3 D; // light forward from rotation
 		float atten = 1.0f;
-		float shadowCoef = 1.0f;
 		D = normalize(-inLights[i].direction.xyz);
 		
 		if(inLights[i].lightProps[0] == 2)
@@ -167,17 +176,17 @@ void main()
 			}
 		}
 		
-		if(inLights[i].lightBiasedMVP != iMat)
+		if(shadow_data.biasVP[i] != iMat)
 		{
-			vec4 sVertPos = inLights[i].lightBiasedMVP*inVertex;
-            shadowCoef = filterPCF(sVertPos,i);
+		   vec4 sVertPos = shadow_data.biasVP[i]*inVertex;
+           float shadowCoef = filterPCF(sVertPos/sVertPos.w,i);
+		   atten *= shadowCoef;
 		}
-		lightColor += shadowCoef*atten*intensity*(diffuse+specular);
-
+		lightColor += atten*intensity*(diffuse+specular);
 
 
 	}
-	outColor *=vec4(inAmbientLight.xyz,0.0f)+vec4(lightColor.xyz,1.0f);
+	outColor *=vec4(inAmbientLight.xyz,0.0f)+lightColor;
 	outColor = vec4(clamp(outColor.x,0.0f,1.0f),clamp(outColor.y,0.0f,1.0f),clamp(outColor.z,0.0f,1.0f),outColor.w);
   //SHADOWMAP VISUAL
   //outColor = vec4(1.0-vec3(LinearizeDepth(texture(depthSampler, fragTexCoord).x)), 1.0);
