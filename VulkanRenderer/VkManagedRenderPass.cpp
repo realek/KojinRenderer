@@ -219,13 +219,20 @@ void Vulkan::VkManagedRenderPass::Record(std::vector<VkClearValue> values,std::v
 	{
 		std::vector<VkDescriptorSet> descSets;
 		descSets.resize(diffSets,VK_NULL_HANDLE);
+		std::vector<uint32_t> dynOffsets;
 		for (uint32_t i = 0; i < diffSets; ++i)
 		{
 			assert(descriptors[i]->Size() == drawCount); // internal set count must be the same as draw count
 			descSets[i] = descriptors[i]->Set(j);
-
+			if (descriptors[i]->uniformDynamicOffsetCount > 0) 
+			{
+				for (uint32_t dyn = 0; dyn < descriptors[i]->uniformDynamicOffsetCount; ++dyn) 
+				{
+					dynOffsets.push_back(j*(uint32_t)descriptors[i]->uniformDynamicAlignment);
+				}
+			}
 		}
-		vkCmdBindDescriptorSets(m_currentCommandBuffer, m_currentPipelineBindpoint, *m_currentPipeline, 0, static_cast<uint32_t>(descSets.size()), descSets.data(), 0, nullptr);
+		vkCmdBindDescriptorSets(m_currentCommandBuffer, m_currentPipelineBindpoint, *m_currentPipeline, 0, (uint32_t)descSets.size(), descSets.data(), (uint32_t)dynOffsets.size(), dynOffsets.data());
 		if (VK_INCOMPLETE == m_currentPipeline->SetDynamicState(m_currentCommandBuffer, m_currentPipelineStateBlock))
 		{
 			throw std::runtime_error("Incomplete state block provided for the bound pipeline.");
@@ -236,7 +243,6 @@ void Vulkan::VkManagedRenderPass::Record(std::vector<VkClearValue> values,std::v
 		}
 
 		vkCmdDrawIndexed(m_currentCommandBuffer, draws[j].indexCount, 1, draws[j].indexStart, draws[j].vertexOffset, 0);
-
 	}
 	vkCmdEndRenderPass(m_currentCommandBuffer);
 }

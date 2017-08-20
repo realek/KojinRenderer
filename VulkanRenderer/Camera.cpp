@@ -12,8 +12,8 @@ Vulkan::Camera::Camera(VkExtent2D extent, bool perspective, CameraCallback callb
 {
 	m_swapChainExtent = extent;
 	m_viewPort = {};
-	m_viewPort.width = static_cast<float>(extent.width);
-	m_viewPort.height = static_cast<float>(extent.height);
+	m_viewPort.width = (float)(extent.width);
+	m_viewPort.height = (float)(extent.height);
 	m_viewPort.x = 0;
 	m_viewPort.y = 0;
 	m_viewPort.minDepth = 0;

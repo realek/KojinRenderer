@@ -5,7 +5,6 @@
 #include <glm\gtc\matrix_transform.hpp>
 #include <glm\gtc\quaternion.hpp>
 #include "VulkanSystemStructs.h"
-#include "KojinRenderer.h"
 
 std::atomic<uint32_t> Vulkan::Light::globalID = 0;
 void Vulkan::Light::SetType(Vulkan::LightType type)
@@ -87,23 +86,6 @@ Vulkan::Light::Light(glm::vec3 initialPosition, LightCallback callBack) : id(++g
 	range = 1.0f;
 	m_rotation = { 0,0,0 };
 }
-
-Vulkan::Light::Light(VulkanRenderUnit * rend, std::function<void(VulkanRenderUnit*, int)> deleter, glm::vec3 initialPosition) : id(++globalID)
-{
-	m_position = initialPosition;
-	diffuseColor = { 1.0, 1.0, 1.0, 1.0 };
-	intensity = 1.0f;
-	angle = 45.0f;
-	range = 1.0f;
-	m_rotation = { 0,0,0 };
-
-	m_onDestroy = [deleter, rend](Light* light)
-	{
-		if (rend != nullptr)
-			deleter(rend,light->id);
-	};
-}
-
 
 Vulkan::Light::~Light()
 {

@@ -46,7 +46,8 @@ namespace Vulkan
 		VkResult SetDynamicState(VkCommandBuffer buffer, VkDynamicStatesBlock states);
 		void SetPushConstant(VkCommandBuffer buffer, std::vector<VkPushConstant> vector);
 	private:
-		void CreateDescriptorSetLayout_HARCODED();
+		void CreateDescriptorSetLayout_HARDCODED_SHADOW();
+		void CreateDescriptorSetLayout_HARCDODED();
 		void CreateShaderModule(std::string & code, VkManagedObject<VkShaderModule>& shader);
 		std::string ReadBinaryFile(const char * filename);
 	private:

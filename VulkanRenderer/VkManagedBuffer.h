@@ -12,7 +12,7 @@ namespace Vulkan
 		VkManagedBuffer(VkManagedDevice * device);
 		operator VkBuffer();
 		VkDeviceSize Size();
-		VkDeviceSize AlignedSize();
+		VkDeviceSize Alignment();
 		void Build(VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties, VkDeviceSize dataSize, size_t dataInstances, VkBool32 dynamic, VkSharingMode sharingMode = VK_SHARING_MODE_EXCLUSIVE);
 		void CopyTo(VkCommandBuffer buffer, VkManagedBuffer * dst, VkDeviceSize srcOffset, VkDeviceSize dstOffset, VkDeviceSize copySize);
 		void Write(VkDeviceSize offset, VkMemoryMapFlags flags, VkDeviceSize srcSize, void * src);

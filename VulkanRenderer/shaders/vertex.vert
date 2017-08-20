@@ -11,6 +11,15 @@ struct VkLight
 
 };
 
+
+const mat4 iMat = 
+mat4(
+ 1,0,0,0,
+ 0,1,0,0,
+ 0,0,1,0,
+ 0,0,0,1
+);
+
 layout(set = 0, binding = 0) uniform Model {
 	
 	mat4 model;
@@ -47,7 +56,8 @@ layout(location = 3) out vec2 outTexCoord;
 layout(location = 4) flat out vec4 outAmbientLight;
 layout(location = 5) out vec3 outFragPos;
 layout(location = 6) out vec3 outFragNormal;
-layout(location = 7) flat out VkLight outLights[6];
+layout(location = 7) out vec4 outVertex;
+layout(location = 8) flat out VkLight outLights[6];
 
 
 
@@ -57,14 +67,14 @@ out gl_PerVertex {
 
 void main() {
 
-	vec4 vertex = vec4(inPosition, 1.0);
+	outVertex = vec4(inPosition, 1.0);
 	mat4 modelView = camera_data.view * model_data.model;
 	outColor = vec4(inColor,1.0f);
     outTexCoord = inTexCoord;
 	outMaterialColor = material_data.materialDiffuse;
 	outAmbientLight = lights_data.ambientLightColor;
 	
-	vec4 vPos = modelView*vertex;
+	vec4 vPos = modelView*outVertex;
 	outFragPos = vec3(vPos)/vPos.w;
     outFragNormal = vec3(transpose(inverse(modelView)) * vec4(inNormal,1.0));
 	VkLight iLights[6] = lights_data.lights;
@@ -73,6 +83,8 @@ void main() {
 
 		iLights[i].position = camera_data.view*lights_data.lights[i].position;
 		iLights[i].direction = camera_data.view*lights_data.lights[i].direction;
+		if(lights_data.lights[i].lightBiasedMVP != iMat)
+			iLights[i].lightBiasedMVP = lights_data.lights[i].lightBiasedMVP * model_data.model;
 
 	}
 	outLights = iLights;

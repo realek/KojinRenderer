@@ -13,6 +13,8 @@
 #include "VkManagedRenderPass.h"
 #include "VkManagedPipeline.h"
 
+#include "Allocation.h"
+
 #include "SPIRVShader.h"
 #include "Camera.h"
 #include "Light.h"
@@ -69,24 +71,29 @@ Vulkan::KojinRenderer::KojinRenderer(SDL_Window * window, const char * appName, 
 			VK_DYNAMIC_STATE_VIEWPORT
 			}, {rangeViewProj});
 
-		//m_vkRenderPassSDWProj = new VkManagedRenderPass(m_vkDevice);
-		//m_vkRenderPassSDWProj->Build({ VkShadowmapDefaults::k_resolution,VkShadowmapDefaults::k_resolution }, VkShadowmapDefaults::k_attachmentDepthFormat);
-		//m_vkPipelineSDWProj = new VkManagedPipeline(m_vkDevice);
-		//m_vkPipelineSDWProj->Build(m_vkRenderPassSDWProj, PipelineMode::ProjectedShadows,
-		//	"shaders/vertexSkeleton.vert.spv",
-		//	"shaders/fragmentSkeleton.frag.spv",
-		//	{ VK_DYNAMIC_STATE_SCISSOR,
-		//	VK_DYNAMIC_STATE_VIEWPORT,
-		//	VK_DYNAMIC_STATE_DEPTH_BIAS
-		//	});
+		m_vkRenderPassSDWProj = new VkManagedRenderPass(m_vkDevice);
+		m_vkRenderPassSDWProj->Build({ VkShadowmapDefaults::k_resolution,VkShadowmapDefaults::k_resolution }, VkShadowmapDefaults::k_attachmentDepthFormat);
+		m_vkRenderPassSDWProj->SetFrameBufferCount(1, true, false, false, false, true);
+		m_vkPipelineSDWProj = new VkManagedPipeline(m_vkDevice);
+
+		m_vkPipelineSDWProj->Build(m_vkRenderPassSDWProj, PipelineMode::ProjectedShadows,
+			"shaders/vertexOffscreen.vert.spv",
+			"shaders/fragmentOffscreen.frag.spv",
+			{ VK_DYNAMIC_STATE_SCISSOR,
+			VK_DYNAMIC_STATE_VIEWPORT,
+			VK_DYNAMIC_STATE_DEPTH_BIAS
+			}, {rangeViewProj});
 
 		m_vkDescriptorPool = new VkManagedDescriptorPool(m_vkDevice);
+		m_vkDescriptorPool->SetDescriptorCount(VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2);
 		m_vkDescriptorPool->SetDescriptorCount(VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2);
 		m_vkDescriptorPool->SetDescriptorCount(VkDescriptorType::VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2);
 		m_semaphores = new VkManagedSemaphore(m_vkDevice, 2); // 1 present and 2 pass 
 		m_vkMainCmdPool->CreateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, m_vkSwapchain->ImageCount(), m_swapChainbuffers);
 		m_vkMainCmdPool->CreateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1, m_uniformBufferUpdater);
-		m_colorSampler = new VkManagedSampler(m_vkDevice, VkManagedSamplerMode::COLOR_NORMALIZED_COORDINATES, 16, VkBorderColor::VK_BORDER_COLOR_INT_OPAQUE_BLACK);
+		m_colorSampler = new VkManagedSampler(m_vkDevice, VkManagedSamplerMode::COLOR_NORMALIZED_COORDINATES, 16, VK_BORDER_COLOR_INT_OPAQUE_BLACK);
+		m_depthSampler = new VkManagedSampler(m_vkDevice, VkManagedSamplerMode::DEPTH_NORMALIZED_COORDINATES, 0, VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE);
+		m_layeredShadowMap = new VkManagedImage(m_vkDevice); //shadowmap_image
 	}
 	catch(...)
 	{
@@ -322,10 +329,10 @@ void Vulkan::KojinRenderer::Render()
 			m_vkDescriptorPool->BuildPool(m_objectCount*3);
 			m_vkDescriptorPool->AllocateDescriptorSet(m_objectCount, m_vkPipelineFWD->GetVertexLayout(), m_vDescriptorSetFWD);
 			m_vkDescriptorPool->AllocateDescriptorSet(m_objectCount, m_vkPipelineFWD->GetFragmentLayout(),m_fDescriptorSetFWD);
-			//m_vkDescriptorPool->AllocateDescriptorSet(m_objectCount, m_vkPipelineSDWProj->GetVertexLayout(), m_vDescriptorSetFWD);
-			CreateUniformBufferSet(m_uniformVStagingBufferFWD,m_uniformVBuffersFWD,m_objectCount,sizeof(modelData));
+			m_vkDescriptorPool->AllocateDescriptorSet(m_objectCount, m_vkPipelineSDWProj->GetVertexLayout(), m_vDescriptorSetSDWProj);
+			CreateDynamicUniformBuffer(m_uniformVModelDynamicBuffer, m_objectCount, sizeof(modelData));
+			CreateDynamicUniformBuffer(m_uniformVMaterialDynamicBuffer, m_objectCount, sizeof(materialData));
 			CreateUniformBufferPair(m_uniformLightingstagingBufferFWD, m_uniformLightingBufferFWD, sizeof(forward_lightingData)); //one lighting buffer
-			CreateUniformBufferSet(m_uniformVStagingBufferMaterialFWD, m_uniformVBuffersMaterialFWD, m_objectCount, sizeof(materialData));
 			//CreateUniformBufferSet(m_uniformStagingBufferSDWProj, m_uniformBuffersSDWProj, m_objectCount, sizeof(VertexDepthMVP));
 			//make sure to delete all buffers on clean function call
 		
@@ -333,11 +340,13 @@ void Vulkan::KojinRenderer::Render()
 
 		rebuild = true;
 	}
-	//UpdateShadowmapLayers();
 
+
+	UpdateShadowmapLayers();
 	//write descriptors here!
 	for (int oc = 0; oc < m_objectCountOld; ++oc)
 	{
+		WriteShadowDescriptorSet(oc);
 		WriteDescriptors(oc);
 	}
 
@@ -346,31 +355,26 @@ void Vulkan::KojinRenderer::Render()
 	m_uniformBufferUpdater->Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 	VkCommandBuffer uniformCmdBuffer = m_uniformBufferUpdater->Buffer();
 	{
+		if (m_layeredShadowMap->layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) 
+		{
+			m_layeredShadowMap->SetLayout(uniformCmdBuffer, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 0, m_layeredShadowMap->layers, VK_QUEUE_FAMILY_IGNORED);
+		}
+		update_dynamic_uniformBuffer(m_uniformVModelDynamicBuffer, m_meshPartTransforms);
+
+		std::vector<materialData> mDat(m_objectCountOld);
 		for (int oc = 0; oc < m_objectCountOld; ++oc)
 		{
-			staged_update_uniformBuffer(uniformCmdBuffer, m_uniformVStagingBufferFWD, m_uniformVBuffersFWD[oc], &m_meshPartTransforms[oc], sizeof(m_meshPartTransforms[oc]));
-			
-			materialData mDat = {};
-			mDat.materialDiffuse = m_meshPartMaterials[oc]->diffuseColor;
-			mDat.specularity = m_meshPartMaterials[oc]->specularity;
-			
-			staged_update_uniformBuffer(uniformCmdBuffer, m_uniformVStagingBufferMaterialFWD, m_uniformVBuffersMaterialFWD[oc], &mDat, sizeof(mDat));
-			//UpdateUniformBuffer(cBuffer, oc, m_meshPartTransforms[oc], camera.second->m_viewMatrix, camera.second->m_projectionMatrix, m_meshPartMaterials[oc]);
+			mDat[oc].materialDiffuse = m_meshPartMaterials[oc]->diffuseColor;
+			mDat[oc].specularity = m_meshPartMaterials[oc]->specularity;
 		}
+		update_dynamic_uniformBuffer(m_uniformVMaterialDynamicBuffer, mDat);
+
 		forward_lightingData data = {};
 		create_lighting_data_forward(data);
 		staged_update_uniformBuffer(uniformCmdBuffer, m_uniformLightingstagingBufferFWD, m_uniformLightingBufferFWD, &data, sizeof(data));
 	}
 	m_uniformBufferUpdater->End(0);
 	m_uniformBufferUpdater->Submit(m_vkMainCmdPool->PoolQueue()->queue, { VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT }, { m_semaphores->Next()}, { m_semaphores->Last()});
-
-
-
-	//clear values
-	std::vector<VkClearValue> clearValues;
-	clearValues.resize(2);
-	clearValues[0].color = { 0,0,0,1.0 };
-	clearValues[1].depthStencil = { (uint32_t)1.0f, (uint32_t)0.0f };
 
 	std::vector<VkIndexedDraw> indexdraws;
 	indexdraws.resize(m_objectCount);
@@ -398,17 +402,69 @@ void Vulkan::KojinRenderer::Render()
 	states.hasViewport = VK_TRUE;
 	states.hasScissor = VK_TRUE;
 
+
+
+
+	//clear values
+	std::vector<VkClearValue> clearValues;
+	clearValues.resize(2);
+
+
 	m_swapChainbuffers->Begin(VkCommandBufferUsageFlagBits::VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
+
 	for(uint32_t cmdIndex = 0; cmdIndex < m_swapChainbuffers->Size(); ++cmdIndex)
 	{
 		VkCommandBuffer cBuffer = m_swapChainbuffers->Buffer(cmdIndex);
+		clearValues[0].depthStencil = { (uint32_t)1.0f, (uint32_t)0.0f };
+		clearValues[1].depthStencil = { (uint32_t)1.0f, (uint32_t)0.0f };
+		states.hasDepthBias = VK_TRUE;
+		uint32_t i = 0;
+		for (std::pair<uint32_t, Light*> l : m_lights)
+		{
+			states.scissors[0].extent = m_vkRenderPassSDWProj->GetExtent();
+			states.viewports[0].maxDepth = 1.0f;
+			states.viewports[0].height = (float)states.scissors[0].extent.height;
+			states.viewports[0].width = (float)states.scissors[0].extent.width;
+
+			states.depthBias.constDepth = VkShadowmapDefaults::k_depthBias;
+			states.depthBias.depthSlope = VkShadowmapDefaults::k_depthBiasSlope;
+
+			m_vkRenderPassSDWProj->SetPipeline(m_vkPipelineSDWProj, states, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS);
+			m_vkRenderPassSDWProj->PreRecordData(cBuffer, 0); //we have 1 framebuffer
+			std::vector<VkPushConstant> constants(2);
+			constants[0].data = &l.second->GetLightViewMatrix();
+			constants[0].offset = 0;
+			constants[0].size = sizeof(glm::mat4);
+			constants[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+			constants[1].data = &l.second->GetLightProjectionMatrix();
+			constants[1].offset = constants[0].size;
+			constants[1].size = sizeof(glm::mat4);
+			constants[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+			m_vkRenderPassSDWProj->Record(clearValues, { m_vDescriptorSetSDWProj }, constants, m_meshIndexData, m_meshVertexData, indexdraws);
+
+			//copy pass result
+			VkManagedImage* passDepth = m_vkRenderPassSDWProj->GetAttachment(0, VkImageUsageFlagBits::VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+			
+			VkImageSubresourceLayers dstRes;
+			dstRes.aspectMask = m_layeredShadowMap->aspect;
+			dstRes.baseArrayLayer = i;
+			dstRes.mipLevel = 0;
+			dstRes.layerCount = 1;
+
+			VkExtent3D copyExtent = {};
+			copyExtent.depth = 1.0f;
+			copyExtent.height = VkShadowmapDefaults::k_resolution;
+			copyExtent.width = copyExtent.height;
+			passDepth->Copy(cBuffer, copyExtent, m_layeredShadowMap, m_vkPresentQueue->familyIndex, { 0,0,0 }, { 0,0,0 }, {(0),(0),(0),(1)},dstRes); //needs per layer setup here
+			i++;
+		}
+
+		states.hasDepthBias = VK_FALSE;
+		clearValues[0] = {};
+		clearValues[0].color = { 0,0,0,1.0 };
+		uint32_t u = 0;
 		for (std::pair<uint32_t, Camera*> camera : m_cameras)
 		{
-			for (int oc = 0; oc < m_objectCountOld; ++oc)
-			{
-				UpdateUniformBuffer(cBuffer, oc, m_meshPartTransforms[oc], camera.second->m_viewMatrix, camera.second->m_projectionMatrix, m_meshPartMaterials[oc]);
-			}
-
 			states.viewports[0] = camera.second->m_viewPort;
 			states.scissors[0] = camera.second->m_scissor;
 
@@ -426,9 +482,15 @@ void Vulkan::KojinRenderer::Render()
 			m_vkRenderpassFWD->Record(clearValues, { m_vDescriptorSetFWD,m_fDescriptorSetFWD }, constants, m_meshIndexData, m_meshVertexData, indexdraws);
 
 			//copy pass result
+
 			VkManagedImage* passColor = m_vkRenderpassFWD->GetAttachment(0, VkImageUsageFlagBits::VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
 			VkManagedImage* scImage = m_vkSwapchain->SwapchainImage(cmdIndex);
-			passColor->Copy(cBuffer, scImage);
+
+			VkExtent3D copyExtent = {};
+			copyExtent.depth = 1.0f;
+			copyExtent.width = states.viewports[0].width;
+			copyExtent.height = states.viewports[0].height;
+			passColor->Copy(cBuffer, copyExtent, scImage);
 		}
 	}
 
@@ -490,6 +552,25 @@ void Vulkan::KojinRenderer::UpdateInternalMesh(VkManagedCommandPool * commandPoo
 	cmdBuff.Free();
 }
 
+template<typename T>
+void Vulkan::KojinRenderer::update_dynamic_uniformBuffer(VkManagedBuffer * dyn_buffer, std::vector<T>& data) 
+{
+	VkDeviceSize alignment = dyn_buffer->Alignment();
+	assert(alignment != 0); //if alignment is 0 then the buffer provided isn't dynamic //yes yes ugly
+
+	if(m_uniformVModelDynamicBufferAlignedData==nullptr)
+		m_uniformVModelDynamicBufferAlignedData = MemoryAllocation::AllocateAligned(dyn_buffer->Size(), alignment);
+
+	T* alignedData = (T*)m_uniformVModelDynamicBufferAlignedData;
+	for (size_t i = 0; i < data.size(); ++i) 
+	{
+		T* p = (T*)((VkDeviceSize)alignedData + (i*alignment));
+		*p = data[i];
+	}
+
+	dyn_buffer->Write(0, 0, data.size()*alignment, alignedData);
+	//MemoryAllocation::FreeAligned(alignedData);
+}
 void Vulkan::KojinRenderer::staged_update_uniformBuffer(VkCommandBuffer recordBuffer, VkManagedBuffer * stagingBuffer, VkManagedBuffer * targetBuffer, void * data, size_t dataSize) 
 {
 	stagingBuffer->Write(0, 0, dataSize, data);
@@ -517,14 +598,11 @@ void Vulkan::KojinRenderer::create_lighting_data_forward(forward_lightingData& l
 			lightingUBO.lights[i].m_position = glm::vec4(l.second->m_position, 1.0f);
 			lightingUBO.lights[i].m_position.x *= -1;
 			lightingUBO.lights[i].lightProps = {};
-			lightingUBO.lights[i].lightProps[0] = l.second->GetType();
+			lightingUBO.lights[i].lightProps[0] = (float)l.second->GetType();
 			lightingUBO.lights[i].lightProps[1] = l.second->intensity;
 			lightingUBO.lights[i].lightProps[2] = l.second->range;
 			lightingUBO.lights[i].lightProps[3] = l.second->angle;
-			//	if (i < depthMVPs.size())
-			//		lightsUbo.lights[i].lightBiasedMVP = VkShadowmapDefaults::k_shadowBiasMatrix * (depthMVPs[i] * modelMatrix);
-			//	else
-			lightingUBO.lights[i].lightBiasedMVP = glm::mat4(1);
+			lightingUBO.lights[i].lightBiasedMVP = VkShadowmapDefaults::k_shadowBiasMatrix * (l.second->GetLightProjectionMatrix() * l.second->GetLightViewMatrix());
 			i++;
 		}
 		else
@@ -532,81 +610,29 @@ void Vulkan::KojinRenderer::create_lighting_data_forward(forward_lightingData& l
 	}
 }
 
-void Vulkan::KojinRenderer::UpdateUniformBuffer(VkCommandBuffer recordBuffer, uint32_t bufferIndex, const glm::mat4 & model, const glm::mat4 & view, const glm::mat4 & proj, const Vulkan::Material * material)
+void Vulkan::KojinRenderer::WriteShadowDescriptorSet(uint32_t objectIndex) 
 {
-	Vulkan::modelData ubo = {};
-	ubo.model = model;
-	size_t dataSize = sizeof(ubo);
-	m_uniformVStagingBufferFWD->Write(0, 0, dataSize, &ubo);
+	VkDescriptorSet set = m_vDescriptorSetSDWProj->Set(objectIndex);
 
-	try
+	VkDescriptorBufferInfo vertexModelBuffer = {};
+	vertexModelBuffer.buffer = *m_uniformVModelDynamicBuffer;
+	vertexModelBuffer.offset = 0;
+	vertexModelBuffer.range = VK_WHOLE_SIZE;
+
+	VkWriteDescriptorSet vertexWrites = {};
 	{
-		m_uniformVStagingBufferFWD->CopyTo(recordBuffer, m_uniformVBuffersFWD[bufferIndex], 0, 0,dataSize);
-	}
-	catch (...)
-	{
-		throw;
+		vertexWrites.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		vertexWrites.dstSet = set;
+		vertexWrites.dstBinding = 0;
+		vertexWrites.dstArrayElement = 0;
+		vertexWrites.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+		vertexWrites.descriptorCount = 1;
+		vertexWrites.pBufferInfo = &vertexModelBuffer;
 	}
 
-	Vulkan::materialData lightsUbo = {};
-	//lightsUbo.ambientLightColor = glm::vec4(0.1, 0.1, 0.1, 0.1);
-	lightsUbo.materialDiffuse = material->diffuseColor;
-	lightsUbo.specularity = material->specularity;
-	//uint32_t i = 0;
-	//for (std::pair<const uint32_t,Light*>& l : m_lights)
-	//{
-	//	if (i < MAX_LIGHTS_PER_FRAGMENT)
-	//	{
-	//		lightsUbo.lights[i] = {};
-	//		lightsUbo.lights[i].color = l.second->diffuseColor;
-	//		lightsUbo.lights[i].direction = view*l.second->GetLightForward();
-	//		lightsUbo.lights[i].m_position = glm::vec4(l.second->m_position, 1.0f);
-	//		lightsUbo.lights[i].m_position.x *= -1;
-	//		lightsUbo.lights[i].m_position = view*lightsUbo.lights[i].m_position;
-	//		lightsUbo.lights[i].lightProps = {};
-	//		lightsUbo.lights[i].lightProps.lightType = l.second->GetType();
-	//		lightsUbo.lights[i].lightProps.intensity = l.second->intensity;
-	//		lightsUbo.lights[i].lightProps.falloff = l.second->range;
-	//		lightsUbo.lights[i].lightProps.angle = l.second->angle;
-	//	//	if (i < depthMVPs.size())
-	//	//		lightsUbo.lights[i].lightBiasedMVP = VkShadowmapDefaults::k_shadowBiasMatrix * (depthMVPs[i] * modelMatrix);
-	//	//	else
-	//			lightsUbo.lights[i].lightBiasedMVP = glm::mat4(1);
-	//		i++;
-	//	}
-	//	else
-	//		break;
-	//}
-	dataSize = sizeof(materialData);
-	m_uniformVStagingBufferMaterialFWD->Write(0, 0, dataSize, &lightsUbo);
-
-	try
-	{
-		m_uniformVStagingBufferMaterialFWD->CopyTo(recordBuffer, m_uniformVBuffersMaterialFWD[bufferIndex], 0, 0,dataSize);
-	}
-	catch (...)
-	{
-		throw;
-	}
-}
-
-struct DescriptorInfo 
-{
-	VkDescriptorType type;
-	void * descriptor;
-	uint32_t dstArrayElement;
-	uint32_t count;
-	uint32_t binding;
-};
-void Vulkan::KojinRenderer::update_descriptor_set(VkManagedDescriptorSet * descSet, uint32_t setIndex, std::vector<std::pair<VkDescriptorType, void *>> descriptorPairs) 
-{
-	std::vector<VkWriteDescriptorSet> writes;
-	VkDescriptorSet set = descSet->Set(setIndex);
-
-	for (std::pair<VkDescriptorType, void *> pair : descriptorPairs) 
-	{
-
-	}
+	m_vDescriptorSetSDWProj->uniformDynamicOffsetCount = 1;
+	m_vDescriptorSetSDWProj->uniformDynamicAlignment = m_uniformVModelDynamicBuffer->Alignment();
+	vkUpdateDescriptorSets(*m_vkDevice, 1, &vertexWrites, 0, nullptr);
 }
 
 void Vulkan::KojinRenderer::WriteDescriptors(uint32_t objIndex)
@@ -615,19 +641,19 @@ void Vulkan::KojinRenderer::WriteDescriptors(uint32_t objIndex)
 	VkDescriptorSet set = m_vDescriptorSetFWD->Set(objIndex);
 
 	VkDescriptorBufferInfo vertexModelBuffer = {};
-	vertexModelBuffer.buffer = *m_uniformVBuffersFWD[objIndex];
+	vertexModelBuffer.buffer = *m_uniformVModelDynamicBuffer;
 	vertexModelBuffer.offset = 0;
-	vertexModelBuffer.range = m_uniformVBuffersFWD[objIndex]->Size();
+	vertexModelBuffer.range = VK_WHOLE_SIZE;
 
 	VkDescriptorBufferInfo vertexLightingBuffer = {};
 	vertexLightingBuffer.buffer = *m_uniformLightingBufferFWD;
 	vertexLightingBuffer.offset = 0;
-	vertexLightingBuffer.range = m_uniformLightingBufferFWD->Size();
+	vertexLightingBuffer.range = VK_WHOLE_SIZE;
 
 	VkDescriptorBufferInfo vertexMaterialDataBuffer = {};
-	vertexMaterialDataBuffer.buffer = *m_uniformVBuffersMaterialFWD[objIndex];
+	vertexMaterialDataBuffer.buffer = *m_uniformVMaterialDynamicBuffer;
 	vertexMaterialDataBuffer.offset = 0;
-	vertexMaterialDataBuffer.range = m_uniformVBuffersMaterialFWD[objIndex]->Size();
+	vertexMaterialDataBuffer.range = VK_WHOLE_SIZE;
 
 	std::vector<VkWriteDescriptorSet> vertexWrites(3);
 	{
@@ -635,7 +661,7 @@ void Vulkan::KojinRenderer::WriteDescriptors(uint32_t objIndex)
 		vertexWrites[0].dstSet = set;
 		vertexWrites[0].dstBinding = 0;
 		vertexWrites[0].dstArrayElement = 0;
-		vertexWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		vertexWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
 		vertexWrites[0].descriptorCount = 1;
 		vertexWrites[0].pBufferInfo = &vertexModelBuffer;
 
@@ -643,7 +669,7 @@ void Vulkan::KojinRenderer::WriteDescriptors(uint32_t objIndex)
 		vertexWrites[1].dstSet = set;
 		vertexWrites[1].dstBinding = 1;
 		vertexWrites[1].dstArrayElement = 0;
-		vertexWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		vertexWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
 		vertexWrites[1].descriptorCount = 1;
 		vertexWrites[1].pBufferInfo = &vertexMaterialDataBuffer;
 
@@ -656,9 +682,10 @@ void Vulkan::KojinRenderer::WriteDescriptors(uint32_t objIndex)
 		vertexWrites[2].pBufferInfo = &vertexLightingBuffer;
 	}
 
-
+	m_vDescriptorSetFWD->uniformDynamicOffsetCount = 2;
+	m_vDescriptorSetFWD->uniformDynamicAlignment = m_uniformVModelDynamicBuffer->Alignment();
 	vkUpdateDescriptorSets(*m_vkDevice, (uint32_t)vertexWrites.size(), vertexWrites.data(), 0, nullptr);
-
+	
 	//FRAGMENT
 	set = m_fDescriptorSetFWD->Set(objIndex);
 	VkDescriptorImageInfo diffuseTextureInfo = {};
@@ -666,19 +693,12 @@ void Vulkan::KojinRenderer::WriteDescriptors(uint32_t objIndex)
 	diffuseTextureInfo.imageView = *m_deviceLoadedTextures[m_meshPartMaterials[objIndex]->albedo->id];
 	diffuseTextureInfo.sampler = *m_colorSampler;
 
-//	VkDescriptorImageInfo shadowMaptexture = {};
-//	shadowMaptexture.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	//shadowMaptexture.imageView = m_fwdOffScreenProjShadows.GetAttachment(0, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)->imageView;
-//	shadowMaptexture.imageView = m_layeredProjectedShadowmaps->imageView;
-//	shadowMaptexture.sampler = m_fwdOffScreenProjShadows.GetSampler(m_fwdOffScreenProjShadows.k_defaultSamplerName);
+	VkDescriptorImageInfo shadowMaptexture = {};
+	shadowMaptexture.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	shadowMaptexture.imageView = *m_layeredShadowMap;
+	shadowMaptexture.sampler = *m_depthSampler;
 
-	//VkDescriptorBufferInfo lightsUniformBufferInfo = {};
-	//lightsUniformBufferInfo.buffer = *m_uniformVBuffersMaterialFWD[objIndex];
-	//lightsUniformBufferInfo.offset = 0;
-	//lightsUniformBufferInfo.range = sizeof(materialData);
-
-
-	std::array<VkWriteDescriptorSet, 1> fragmentDescriptorWrites = {};
+	std::array<VkWriteDescriptorSet, 2> fragmentDescriptorWrites = {};
 
 	{
 		fragmentDescriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -689,29 +709,13 @@ void Vulkan::KojinRenderer::WriteDescriptors(uint32_t objIndex)
 		fragmentDescriptorWrites[0].descriptorCount = 1;
 		fragmentDescriptorWrites[0].pImageInfo = &diffuseTextureInfo;
 
-		//fragmentDescriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		//fragmentDescriptorWrites[1].dstSet = fragSet;
-		//fragmentDescriptorWrites[1].dstBinding = 1;
-		//fragmentDescriptorWrites[1].dstArrayElement = 0;
-		//fragmentDescriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		//fragmentDescriptorWrites[1].descriptorCount = 1;
-		//fragmentDescriptorWrites[1].pImageInfo = &shadowMaptexture;
-
-	//	fragmentDescriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	//	fragmentDescriptorWrites[1].dstSet = set;
-	//	fragmentDescriptorWrites[1].dstBinding = 1;
-	//	fragmentDescriptorWrites[1].dstArrayElement = 0;
-	//	fragmentDescriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	//	fragmentDescriptorWrites[1].descriptorCount = 1;
-	//	fragmentDescriptorWrites[1].pImageInfo = &diffuseTextureInfo;
-
-		//fragmentDescriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		//fragmentDescriptorWrites[1].dstSet = set;
-		//fragmentDescriptorWrites[1].dstBinding = 1;
-		//fragmentDescriptorWrites[1].dstArrayElement = 0;
-		//fragmentDescriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		//fragmentDescriptorWrites[1].descriptorCount = 1;
-		//fragmentDescriptorWrites[1].pBufferInfo = &lightsUniformBufferInfo;
+		fragmentDescriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		fragmentDescriptorWrites[1].dstSet = set;
+		fragmentDescriptorWrites[1].dstBinding = 1;
+		fragmentDescriptorWrites[1].dstArrayElement = 0;
+		fragmentDescriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		fragmentDescriptorWrites[1].descriptorCount = 1;
+		fragmentDescriptorWrites[1].pImageInfo = &shadowMaptexture;
 	}
 
 	vkUpdateDescriptorSets(*m_vkDevice, static_cast<uint32_t>(fragmentDescriptorWrites.size()), fragmentDescriptorWrites.data(), 0, nullptr);
@@ -719,14 +723,33 @@ void Vulkan::KojinRenderer::WriteDescriptors(uint32_t objIndex)
 
 bool Vulkan::KojinRenderer::UpdateShadowmapLayers()
 {
-	if(m_lights.size() != 0)
+	assert(m_layeredShadowMap != nullptr);
+	if(m_lights.size() != m_lightCount)
 	{
+		m_lightCount = m_lights.size();
+		VkExtent2D ext;
+		ext.height = VkShadowmapDefaults::k_resolution;
+		ext.width = VkShadowmapDefaults::k_resolution;
+
+		m_layeredShadowMap->Build(ext, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
+			(uint32_t)m_lightCount+1, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_D32_SFLOAT, 
+			VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 		return true;
 	}
 	else
 	{
 		return false;
 	}
+}
+
+void Vulkan::KojinRenderer::CreateDynamicUniformBuffer(VkManagedBuffer *& dyn_buffer, uint32_t objectCount, uint32_t bufferDataSize) 
+{
+	if (dyn_buffer == nullptr)
+	{
+		dyn_buffer = new VkManagedBuffer{ m_vkDevice };
+	}
+
+	dyn_buffer->Build(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, bufferDataSize, objectCount, VK_TRUE);
 }
 
 void Vulkan::KojinRenderer::CreateUniformBufferSet(VkManagedBuffer *& stagingBuffer, std::vector<VkManagedBuffer*>& buffers, uint32_t objectCount, uint32_t bufferDataSize)

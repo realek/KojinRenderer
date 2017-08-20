@@ -11,6 +11,7 @@ wrapers.
 #include <glm\matrix.hpp>
 #include <vulkan\vulkan.h>
 
+
 #ifndef RENDER_ENGINE_NAME
 #define RENDER_ENGINE_NAME "KojinRenderer"
 #endif // !RENDER_ENGINE_NAME
@@ -61,6 +62,9 @@ namespace Vulkan
 	struct forward_lightingData;
 	class VkManagedBuffer;
 	
+	template<typename T>
+	class dynamic_aligned_vector;
+
 	class KojinRenderer
 	{
 	public:
@@ -89,12 +93,14 @@ namespace Vulkan
 		void FreeCamera(Camera * camera);
 		void FreeLight(Light * light);
 		void UpdateInternalMesh(VkManagedCommandPool * commandPool, VkVertex * vertexData, uint32_t vertexCount, uint32_t * indiceData, uint32_t indiceCount);
+		template<typename T>
+		void update_dynamic_uniformBuffer(VkManagedBuffer * dyn_buffer, std::vector<T>& data);
 		void staged_update_uniformBuffer(VkCommandBuffer recordBuffer, VkManagedBuffer * stagingBuffer, VkManagedBuffer * targetBuffer, void * data, size_t dataSize);
 		void create_lighting_data_forward(forward_lightingData & lightingUBO);
-		void UpdateUniformBuffer(VkCommandBuffer recordBuffer, uint32_t bufferIndex, const glm::mat4 & model, const glm::mat4 & view, const glm::mat4 & proj, const Vulkan::Material * material);
-		void update_descriptor_set(VkManagedDescriptorSet * descSet, uint32_t setIndex, std::vector<std::pair<VkDescriptorType, void*>> descriptorPairs);
+		void WriteShadowDescriptorSet(uint32_t objectIndex);
 		void WriteDescriptors(uint32_t objIndex);
 		bool UpdateShadowmapLayers();
+		void CreateDynamicUniformBuffer(VkManagedBuffer *& dyn_buffer, uint32_t objectCount, uint32_t bufferDataSize);
 		void CreateUniformBufferSet(VkManagedBuffer *& stagingBuffer, std::vector<VkManagedBuffer*>& buffers, uint32_t objectCount, uint32_t bufferDataSize);
 		void CreateUniformBufferPair(VkManagedBuffer *& stagingBuffer, VkManagedBuffer *& buffer, uint32_t bufferDataSize);
 		void Clean();
@@ -118,10 +124,12 @@ namespace Vulkan
 		VkManagedBuffer * m_meshVertexData = nullptr;
 		VkManagedBuffer * m_meshIndexData = nullptr;
 
+		VkManagedCommandBuffer * m_shadowPassBuffers = nullptr;
 		VkManagedCommandBuffer * m_swapChainbuffers = nullptr;
 		VkManagedCommandBuffer * m_uniformBufferUpdater = nullptr;
 
 		VkManagedSampler * m_colorSampler = nullptr;
+		VkManagedSampler * m_depthSampler = nullptr;
 
 		std::unordered_map<uint32_t, int> m_meshDraws;
 		std::vector<glm::mat4> m_meshPartTransforms;
@@ -129,16 +137,19 @@ namespace Vulkan
 		VkManagedBuffer * m_uniformVStagingBufferFWD = nullptr;
 		std::vector<VkManagedBuffer*> m_uniformVBuffersFWD;
 
+		VkManagedBuffer * m_uniformVModelDynamicBuffer = nullptr;
+		void * m_uniformVModelDynamicBufferAlignedData = nullptr;
+
+		VkManagedBuffer * m_uniformVMaterialDynamicBuffer = nullptr;
+		void * m_uniformVMaterialDynamicBufferAlignedData = nullptr;
+
 		VkManagedBuffer * m_uniformLightingstagingBufferFWD = nullptr;
 		VkManagedBuffer * m_uniformLightingBufferFWD = nullptr;
 
-		VkManagedBuffer * m_uniformVStagingBufferMaterialFWD = nullptr;
-		std::vector<VkManagedBuffer*> m_uniformVBuffersMaterialFWD;
-		VkManagedBuffer * m_uniformStagingBufferSDWProj = nullptr;
-		std::vector<VkManagedBuffer*> m_uniformBuffersSDWProj;
 		int m_objectCount = 0;
 		int m_objectCountOld = 0;
-	
+		size_t m_lightCount = 0;
+		VkManagedImage * m_layeredShadowMap = nullptr;
 		std::unordered_map<uint32_t, std::shared_ptr<VkManagedImage>> m_deviceLoadedTextures;
 		std::unordered_map<uint32_t, Light*> m_lights;
 		std::unordered_map<uint32_t, Camera*> m_cameras;

@@ -248,7 +248,7 @@ void Vulkan::VkManagedImage::LoadData(VkManagedCommandBuffer * buffer, uint32_t 
 	vkUnmapMemory(m_device, stagingImage.m_imageMemory);
 	VkCommandBuffer recBuff = buffer->Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, bufferIndex);
 	this->SetLayout(recBuff, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0, layers, submitQueue->familyIndex);
-	stagingImage.Copy(recBuff, this, submitQueue->familyIndex);
+	stagingImage.Copy(recBuff, imageCI.extent, this, submitQueue->familyIndex);
 	buffer->End(0);
 	buffer->Submit(submitQueue->queue, {}, {}, {});
 	vkQueueWaitIdle(submitQueue->queue);
@@ -285,15 +285,7 @@ void Vulkan::VkManagedImage::SetLayout(VkCommandBuffer buffer, VkImageLayout new
 
 	imageMemoryBarrier.image = m_image;
 
-	if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
-		imageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-
-		if (format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT)
-			imageMemoryBarrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
-	}
-	else
-		imageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-
+	imageMemoryBarrier.subresourceRange.aspectMask = aspect;
 	imageMemoryBarrier.subresourceRange.baseMipLevel = 0;
 	imageMemoryBarrier.subresourceRange.levelCount = 1;
 	imageMemoryBarrier.subresourceRange.baseArrayLayer = baseLayer;
@@ -319,11 +311,19 @@ void Vulkan::VkManagedImage::SetLayout(VkCommandBuffer buffer, VkImageLayout new
 		imageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
 		imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 	}
+	else if (layout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+		imageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+		imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	}
 	else if (layout == VK_IMAGE_LAYOUT_PREINITIALIZED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
 		imageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
 		imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 	}
 	else if (layout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+		imageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+		imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	}
+	else if (layout == VK_IMAGE_LAYOUT_GENERAL && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
 		imageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
 		imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 	}
@@ -429,10 +429,10 @@ void Vulkan::VkManagedImage::SetLayout(VkCommandBuffer buffer, VkImageLayout new
 	layout = newLayout;
 }
 
-void Vulkan::VkManagedImage::Copy(VkCommandBuffer buffer, VkManagedImage * dst, uint32_t queueFamily, VkOffset3D srcOffset, VkOffset3D dstOffset, VkImageSubresourceLayers srcLayers, VkImageSubresourceLayers dstLayers)
+void Vulkan::VkManagedImage::Copy(VkCommandBuffer buffer, VkExtent3D copyExtent, VkManagedImage * dst, uint32_t queueFamily, VkOffset3D srcOffset, VkOffset3D dstOffset, VkImageSubresourceLayers srcLayers, VkImageSubresourceLayers dstLayers)
 {
 	VkImageCopy copyData = defaultCopySettings;
-	copyData.extent = m_imageExtent;
+	copyData.extent = copyExtent;
 	copyData.srcSubresource.aspectMask = aspect;
 	copyData.dstSubresource.aspectMask = dst->aspect;
 
@@ -448,11 +448,11 @@ void Vulkan::VkManagedImage::Copy(VkCommandBuffer buffer, VkManagedImage * dst, 
 
 	if (srcLayers.layerCount != 0 && srcLayers.aspectMask != 0)
 		copyData.srcSubresource = srcLayers;
-	if (srcOffset.x != 0 || srcOffset.y != 0 || srcOffset.z != 0)
+	if (srcOffset.x != 0 && srcOffset.y != 0 && srcOffset.z != 0)
 		copyData.srcOffset = srcOffset;
 	if (dstLayers.layerCount != 0 && dstLayers.aspectMask != 0)
 		copyData.dstSubresource = dstLayers;
-	if (dstOffset.x != 0 || dstOffset.y != 0 || dstOffset.z != 0)
+	if (dstOffset.x != 0 && dstOffset.y != 0 && dstOffset.z != 0)
 		copyData.dstOffset = dstOffset;
 
 	vkCmdCopyImage(

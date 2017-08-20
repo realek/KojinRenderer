@@ -28,59 +28,60 @@ layout(location = 3) in vec2 inTexCoord;
 layout(location = 4) flat in vec4 inAmbientLight;
 layout(location = 5) in vec3 inFragPos;
 layout(location = 6) in vec3 inFragNormal;
-layout(location = 7) flat in VkLight inLights[6];
+layout(location = 7) in vec4 inVertex;
+layout(location = 8) flat in VkLight inLights[6];
 
 
 layout(set = 1, binding = 0) uniform sampler2D texSampler;
-//layout(set = 1, binding = 1) uniform sampler2DArray depthSampler;
+layout(set = 1, binding = 1) uniform sampler2DArray depthSampler;
 
 
 layout(location = 0) out vec4 outColor;
 
 const float gamma = 2.2f;
 
-//float textureProj(vec4 P, vec2 off, int arrayIdx)
-//{
-//	float shadow = 1.0;
-//	vec4 shadowCoord = P / P.w;
-//	if ( shadowCoord.z > -1.0 && shadowCoord.z < 1.0 ) 
-//	{
-//		if((shadowCoord.x >= 0.0) && (shadowCoord.x <= 1.0f) && (shadowCoord.y >= 0.0) && (shadowCoord.y <= 1.0f) )
-//		{
-//			vec3 arrTexCoord = vec3(shadowCoord.xy + off,arrayIdx);
-//			float dist = texture( depthSampler, arrTexCoord ).r;
-//			if ( shadowCoord.w > 0.0 && dist < shadowCoord.z ) 
-//			{
-//				shadow = 0.1f;
-//			}
-//		}
+float textureProj(vec4 P, vec2 off, int arrayIdx)
+{
+	float shadow = 1.0;
+	vec4 shadowCoord = P / P.w;
+	if ( shadowCoord.z > -1.0 && shadowCoord.z < 1.0 ) 
+	{
+		if((shadowCoord.x >= 0.0) && (shadowCoord.x <= 1.0f) && (shadowCoord.y >= 0.0) && (shadowCoord.y <= 1.0f) )
+		{
+			vec3 arrTexCoord = vec3(shadowCoord.xy + off,arrayIdx);
+			float dist = texture( depthSampler, arrTexCoord ).r;
+			if ( shadowCoord.w > 0.0 && dist < shadowCoord.z ) 
+			{
+				shadow = 0.1f;
+			}
+		}
 
-//	}
-//	return shadow;
-//}
+	}
+	return shadow;
+}
 
-//float filterPCF(vec4 sc, int index)
-//{
-//	ivec2 texDim = textureSize(depthSampler, 0).xy;
-//	float scale = 1.5;
-//	float dx = scale * 1.0 / float(texDim.x);
-//	float dy = scale * 1.0 / float(texDim.y);
-//
-//	float shadowFactor = 0.0;
-//	int count = 0;
-//	int range = 1;
-//	
-//	for (int x = -range; x <= range; x++)
-//	{
-//		for (int y = -range; y <= range; y++)
-//		{
-//			shadowFactor += textureProj(sc, vec2(dx*x, dy*y), index);
-//			count++;
-//		}
-//	
-//	}
-//	return shadowFactor / count;
-//}
+float filterPCF(vec4 sc, int index)
+{
+	ivec2 texDim = textureSize(depthSampler, 0).xy;
+	float scale = 1.5;
+	float dx = scale * 1.0 / float(texDim.x);
+	float dy = scale * 1.0 / float(texDim.y);
+
+	float shadowFactor = 0.0;
+	int count = 0;
+	int range = 1;
+	
+	for (int x = -range; x <= range; x++)
+	{
+		for (int y = -range; y <= range; y++)
+		{
+			shadowFactor += textureProj(sc, vec2(dx*x, dy*y), index);
+			count++;
+		}
+	
+	}
+	return shadowFactor / count;
+}
 
 //float LinearizeDepth(float depth)
 //{
@@ -108,7 +109,7 @@ void main()
 		vec3 V; // fragment eye 
 		vec3 D; // light forward from rotation
 		float atten = 1.0f;
-		
+		float shadowCoef = 1.0f;
 		D = normalize(-inLights[i].direction.xyz);
 		if(inLights[i].lightProps[0] == 2)
 		{
@@ -164,21 +165,21 @@ void main()
 
 			}
 		}
-		lightColor += atten*intensity*(diffuse+specular);
-//		if(iMat != lights_data.lights[i].lightBiasedMVP)
-//		{
-//			outShadowCoords[i] = lights_data.lights[i].lightBiasedMVP*vertex;		
-//		}
-//		else
-//		{
-//			outShadowCoords[i] = vec4(0.0f,0.0f,0.0f,0.0f);
-//		}
+		
+		if(inLights[i].lightBiasedMVP != iMat)
+		{
+			vec4 sVertPos = inLights[i].lightBiasedMVP*inVertex;
+            shadowCoef = filterPCF(sVertPos/sVertPos.w,i);
+		}
+		lightColor += shadowCoef*atten*intensity*(diffuse+specular);
+
+
 
 	}
 	outColor *=vec4(inAmbientLight.xyz,0.0f)+vec4(lightColor.xyz,1.0f);
 	outColor = vec4(clamp(outColor.x,0.0f,1.0f),clamp(outColor.y,0.0f,1.0f),clamp(outColor.z,0.0f,1.0f),outColor.w);
   //SHADOWMAP VISUAL
   //outColor = vec4(1.0-vec3(LinearizeDepth(texture(depthSampler, fragTexCoord).x)), 1.0);
-  //outColor.rgb = pow(outColor.rgb,vec3(1.0f/gamma));
+  //  outColor.rgb = pow(outColor.rgb,vec3(1.0f/gamma));
 	
 }

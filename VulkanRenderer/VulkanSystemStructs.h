@@ -177,21 +177,13 @@ namespace Vulkan
 	struct modelData
 	{
 		glm::mat4 model;
-		glm::mat4 modelView;
-		glm::mat4 modelViewProjection;
-		glm::mat4 normal;
 
-		inline void ComputeMVP(const glm::mat4& view, const glm::mat4& proj)
-		{
-			modelView = view*model;
-			normal = glm::transpose(glm::inverse(modelView));
-			modelViewProjection = proj*modelView;
-		}
 		modelData(const modelData& other) = delete;
 	};
 
 	struct materialData
 	{
+		materialData() : materialDiffuse(0),specularity(0) {}
 		glm::vec4 materialDiffuse;
 		float specularity;
 		materialData(const materialData& other) = delete;

@@ -163,7 +163,7 @@ int main()
 		int appVer[3] = { 0,0,0 };
 		std::shared_ptr<Vulkan::KojinRenderer> renderer;
 		Vulkan::Camera * camera;
-		std::shared_ptr<Vulkan::Camera> camera1;
+		Vulkan::Camera * camera1;
 		std::shared_ptr<Vulkan::Camera> camera2;
 		Vulkan::Light* light;
 		Vulkan::Light* light1;
@@ -185,14 +185,14 @@ int main()
 			renderer = std::make_shared<Vulkan::KojinRenderer>(window,"Vulkan Tester",appVer);
 
 			//testing stuff
-		/*	
+			
 			cubeMesh = Vulkan::Mesh::GetCube();
 			planeMaterial.diffuseColor = { 0.4f,0.3f,0.0f,1.0f };
-			planeMaterial.diffuseTexture = Vulkan::Texture2D::GetWhiteTexture().lock()->ImageView();
+			planeMaterial.albedo = renderer->GetTextureWhite();
 			planeMaterial.specularity = 0;
 			planeMesh = Vulkan::Mesh::GetPlane();
 			sphereMesh = Vulkan::Mesh::GetSphere();
-			*/
+			
 			mesh = Vulkan::Mesh::LoadMesh("models/Stormtrooper.obj");
 			//material.diffuseTexture = Vulkan::Texture2D::CreateFromFile("textures/Stormtrooper_Diffuse.png").lock()->ImageView();
 			material.albedo = renderer->LoadTexture("textures/Stormtrooper_Diffuse.png",false);
@@ -266,46 +266,50 @@ int main()
 		camera = renderer->CreateCamera({ 0, 1, -4 },true);
 		camera->LookAt({ 0,0,0 });
 		//	camera->SetAsMain();
-		//	camera1 = renderer->CreateCamera({ 0, 1, 4 });
-		//	camera1->SetViewport({ 0.0f,0.0f }, { 0.35f,0.35f });
-		//	//camera1->SetPositionRotation(camera1->m_position, { 15,180,0 });
-		//	camera1->LookAt({ 0,0.0,0.0 });
+			camera1 = renderer->CreateCamera({ 0, 1, 4 },true);
+			camera1->SetViewport({ 0.0f,0.0f }, { 0.35f,0.35f });
+			//camera1->SetPositionRotation(camera1->m_position, { 15,180,0 });
+			camera1->LookAt({ 0,0.0,0.0 });
 
 		//	camera2 = renderer->CreateCamera({ 3,1,0 });
 		//	camera2->SetViewport({ 0.65f,0.0f }, { 0.35f,0.35f });
 		//	camera2->LookAt({ 0,0,0 });
 
-			light = renderer->CreateLight({ 0.0,2, -3.0 });
-			light->SetType(Vulkan::LightType::Spot);
-			light->range = 10.0f;
-			light->intensity = 2.0f;
-			light->angle = 30;
-			light->m_rotation = { 45,0,0 };
-			light->diffuseColor = glm::vec4(0.0, 0.65, 0.85, 1.0);
 
-			light1 = renderer->CreateLight({ 0.0,2, 3.0 });
-			light1->SetType(Vulkan::LightType::Spot);
-			light1->range = 10.0f;
-			light1->intensity = 2.0f;
-			light1->angle = 30;
-			light1->m_rotation = { 45,180,0 };
-			light1->diffuseColor = glm::vec4(0.65, 0.15, 0.25, 1.0);
 
-			light2 = renderer->CreateLight({ 2.0 ,2, 0.0 });
-			light2->SetType(Vulkan::LightType::Spot);
-			light2->range = 10.0f;
-			light2->intensity = 2.0f;
-			light2->angle = 30;
-			light2->m_rotation = { 45,-90,0 };
-			light2->diffuseColor = glm::vec4(0.25, 0.25, 0.65, 1.0);
+        light = renderer->CreateLight({ 0.0,2, -3.0 });
+        light->SetType(Vulkan::LightType::Spot);
+        light->range = 10.0f;
+        light->intensity = 1.0f;
+        light->angle = 30;
+        light->m_rotation = { 45,0,0 };
+        light->diffuseColor = glm::vec4(0.0, 0.65, 0.85, 1.0);
 
-			lightDirectional = renderer->CreateLight({ 0,0, 0 });
-			lightDirectional->SetType(Vulkan::LightType::Directional);
-			lightDirectional->range = 10.0f;
-			lightDirectional->intensity = 0.4f;
-			lightDirectional->angle = 30;
-			lightDirectional->m_rotation = { 50,-30,0 };
-			lightDirectional->diffuseColor = glm::vec4(1.0, 1.0, 1.0, 1.0);
+		lightDirectional = renderer->CreateLight({ 0,0, 0 });
+		lightDirectional->SetType(Vulkan::LightType::Directional);
+		lightDirectional->range = 0.0f;
+		lightDirectional->intensity = 0.4f;
+		lightDirectional->angle = 0.0f;
+		lightDirectional->m_rotation = { 50 , -30, 0 };
+		lightDirectional->diffuseColor = glm::vec4(1.0, 1.0, 1.0, 1.0);
+
+        //light1 = renderer->CreateLight({ 0.0,2, 3.0 });
+        //light1->SetType(Vulkan::LightType::Spot);
+        //light1->range = 10.0f;
+        //light1->intensity = 1.0f;
+        //light1->angle = 30;
+        //light1->m_rotation = { 45,180,0 };
+        //light1->diffuseColor = glm::vec4(0.65, 0.15, 0.25, 1.0);
+
+        //light2 = renderer->CreateLight({ 2.0 ,2, 0.0 });
+        //light2->SetType(Vulkan::LightType::Spot);
+        //light2->range = 10.0f;
+        //light2->intensity = 1.0f;
+        //light2->angle = 30;
+        //light2->m_rotation = { 45,-90,0 };
+        //light2->diffuseColor = glm::vec4(0.25, 0.25, 0.65, 1.0);
+
+		
 
 		//}
 		////!Light Test
@@ -347,16 +351,10 @@ int main()
 
 			mesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 0,0,0 }, { 0,rotmod,0 }, { 0.5,0.5,0.5 });
 			planeMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 0,0,0 }, { 0, 0, 0 }, { 2,2,2 });
-			renderer->Draw({ mesh.get(),planeMesh.get() }, { &material,&whiteMaterial});
+			cubeMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 2,1,2 }, { 45, rotmod, 0 }, { 1,1,1 });
+			sphereMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ -2,1,1 }, { 0,rotmod,0 }, { 1,1,1 });
 
-			//renderer->Load(planeMesh, &planeMaterial);
-			//	cubeMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 2,1,2 }, { 45, rotmod, 0 }, { 1,1,1 });
-			//	renderer->Load(cubeMesh, &whiteMaterial);
-			//	sphereMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ -2,1,1 }, { 0,rotmod,0 }, { 1,1,1 });
-			//	renderer->Load(sphereMesh, &whiteMaterial);
-				//!load up objects
-
-				//present
+			renderer->Draw({ mesh.get(),planeMesh.get(), cubeMesh.get(), sphereMesh.get() }, { &material, &planeMaterial, &whiteMaterial, &whiteMaterial});
 
 			renderer->Render();
 			//

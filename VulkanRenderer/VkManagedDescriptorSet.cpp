@@ -165,4 +165,7 @@ Vulkan::VkManagedDescriptorSet::VkManagedDescriptorSet(VkDevice device, VkDescri
 	{
 		m_totalDescriptorCounts[i] *= setCount;
 	}
+
+	uniformDynamicOffsetCount = 0;
+	uniformDynamicAlignment = 0;
 }

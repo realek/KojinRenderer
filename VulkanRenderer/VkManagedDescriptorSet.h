@@ -18,9 +18,14 @@ namespace Vulkan
 		void WriteSets();
 		VkDescriptorSet Set(uint32_t setIndex);
 		size_t Size();
+
+		//TEMP SHIT
+		VkDeviceSize uniformDynamicAlignment;
+		uint32_t uniformDynamicOffsetCount;
 	private:
 		VkManagedDescriptorSet(VkDevice device, VkDescriptorPool pool, std::vector<VkDescriptorSet> sets, uint32_t totalDescriptorCounts[11]);
 		friend class VkManagedDescriptorPool;
+
 	private:
 		std::vector<VkDescriptorSet> m_internalSets;
 		std::vector<std::vector<VkWriteDescriptorSet>> m_writes;

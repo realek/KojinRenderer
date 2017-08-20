@@ -21,7 +21,7 @@ VkDeviceSize Vulkan::VkManagedBuffer::Size()
 	return m_bufferSize;
 }
 
-VkDeviceSize Vulkan::VkManagedBuffer::AlignedSize()
+VkDeviceSize Vulkan::VkManagedBuffer::Alignment()
 {
 	return m_alignedDataSize;
 }
