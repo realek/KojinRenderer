@@ -16,9 +16,9 @@ namespace Vulkan
 	class VkManagedSampler
 	{
 	public:
-		VkManagedSampler(VkManagedDevice * device, VkManagedSamplerMode mode, float anisotrophy, VkBorderColor color);
-		void BasicEdit(VkManagedSamplerMode mode, float anisotrophy, VkBorderColor color, bool apply);
-		void MipMapEdit(VkFilter magfilter, VkFilter minFilter, VkSamplerMipmapMode mipmapMode, bool apply);
+		VkManagedSampler(VkManagedDevice * device, VkManagedSamplerMode mode, float anisotrophy, VkBorderColor color, VkBool32 compare = VK_FALSE);
+		void BasicEdit(VkManagedSamplerMode mode, float anisotrophy, VkBorderColor color, VkBool32 compare);
+		void MipMapEdit(VkFilter magfilter, VkFilter minFilter, VkSamplerMipmapMode mipmapMode);
 		operator VkSampler() const;
 	private:
 		VkManagedObject<VkDevice> m_device{ vkDestroyDevice, false };

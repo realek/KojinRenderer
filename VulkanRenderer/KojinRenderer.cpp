@@ -93,7 +93,7 @@ Vulkan::KojinRenderer::KojinRenderer(SDL_Window * window, const char * appName, 
 		m_vkMainCmdPool->CreateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1, m_uniformBufferUpdater);
 		m_vkMainCmdPool->CreateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1, m_shadowPassCommands);
 		m_colorSampler = new VkManagedSampler(m_vkDevice, VkManagedSamplerMode::COLOR_NORMALIZED_COORDINATES, 16, VK_BORDER_COLOR_INT_OPAQUE_BLACK);
-		m_depthSampler = new VkManagedSampler(m_vkDevice, VkManagedSamplerMode::DEPTH_NORMALIZED_COORDINATES, 0, VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE);
+		m_depthSampler = new VkManagedSampler(m_vkDevice, VkManagedSamplerMode::DEPTH_NORMALIZED_COORDINATES, 16, VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE);
 		m_layeredShadowMap = new VkManagedImage(m_vkDevice); //shadowmap_image
 	}
 	catch(...)
@@ -363,7 +363,7 @@ void Vulkan::KojinRenderer::Render()
 
 	}
 	m_uniformBufferUpdater->End();
-	m_uniformBufferUpdater->Submit(m_vkMainCmdPool->PoolQueue()->queue, { VK_PIPELINE_STAGE_HOST_BIT }, { m_semaphores->Next()}, { m_semaphores->Last()});
+	m_uniformBufferUpdater->Submit(m_vkMainCmdPool->PoolQueue()->queue, { VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT }, { m_semaphores->Next()}, { m_semaphores->Last()});
 
 	std::vector<VkIndexedDraw> indexdraws;
 	indexdraws.resize(m_objectCount);
@@ -402,7 +402,8 @@ void Vulkan::KojinRenderer::Render()
 	std::vector<VkClearValue> clearValues;
 	clearValues.resize(2);
 	clearValues[0].color = { 0,0.15f,0.1f,1.0f };
-	clearValues[1].depthStencil = { (uint32_t)1.0f, (uint32_t)0.0f };
+	clearValues[1].depthStencil = { 1, 0 };
+
 	m_shadowPassCommands->Begin(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
 	{
 		VkCommandBuffer shadowCmds = m_shadowPassCommands->Buffer();
@@ -413,10 +414,15 @@ void Vulkan::KojinRenderer::Render()
 		for (std::pair<uint32_t, Light*> l : m_lights)
 		{
 			states.scissors[0].extent = m_vkRenderPassSDWProj->GetExtent();
+			states.scissors[0].offset.x = 0;
+			states.scissors[0].offset.y = 0;
 			states.viewports[0].maxDepth = 1.0f;
 			states.viewports[0].height = (float)states.scissors[0].extent.height;
 			states.viewports[0].width = (float)states.scissors[0].extent.width;
-
+			states.viewports[0].minDepth = 0;
+			states.viewports[0].maxDepth = 1.0f;
+			states.viewports[0].x = 0;
+			states.viewports[0].y = 0;
 			states.depthBias.constDepth = VkShadowmapDefaults::k_depthBias;
 			states.depthBias.depthSlope = VkShadowmapDefaults::k_depthBiasSlope;
 			states.depthBias.depthClamp = 0.0f;
@@ -444,7 +450,7 @@ void Vulkan::KojinRenderer::Render()
 			dstRes.layerCount = 1;
 
 			VkExtent3D copyExtent = {};
-			copyExtent.depth = 1.0f;
+			copyExtent.depth = 1;
 			copyExtent.height = VkShadowmapDefaults::k_resolution;
 			copyExtent.width = copyExtent.height;
 			passDepth->Copy(shadowCmds, copyExtent, m_layeredShadowMap, m_vkPresentQueue->familyIndex, { 0,0,0 }, { 0,0,0 }, { (0),(0),(0),(1) }, dstRes); //needs per layer setup here
@@ -489,9 +495,9 @@ void Vulkan::KojinRenderer::Render()
 				VkManagedImage* scImage = m_vkSwapchain->SwapchainImage(cmdIndex);
 
 				VkExtent3D copyExtent = {};
-				copyExtent.depth = 1.0f;
-				copyExtent.width = camera.second->m_viewPort.width;
-				copyExtent.height = camera.second->m_viewPort.height;
+				copyExtent.depth = 1;
+				copyExtent.width = (uint32_t)camera.second->m_viewPort.width;
+				copyExtent.height = (uint32_t)camera.second->m_viewPort.height;
 
 				VkOffset3D copyOffset = {};
 				copyOffset.z = 0; // same depth
@@ -721,7 +727,7 @@ void Vulkan::KojinRenderer::WriteDescriptors(uint32_t objIndex)
 		fragmentDescriptorWrites[2].pBufferInfo = &fragmentShadowBuffer;
 	}
 
-	vkUpdateDescriptorSets(*m_vkDevice, static_cast<uint32_t>(fragmentDescriptorWrites.size()), fragmentDescriptorWrites.data(), 0, nullptr);
+	vkUpdateDescriptorSets(*m_vkDevice, (uint32_t)(fragmentDescriptorWrites.size()), fragmentDescriptorWrites.data(), 0, nullptr);
 }
 
 bool Vulkan::KojinRenderer::UpdateShadowmapLayers()

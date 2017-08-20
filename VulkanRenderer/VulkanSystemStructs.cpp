@@ -22,6 +22,6 @@ const VkFormat Vulkan::VkShadowmapDefaults::k_attachmentRGBFormat = VK_FORMAT_R3
 const VkFormat Vulkan::VkShadowmapDefaults::k_attachmentDepthFormat = VK_FORMAT_D32_SFLOAT;
 const std::vector<VkClearValue> Vulkan::VkShadowmapDefaults::k_clearValues = 
 {
-	{{1.0f,0.0}},
-	{{1.0f,0.0}}
+	{1, 0},
+	{1, 0}
 };

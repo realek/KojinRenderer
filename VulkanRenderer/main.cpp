@@ -196,7 +196,6 @@ int main()
 			sphereMesh = Vulkan::Mesh::GetSphere();
 			
 			mesh = Vulkan::Mesh::LoadMesh("models/Stormtrooper.obj");
-			//material.diffuseTexture = Vulkan::Texture2D::CreateFromFile("textures/Stormtrooper_Diffuse.png").lock()->ImageView();
 			material.albedo = renderer->LoadTexture("textures/Stormtrooper_Diffuse.png",false);
 			material.specularity = 1000;
 			whiteMaterial.albedo = renderer->GetTextureWhite();
