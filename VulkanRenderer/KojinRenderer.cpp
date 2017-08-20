@@ -276,7 +276,7 @@ Vulkan::Texture * Vulkan::KojinRenderer::LoadTexture(std::string filepath, bool 
 	auto image = std::make_shared<VkManagedImage>(m_vkDevice);
 	m_virtualTextures.insert(std::make_pair(texture->id, texture));
 	m_deviceLoadedTextures.insert(std::make_pair(texture->id,image));
-	image->Build({ static_cast<uint32_t>(surf->w),static_cast<uint32_t>(surf->h) }, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 1, VK_IMAGE_TILING_OPTIMAL, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+	image->Build({ static_cast<uint32_t>(surf->w),static_cast<uint32_t>(surf->h) }, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 1, VK_IMAGE_TILING_OPTIMAL, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 	VkManagedCommandBuffer cmdbuff = m_vkMainCmdPool->CreateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
 	VkManagedQueue * cmdPoolQueue = m_vkMainCmdPool->PoolQueue();
 	image->LoadData(&cmdbuff,0,cmdPoolQueue, surf->pixels, bytesPerPixel, static_cast<uint32_t>(surf->w), static_cast<uint32_t>(surf->h), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
@@ -295,7 +295,7 @@ Vulkan::Texture * Vulkan::KojinRenderer::GetTextureWhite()
 	m_whiteTexture = new Vulkan::Texture(nullptr, w, h, 4);
 	auto image = std::make_shared<VkManagedImage>(m_vkDevice);
 	m_deviceLoadedTextures.insert(std::make_pair(m_whiteTexture->id, image));
-	image->Build({w,h }, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 1, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+	image->Build({w,h }, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 1, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
 	VkManagedCommandBuffer cmdbuff = m_vkMainCmdPool->CreateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
 	VkManagedQueue * cmdPoolQueue = m_vkMainCmdPool->PoolQueue();
 	image->LoadData(&cmdbuff, 0, cmdPoolQueue, pixels.data(), 4, w, h, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
@@ -344,13 +344,6 @@ void Vulkan::KojinRenderer::Render()
 
 
 	UpdateShadowmapLayers();
-	//write descriptors here!
-	for (int oc = 0; oc < m_objectCountOld; ++oc)
-	{
-		WriteShadowDescriptorSet(oc);
-		WriteDescriptors(oc);
-	}
-
 
 	//update model uniform buffers
 	m_uniformBufferUpdater->Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
@@ -391,6 +384,14 @@ void Vulkan::KojinRenderer::Render()
 
 		}
 	}
+
+	//write descriptors here!
+	for (int oc = 0; oc < m_objectCountOld; ++oc)
+	{
+		WriteShadowDescriptorSet(oc);
+		WriteDescriptors(oc);
+	}
+
 	//set states for the forward render pipeline
 	VkDynamicStatesBlock states;
 	states.viewports.resize(1);
