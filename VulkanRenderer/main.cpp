@@ -164,7 +164,7 @@ int main()
 		std::shared_ptr<Vulkan::KojinRenderer> renderer;
 		Vulkan::Camera * camera;
 		Vulkan::Camera * camera1;
-		std::shared_ptr<Vulkan::Camera> camera2;
+		Vulkan::Camera * camera2;
 		Vulkan::Light* light;
 		Vulkan::Light* light1;
 		Vulkan::Light* light2;
@@ -267,25 +267,14 @@ int main()
 		//{
 		camera = renderer->CreateCamera({ 0, 1, -4 },true);
 		camera->LookAt({ 0,0,0 });
-		//	camera->SetAsMain();
-			camera1 = renderer->CreateCamera({ 0, 1, 4 },true);
-			camera1->SetViewport({ 0.0f,0.0f }, { 0.35f,0.35f });
-			//camera1->SetPositionRotation(camera1->m_position, { 15,180,0 });
-			camera1->LookAt({ 0,0.0,0.0 });
+		
+		camera1 = renderer->CreateCamera({ 0, 1, 4 },true);
+		camera1->SetViewport({ 0.0f,0.0f }, { 0.35f,0.35f });
+		camera1->LookAt({ 0,0.0,0.0 });
 
-		//	camera2 = renderer->CreateCamera({ 3,1,0 });
-		//	camera2->SetViewport({ 0.65f,0.0f }, { 0.35f,0.35f });
-		//	camera2->LookAt({ 0,0,0 });
-
-
-
-        light = renderer->CreateLight({ 0.0,2, -3.0 });
-        light->SetType(Vulkan::LightType::Spot);
-        light->range = 10.0f;
-        light->intensity = 1.0f;
-        light->angle = 30;
-        light->m_rotation = { 45,0,0 };
-        light->diffuseColor = glm::vec4(0.0, 0.65, 0.85, 1.0);
+		camera2 = renderer->CreateCamera({ 3, 2, 0 }, true);
+		camera2->SetViewport({ 0.65f,0.0f }, { 0.35f,0.35f });
+		camera2->LookAt({ 0,0,0 });
 
 		lightDirectional = renderer->CreateLight({ 0,0, 0 });
 		lightDirectional->SetType(Vulkan::LightType::Directional);
@@ -294,6 +283,14 @@ int main()
 		lightDirectional->angle = 0.0f;
 		lightDirectional->m_rotation = { 50 , -30, 0 };
 		lightDirectional->diffuseColor = glm::vec4(1.0, 1.0, 1.0, 1.0);
+
+        light = renderer->CreateLight({ 0.0,2, -3.0 });
+        light->SetType(Vulkan::LightType::Spot);
+        light->range = 10.0f;
+        light->intensity = 1.0f;
+        light->angle = 30;
+        light->m_rotation = { 45,0,0 };
+        light->diffuseColor = glm::vec4(0.0, 0.65, 0.85, 1.0);
 
         light1 = renderer->CreateLight({ 0.0,2, 3.0 });
         light1->SetType(Vulkan::LightType::Spot);

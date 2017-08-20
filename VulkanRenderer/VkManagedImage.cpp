@@ -448,11 +448,11 @@ void Vulkan::VkManagedImage::Copy(VkCommandBuffer buffer, VkExtent3D copyExtent,
 
 	if (srcLayers.layerCount != 0 && srcLayers.aspectMask != 0)
 		copyData.srcSubresource = srcLayers;
-	if (srcOffset.x != 0 && srcOffset.y != 0 && srcOffset.z != 0)
+	if (srcOffset.x != 0 || srcOffset.y != 0 || srcOffset.z != 0)
 		copyData.srcOffset = srcOffset;
 	if (dstLayers.layerCount != 0 && dstLayers.aspectMask != 0)
 		copyData.dstSubresource = dstLayers;
-	if (dstOffset.x != 0 && dstOffset.y != 0 && dstOffset.z != 0)
+	if (dstOffset.x != 0 || dstOffset.y != 0 || dstOffset.z != 0)
 		copyData.dstOffset = dstOffset;
 
 	vkCmdCopyImage(

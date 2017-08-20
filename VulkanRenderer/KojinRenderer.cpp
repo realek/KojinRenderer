@@ -489,9 +489,15 @@ void Vulkan::KojinRenderer::Render()
 
 				VkExtent3D copyExtent = {};
 				copyExtent.depth = 1.0f;
-				copyExtent.width = states.viewports[0].width;
-				copyExtent.height = states.viewports[0].height;
-				passColor->Copy(cBuffer, copyExtent, scImage);
+				copyExtent.width = camera.second->m_viewPort.width;
+				copyExtent.height = camera.second->m_viewPort.height;
+
+				VkOffset3D copyOffset = {};
+				copyOffset.z = 0; // same depth
+				copyOffset.x = camera.second->m_scissor.offset.x;
+				copyOffset.y = camera.second->m_scissor.offset.y;
+
+				passColor->Copy(cBuffer, copyExtent, scImage, VK_QUEUE_FAMILY_IGNORED, copyOffset, copyOffset);
 			}
 		}
 	}
