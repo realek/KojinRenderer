@@ -18,9 +18,6 @@
     <ClCompile Include="SPIRVShader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="VulkanRenderUnit.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Mesh.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -52,9 +49,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="VkManagedPipeline.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="VulkanObjectUtils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="VkManagedFrameBuffer.cpp">
@@ -147,9 +141,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="VkManagedPipeline.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="VulkanObjectUtils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="VkManagedFrameBuffer.h">

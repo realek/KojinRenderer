@@ -4,7 +4,7 @@
 
 Vulkan::VkManagedCommandBuffer::VkManagedCommandBuffer(VkDevice device, VkCommandBufferAllocateInfo allocInfo) : bufferLevel(allocInfo.level), m_pool(allocInfo.commandPool)
 {
-	m_buffers.resize(allocInfo.commandBufferCount);
+	m_buffers.resize(allocInfo.commandBufferCount,VK_NULL_HANDLE);
 	VkResult result = vkAllocateCommandBuffers(device, &allocInfo, m_buffers.data());
 	if (result != VK_SUCCESS)
 		throw std::runtime_error("Failed to allocate managed command buffer, reason: " + VkResultToString(result));

@@ -267,18 +267,18 @@ int main()
 		camera = renderer->CreateCamera({ 0, 1, -4 },true);
 		camera->LookAt({ 0,0,0 });
 		
-		camera1 = renderer->CreateCamera({ 0, 1, 4 },true);
-		camera1->SetViewport({ 0.0f,0.0f }, { 0.35f,0.35f });
-		camera1->LookAt({ 0,0.0,0.0 });
+		//camera1 = renderer->CreateCamera({ 0, 1, 4 },true);
+		//camera1->SetViewport({ 0.0f,0.0f }, { 0.35f,0.35f });
+		//camera1->LookAt({ 0,0.0,0.0 });
 
-		camera2 = renderer->CreateCamera({ 3, 2, 0 }, true);
-		camera2->SetViewport({ 0.65f,0.0f }, { 0.35f,0.35f });
-		camera2->LookAt({ 0,0,0 });
+		//camera2 = renderer->CreateCamera({ 3, 2, 0 }, true);
+		//camera2->SetViewport({ 0.65f,0.0f }, { 0.35f,0.35f });
+		//camera2->LookAt({ 0,0,0 });
 
 		lightDirectional = renderer->CreateLight({ 0,0, 0 });
 		lightDirectional->SetType(Vulkan::LightType::Directional);
 		lightDirectional->range = 0.0f;
-		lightDirectional->intensity = 0.4f;
+		lightDirectional->intensity = 0.3f;
 		lightDirectional->angle = 0.0f;
 		lightDirectional->m_rotation = { 50 , -30, 0 };
 		lightDirectional->diffuseColor = glm::vec4(1.0, 1.0, 1.0, 1.0);
@@ -331,6 +331,7 @@ int main()
 		{
 			auto currentTime = std::chrono::high_resolution_clock::now();
 			float frameDeltaTime = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0f;
+
 			//input read
 			if (fpsTimer > 1)
 			{
@@ -344,20 +345,10 @@ int main()
 				fpsCount = 0;
 				fpsTimer = 0;
 			}
-			SDL_INPUT();
-			if (w) light->m_position.z += frameDeltaTime * 2;
-			else if (s) light->m_position.z -= frameDeltaTime * 2;
-			else if (a) light->m_position.x -= frameDeltaTime * 2;
-			else if (d) light->m_position.x += frameDeltaTime * 2;
-			else if (q) light->m_position.y += frameDeltaTime * 2;
-			else if (z) light->m_position.y -= frameDeltaTime * 2;
+
+
 			//update objects here
 			rotmod += 15 * frameDeltaTime;
-
-			RESET_INPUT();
-			running = SDLExitInput();
-			if (frameDeltaTime < fixedTimeStep)
-				SDL_Delay((uint32_t)(fixedTimeStep - frameDeltaTime));
 
 			mesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 0,0,0 }, { 0,rotmod,0 }, { 0.5,0.5,0.5 });
 			planeMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 0,0,0 }, { 0, 0, 0 }, { 2,2,2 });
@@ -368,10 +359,20 @@ int main()
 
 			renderer->Render();
 			//
+			SDL_INPUT();
+			//input based
+			if (w) light->m_position.z += frameDeltaTime * 5;
+			else if (s) light->m_position.z -= frameDeltaTime * 5;
+			else if (a) light->m_position.x -= frameDeltaTime * 5;
+			else if (d) light->m_position.x += frameDeltaTime * 5;
+			else if (q) light->m_position.y += frameDeltaTime * 5;
+			else if (z) light->m_position.y -= frameDeltaTime * 5;
+			running = SDLExitInput();
+			RESET_INPUT();
+
 			fpsTimer += frameDeltaTime;
 			fpsCount++;
 			startTime = currentTime;
-
 		}
 		renderer->WaitForIdle();
 		std::cout << "Vulkan resource cleanup." << std::endl;

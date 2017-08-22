@@ -1,5 +1,4 @@
 #include "VkManagedRenderPass.h"
-#include "VulkanObjectUtils.h"
 #include "VkManagedImage.h"
 #include "VkManagedFrameBuffer.h"
 #include "VkManagedDevice.h"

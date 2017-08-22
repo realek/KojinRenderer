@@ -93,7 +93,7 @@ Vulkan::KojinRenderer::KojinRenderer(SDL_Window * window, const char * appName, 
 		m_vkMainCmdPool->CreateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1, m_uniformBufferUpdater);
 		m_vkMainCmdPool->CreateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1, m_shadowPassCommands);
 		m_colorSampler = new VkManagedSampler(m_vkDevice, VkManagedSamplerMode::COLOR_NORMALIZED_COORDINATES, 16, VK_BORDER_COLOR_INT_OPAQUE_BLACK);
-		m_depthSampler = new VkManagedSampler(m_vkDevice, VkManagedSamplerMode::DEPTH_NORMALIZED_COORDINATES, 16, VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE);
+		m_depthSampler = new VkManagedSampler(m_vkDevice, VkManagedSamplerMode::DEPTH_NORMALIZED_COORDINATES, 0, VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE);
 		m_layeredShadowMap = new VkManagedImage(m_vkDevice); //shadowmap_image
 	}
 	catch(...)
@@ -127,8 +127,6 @@ void Vulkan::KojinRenderer::Draw(std::vector<Mesh*> meshes, std::vector<Material
 	size_t meshSize = meshes.size();
 	assert(meshSize == materials.size());
 	
-	//m_meshPartTransforms.reserve(meshSize);
-	//m_meshPartMaterials.reserve(meshSize);
 	m_meshPartData.reserve(meshSize);
 	m_meshPartTextures.reserve(meshSize);
 	for(size_t i = 0; i < meshSize; ++i)
@@ -146,26 +144,6 @@ void Vulkan::KojinRenderer::Draw(std::vector<Mesh*> meshes, std::vector<Material
 		m_meshPartData.push_back({ meshes[i]->modelMatrix, materials[i]->diffuseColor, materials[i]->specularity });
 		m_meshPartTextures.push_back(materials[i]->albedo->id);
 	}
-
-	//for(Mesh* mesh : meshes)
-	//{
-	//	if (std::find_if(m_meshDraws.begin(),m_meshDraws.end(),
-	//		[&mesh](std::pair<const uint32_t, int> a)->bool { return a.first == mesh->id; })!= m_meshDraws.end())
-	//	{
-	//		m_meshDraws[mesh->id]++;
-	//	}
-	//	else
-	//	{
-	//		m_meshDraws.insert(std::make_pair(mesh->id, 1));
-	//	}
-	//	m_objectCount++;
-	//	m_meshPartTransforms.push_back(mesh->modelMatrix);
-
-	//}
-
-	//for(Material*mat : materials)
-	//	m_meshPartMaterials.push_back(mat);
-	//
 }
 
 Vulkan::Camera * Vulkan::KojinRenderer::CreateCamera(glm::vec3 initialPosition, bool perspective)
@@ -316,7 +294,7 @@ void Vulkan::KojinRenderer::Render()
 {
 	//acquire image
 	uint32_t scImage = 0;
-	m_vkSwapchain->AcquireNextImage(&scImage, m_semaphores->Next()); //handle sc return
+	m_vkSwapchain->AcquireNextImage(&scImage, m_semaphores->Last());
 
 	bool rebuild = false;
 	if(m_objectCount != m_objectCountOld)
@@ -363,7 +341,7 @@ void Vulkan::KojinRenderer::Render()
 
 	}
 	m_uniformBufferUpdater->End();
-	m_uniformBufferUpdater->Submit(m_vkMainCmdPool->PoolQueue()->queue, { VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT }, { m_semaphores->Next()}, { m_semaphores->Last()});
+	m_uniformBufferUpdater->Submit(m_vkMainCmdPool->PoolQueue()->queue, { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT }, { m_semaphores->Next()}, { m_semaphores->Last()});
 
 	std::vector<VkIndexedDraw> indexdraws;
 	indexdraws.resize(m_objectCount);
@@ -430,6 +408,7 @@ void Vulkan::KojinRenderer::Render()
 			m_vkRenderPassSDWProj->SetPipeline(m_vkPipelineSDWProj, states, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS);
 			m_vkRenderPassSDWProj->PreRecordData(shadowCmds, 0); //we have 1 framebuffer
 			std::vector<VkPushConstant> constants(2);
+
 			constants[0].data = &l.second->GetLightViewMatrix();
 			constants[0].offset = 0;
 			constants[0].size = sizeof(glm::mat4);
@@ -459,14 +438,13 @@ void Vulkan::KojinRenderer::Render()
 
 	}
 	m_shadowPassCommands->End();
-	m_shadowPassCommands->Submit(m_vkPresentQueue->queue, { VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT }, { m_semaphores->Next() }, { m_semaphores->Last() });
+	m_shadowPassCommands->Submit(m_vkPresentQueue->queue, { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT }, { m_semaphores->Next() }, { m_semaphores->Last() });
 
 	m_swapChainbuffers->Begin(VkCommandBufferUsageFlagBits::VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
 	{
 		for (uint32_t cmdIndex = 0; cmdIndex < m_swapChainbuffers->Size(); ++cmdIndex)
 		{
 			VkCommandBuffer cBuffer = m_swapChainbuffers->Buffer(cmdIndex);
-
 
 			states.hasDepthBias = VK_FALSE;
 
@@ -733,15 +711,16 @@ void Vulkan::KojinRenderer::WriteDescriptors(uint32_t objIndex)
 bool Vulkan::KojinRenderer::UpdateShadowmapLayers()
 {
 	assert(m_layeredShadowMap != nullptr);
-	if(m_lights.size() != m_lightCount)
+	size_t lightCount = m_lights.size();
+	if(lightCount != m_layeredShadowMap->layers)
 	{
-		m_lightCount = m_lights.size();
+		
 		VkExtent2D ext;
 		ext.height = VkShadowmapDefaults::k_resolution;
 		ext.width = VkShadowmapDefaults::k_resolution;
 
 		m_layeredShadowMap->Build(ext, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			(uint32_t)m_lightCount, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_D32_SFLOAT, 
+			(uint32_t)lightCount, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_D32_SFLOAT, 
 			VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 		return true;
 	}

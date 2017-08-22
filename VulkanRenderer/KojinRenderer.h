@@ -145,7 +145,6 @@ namespace Vulkan
 
 		int m_objectCount = 0;
 		int m_objectCountOld = 0;
-		size_t m_lightCount = 0;
 		VkManagedImage * m_layeredShadowMap = nullptr;
 		std::unordered_map<uint32_t, std::shared_ptr<VkManagedImage>> m_deviceLoadedTextures;
 		std::unordered_map<uint32_t, Light*> m_lights;

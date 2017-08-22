@@ -48,10 +48,9 @@ layout(location = 2) flat out float outMaterialSpecularity;
 layout(location = 3) out vec2 outTexCoord;
 layout(location = 4) flat out vec4 outAmbientLight;
 layout(location = 5) out vec3 outFragPos;
-layout(location = 6) out vec3 outFragNormal;
+layout(location = 6) out vec3 outN;
 layout(location = 7) out vec4 outVertex;
 layout(location = 8) flat out VkLight outLights[6];
-
 
 
 out gl_PerVertex {
@@ -69,7 +68,7 @@ void main() {
 	outVertex = model_data.model * vec4(inPosition, 1.0);
 	vec4 vPos = modelView*vec4(inPosition, 1.0);
 	outFragPos = vec3(vPos)/vPos.w;
-    outFragNormal = vec3(transpose(inverse(modelView)) * vec4(inNormal,1.0));
+    outN = normalize(vec3(transpose(inverse(modelView)) * vec4(inNormal,1.0)));
 	outMaterialSpecularity = model_data.specularity;
 	
 	VkLight iLights[6] = lights_data.lights;

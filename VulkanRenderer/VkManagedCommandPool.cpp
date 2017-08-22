@@ -15,7 +15,10 @@ Vulkan::VkManagedCommandPool::VkManagedCommandPool(VkManagedDevice * device, VkM
 	poolCI.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 	if (transientPool)
 		poolCI.flags = poolCI.flags | VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
-	assert(vkCreateCommandPool(m_device, &poolCI, nullptr, ++m_commandPool) == VK_SUCCESS);
+
+	VkResult result = vkCreateCommandPool(m_device, &poolCI, nullptr, ++m_commandPool);
+
+	assert(result == VK_SUCCESS);
 	
 }
 

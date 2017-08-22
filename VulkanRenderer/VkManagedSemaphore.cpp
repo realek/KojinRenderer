@@ -30,7 +30,7 @@ VkSemaphore Vulkan::VkManagedSemaphore::Next()
 VkSemaphore Vulkan::VkManagedSemaphore::Last()
 {
 	if (m_lastUsed == -1)
-		throw std::runtime_error("Last() was called on a VkManagedSemaphore object before any call to Next()");
+		m_lastUsed = 0;
 	return m_semaphores[m_lastUsed];
 }
 

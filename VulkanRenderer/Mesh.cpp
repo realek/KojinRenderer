@@ -102,29 +102,6 @@ std::shared_ptr<Vulkan::Mesh> Vulkan::Mesh::LoadMesh(const char * filename,int f
 				uVertices.clear();
 
 				WriteToInternalMesh(filename, readVerts, readIndices, iMesh);
-
-				/*size_t currentSize = m_iMeshVertices.size();
-				size_t neededSize = currentSize + readVerts.size();
-				size_t currentCap = m_iMeshVertices.capacity();
-				if (neededSize > currentCap)
-					m_iMeshVertices.resize(neededSize);
-
-				std::move(readVerts.begin(), readVerts.end(), m_iMeshVertices.begin() + currentSize);
-
-				currentSize = m_iMeshIndices.size();
-				neededSize = currentSize + readIndices.size();
-				currentCap = m_iMeshIndices.capacity();
-				if (neededSize > currentCap)
-					m_iMeshIndices.resize(neededSize);
-
-				std::move(readIndices.begin(), readIndices.end(), m_iMeshIndices.begin() + currentSize);
-				meshData.indiceRange.end = m_iMeshIndices.size();
-				meshData.vertexRange.end = m_iMeshVertices.size();
-				meshData.vertexCount = readVerts.size();
-				meshData.indiceCount = readIndices.size();
-				m_iMeshData.insert(std::make_pair(iMesh->m_meshID, meshData));
-				m_loadedIMeshes.insert(std::make_pair(filename, iMesh->m_meshID));*/
-
 			}
 		}
 		return iMesh;

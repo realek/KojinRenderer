@@ -155,19 +155,7 @@ VkResult Vulkan::VkManagedSwapchain::AcquireNextImage(uint32_t * imageIndex, VkS
 
 VkResult Vulkan::VkManagedSwapchain::PresentCurrentImage(uint32_t * imageIndex, Vulkan::VkManagedQueue * queue, std::vector<VkSemaphore> waitSemaphores) 
 {
-	{
-		assert(queue->presentSupport);
-		bool queueProper = false;
-		for (uint32_t families : m_usedQueueFamilies)
-		{
-			if (families == queue->familyIndex)
-			{
-				queueProper = true;
-				break;
-			}
-		}
-		assert(queueProper);
-	}
+	assert(queue->presentSupport);
 
 	VkPresentInfoKHR presentInfo = {};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;

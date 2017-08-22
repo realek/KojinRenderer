@@ -144,15 +144,15 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions);GLM_FORCE_LEFT_HANDED;GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(VULKAN_SDK)\Third-Party\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\Dependencies\SDL_image 2.0.1\include;$(SolutionDir)\Dependencies\assimp-3.3.1\include;$(SolutionDir)\VulkanRenderer;$(VULKAN_SDK)\Include;$(VULKAN_SDK)\Third-Party\Include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>vulkan-1.lib;SDL2.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(VULKAN_SDK)\Bin;$(VULKAN_SDK)\Third-Party\Bin;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib;SDL2.lib;SDL2_image.lib;%(AdditionalDependencies);assimp-vc140-mt.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(VULKAN_SDK)\Lib;$(VULKAN_SDK)\Third-Party\Bin;%(AdditionalLibraryDirectories);$(SolutionDir)\Dependencies\SDL_image 2.0.1\lib\64bit;$(SolutionDir)\Dependencies\assimp-3.3.1\lib\64bit</AdditionalLibraryDirectories>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
     </Link>
   </ItemDefinitionGroup>
@@ -181,8 +181,6 @@
     <ClCompile Include="VkManagedShaderModule.cpp" />
     <ClCompile Include="VkManagedSwapchain.cpp" />
     <ClCompile Include="VkManagedValidationLayers.cpp" />
-    <ClCompile Include="VulkanObjectUtils.cpp" />
-    <ClCompile Include="VulkanRenderUnit.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="VulkanSystemStructs.cpp" />
   </ItemGroup>
@@ -214,7 +212,6 @@
     <ClInclude Include="VkManagedStructures.h" />
     <ClInclude Include="VkManagedSwapchain.h" />
     <ClInclude Include="VkManagedValidationLayers.h" />
-    <ClInclude Include="VulkanObjectUtils.h" />
     <ClInclude Include="VKWorldSpace.h" />
     <ClInclude Include="VulkanHash.h" />
     <ClInclude Include="VulkanSystemStructs.h" />

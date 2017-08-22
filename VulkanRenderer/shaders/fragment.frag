@@ -11,21 +11,13 @@ struct VkLight
 	vec4 lightProps; //type, intensity, falloff, angle
 };
 
-const mat4 iMat = 
-mat4(
- 1,0,0,0,
- 0,1,0,0,
- 0,0,1,0,
- 0,0,0,1
-);
-
 layout(location = 0) in vec4 inColor;
 layout(location = 1) flat in vec4 inMaterialColor;
 layout(location = 2) flat in float inMaterialSpecularity;
 layout(location = 3) in vec2 inTexCoord;
 layout(location = 4) flat in vec4 inAmbientLight;
 layout(location = 5) in vec3 inFragPos;
-layout(location = 6) in vec3 inFragNormal;
+layout(location = 6) in vec3 inN;
 layout(location = 7) in vec4 inVertex;
 layout(location = 8) flat in VkLight inLights[6];
 
@@ -48,26 +40,27 @@ float textureProj(vec4 P, vec2 off, int arrayIdx)
 	vec4 shadowCoord = P / P.w;
 	if ( shadowCoord.z > -1.0 && shadowCoord.z < 1.0 ) 
 	{
-		if((shadowCoord.x >= 0.0) && (shadowCoord.x <= 1.0f) && (shadowCoord.y >= 0.0) && (shadowCoord.y <= 1.0f) )
+		float dist = texture( depthSampler, vec3(shadowCoord.xy + off,arrayIdx) ).r;
+		if ( shadowCoord.w > 0.0 && dist < shadowCoord.z ) 
 		{
-			vec3 arrTexCoord = vec3(shadowCoord.xy + off,arrayIdx);
-			float dist = texture( depthSampler, arrTexCoord ).r;
-			if ( shadowCoord.w > 0.0 && dist < shadowCoord.z ) 
-			{
-				shadow = 0.1f;
-			}
+			shadow = inAmbientLight.a;
 		}
 
 	}
 	return shadow;
 }
 
-float filterPCF(vec4 sc, int index)
+
+vec4 vec4_eq(vec4 x, vec4 y) {
+  return 1.0 - abs(sign(x - y));
+}
+
+
+float filterPCF(ivec2 texDim, vec4 sc, int index)
 {
-	ivec2 texDim = textureSize(depthSampler, 0).xy;
-	float scale = 1.5;
-	float dx = scale * 1.0 / float(texDim.x);
-	float dy = scale * 1.0 / float(texDim.y);
+	float scale = 1.0f;
+	float dx = scale / float(texDim.x);
+	float dy = scale / float(texDim.y);
 
 	float shadowFactor = 0.0;
 	int count = 0;
@@ -108,45 +101,50 @@ void main()
 	vec4 lightColor = vec4(0.0f,0.0f,0.0f,0.0f);
 	float diffuseFrac = 1.0 - inAmbientLight.w;
 
-	vec3 N = normalize(inFragNormal);
-
+	ivec2 texDim = textureSize(depthSampler, 0).xy;
+	
 	for(int i = 0;i < 6; ++i)
 	{
-		float intensity = inLights[i].lightProps[1];
 		vec4 specular = vec4(0.0,0.0,0.0,0.0);
 		vec4 diffuse = vec4(0.0,0.0,0.0,0.0);
 		vec3 L; // fragment light dir
 		vec3 V; // fragment eye 
 		vec3 D; // light forward from rotation
-		float atten = 1.0f;
+		float atten = inLights[i].lightProps[1]; //initialize attenuation to intensity
+		if(atten == 0)
+			continue;
 		D = normalize(-inLights[i].direction.xyz);
+		V = normalize(-inLights[i].direction.xyz - inFragPos);
+		int lightType = int(inLights[i].lightProps[0]);
 		
-		if(inLights[i].lightProps[0] == 2)
+		if(lightType == 2)
 		{
-			V = normalize(-inLights[i].direction.xyz - inFragPos);
+			
 			L = D;
 		}
 		else
 		{
 			L = normalize(inLights[i].position.xyz - inFragPos); 
-			V = normalize(-inLights[i].position.xyz);
 		}
 		
-		if(inLights[i].lightProps[0] == 0 || inLights[i].lightProps[0] == 1) //is point or spot
+		if(lightType != 2) //is point or spot
 		{
 			float dist = length(inLights[i].position.xyz - inFragPos);
-			if(dist <= inLights[i].lightProps[2]) //falloff
+			float falloff = inLights[i].lightProps[2];
+			if(dist < falloff) //falloff
 			{
-				atten = clamp(1.0 - (dist*dist)/pow(inLights[i].lightProps[2],2), 0.0, 1.0);
-				if(inLights[i].lightProps[0] == 1) // is spot thus extra per vert testing
+				atten = clamp(1.0 - pow(dist,2)/pow(falloff,2), 0.0, 1.0);
+				if(lightType == 1) // is spot thus extra per vert testing
 				{
 					float coneAngle = degrees(acos(dot(L, D)));
-					if(coneAngle >= inLights[i].lightProps[3]) //angle
+					float angle = inLights[i].lightProps[3];
+					if(coneAngle < angle) //angle
 					{
-						atten = 0.0f;
+						atten = clamp(atten - (coneAngle/angle), 0.0, 1.0);
+
 					}
 					else
-						atten = clamp(atten - coneAngle/inLights[i].lightProps[3], 0.0, 1.0);
+						atten = 0.0f;						
 				}
 			}
 			else
@@ -154,42 +152,26 @@ void main()
 
 		}
 		
-		if(atten > 0.0f)
+		if(atten > 0)
 		{
-			float incidenceAngle = max(0.0,dot(L, N));
-			if(incidenceAngle > 0.0)
+			diffuse = diffuseFrac * max(0.0,dot(L, inN)) * inLights[i].color; // diffuse component
+			if(inMaterialSpecularity > 0)
 			{
-				diffuse = diffuseFrac * incidenceAngle * inLights[i].color; // diffuse component		
+				specular = vec4(pow(max(dot(reflect(-L,inN), V), 0.0), inMaterialSpecularity));	
 			}
-		
-			if(inMaterialSpecularity > 0.0)
-			{
-			
-				vec3 H = normalize(L+V);
-				float specAngle = max(dot(H, N), 0.0);
-				if(specAngle > 0.0)
-				{
-					specular = pow(specAngle, inMaterialSpecularity) * vec4(1.0f,1.0f,1.0f,1.0f);			
-				
-				}
+			atten *= filterPCF(texDim, shadow_data.biasVP[i]*inVertex,i); //meh performance loss
+		}
+        
 
-			}
-		}
-		
-		if(shadow_data.biasVP[i] != iMat)
-		{
-		   vec4 sVertPos = shadow_data.biasVP[i]*inVertex;
-           float shadowCoef = filterPCF(sVertPos/sVertPos.w,i);
-		   atten *= shadowCoef;
-		}
-		lightColor += atten*intensity*(diffuse+specular);
+		lightColor += atten*(diffuse+specular);
 
 
 	}
+	outColor.rgb = pow(outColor.rgb,vec3(1.0f/gamma));
 	outColor *=vec4(inAmbientLight.xyz,0.0f)+lightColor;
-	outColor = vec4(clamp(outColor.x,0.0f,1.0f),clamp(outColor.y,0.0f,1.0f),clamp(outColor.z,0.0f,1.0f),outColor.w);
+    outColor = clamp(outColor,vec4(0),vec4(1));
   //SHADOWMAP VISUAL
   //outColor = vec4(1.0-vec3(LinearizeDepth(texture(depthSampler, fragTexCoord).x)), 1.0);
-  //  outColor.rgb = pow(outColor.rgb,vec3(1.0f/gamma));
+
 	
 }
