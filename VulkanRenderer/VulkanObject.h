@@ -1,7 +1,7 @@
 /*=========================================================
 VulkanObject.h - Container class used to manage Vulkan object
 instances. In vulkan all created objects are the responsability
-of the programmer.
+of the programmer. Does not support move semantics, supports only assignment
 ==========================================================*/
 
 #pragma once
@@ -13,107 +13,108 @@ of the programmer.
 
 namespace Vulkan
 {
-
-	class VkManagedRefCounter;
 	template <typename T>
 	class VkManagedObject
 	{
 	public:
 
-		VkManagedObject() : VkManagedObject([](T, VkAllocationCallbacks*) {}) {}
-		VkManagedObject(std::function<void(T, VkAllocationCallbacks*)> deleteFunction, bool clear = true)
+		VkManagedObject() {};
+
+		inline void set_object(const T object, std::function<void(T, VkAllocationCallbacks*)> deleteFunction, bool destroy = true)
 		{
-			this->deleter = [=](T object) { deleteFunction(object, nullptr); };
-			this->clear = clear;
+			if (object != VK_NULL_HANDLE && m_destroy)
+			{
+				clean();
+			}
+			this->m_deleter = [=](T object) { deleteFunction(object, nullptr); };
+			this->m_destroy = destroy;
+			m_object = object;
 		}
 
-		VkManagedObject(const VkManagedObject<VkInstance>& vkInstance, std::function<void(VkInstance, T, VkAllocationCallbacks*)> deleteFunction, bool clear = true)
+		inline void set_object(const T object, const VkInstance& owner, std::function<void(VkInstance, T, VkAllocationCallbacks*)> deleteFunction, bool destroy = true)
 		{
-			this->deleter = [&vkInstance, deleteFunction](T object) {  deleteFunction(vkInstance, object, nullptr);	};
-			this->clear = clear;
-		
+			if (object != VK_NULL_HANDLE && m_destroy)
+			{
+				clean();
+			}
+			this->m_deleter = [&owner, deleteFunction](T object) { deleteFunction(owner, object, nullptr); };
+			this->m_destroy = destroy;
+			m_object = object;
 		}
 
-		VkManagedObject(const VkManagedObject<VkDevice>& vkDevice, std::function<void(VkDevice, T, VkAllocationCallbacks*)> deleteFunction, bool clear = true)
+		inline void set_object(const T object, const VkDevice& owner, std::function<void(VkDevice, T, VkAllocationCallbacks*)> deleteFunction, bool destroy = true)
 		{
-			this->deleter = [&vkDevice, deleteFunction](T object) { deleteFunction(vkDevice, object, nullptr); };
-			this->clear = clear;
-		
+			if (object != VK_NULL_HANDLE && m_destroy)
+			{
+				clean();
+			}
+			this->m_deleter = [&owner, deleteFunction](T object) { deleteFunction(owner, object, nullptr); };
+			this->m_destroy = destroy;
+			m_object = object;
 		}
 
-		VkManagedObject(const VkInstance& vkInstance, std::function<void(VkInstance, T, VkAllocationCallbacks*)> deleteFunction, bool clear = true)
+		//Releases the contained object without deleting it
+		inline T release() 
 		{
-			this->deleter = [vkInstance, deleteFunction](T object) {  deleteFunction(vkInstance, object, nullptr);	};
-			this->clear = clear;
+			T obj = m_object;
+			m_object = VK_NULL_HANDLE;
+
+			return obj;
 		}
 
-		VkManagedObject(const VkDevice& vkDevice, std::function<void(VkDevice, T, VkAllocationCallbacks*)> deleteFunction, bool clear = true)
+		//Clears and destroys(if clear flag is true) the contained object
+		inline void clean()
 		{
-			this->deleter = [vkDevice, deleteFunction](T object) { deleteFunction(vkDevice, object, nullptr); };
-			this->clear = clear;
-		}
-
-
-		~VkManagedObject()
-		{
-			if(clear)
-				Clean();
-		}
-
-		//prefix increment operator overloaded for use with vulkan api, in order to write on the object
-		T* operator ++()
-		{
-			if (clear)
-				Clean();
-			else
-				object = VK_NULL_HANDLE;
-			return &object;
-		}
-		//prefix decrement operator overloaded to get internal object reference
-		T* operator --()
-		{
-			return &object;
-		}
-
-		void operator=(T rhs) {
-			if (rhs != this->object) {
-				if(this->clear)
-					this->Clean();
-				this->object = rhs;
+			if (this->m_object != VK_NULL_HANDLE)
+			{
+				this->m_deleter(m_object);
+				this->m_object = VK_NULL_HANDLE;
 			}
 		}
 
-		operator T() const
+		~VkManagedObject()
 		{
-			return object;
+			if(m_destroy)
+				clean();
+		}
+
+		//Assign the contained object from another VkManagedObject, right hand side object will release
+		void operator=(VkManagedObject<T> rhs)
+		{
+			if (rhs.m_object != this->m_object) {
+				
+				if (this->clear)
+					this->clean();
+
+				this->m_deleter = rhs.m_deleter;
+				this->object = rhs.release();
+			}
+		}
+		
+		inline const T& object() const
+		{
+			return m_object;
 		}
 
 		template <typename C>
 		bool operator ==(C& other)
 		{
-			T* objPtr = &object;
+			T* objPtr = &m_object;
 			C* otherPtr = &other;
 			return objPtr == reinterpret_cast<T*>(otherPtr);
 		}
-		bool clear = false;
+
+		template <typename C>
+		bool operator !=(C& other)
+		{
+			return !(this==other);
+		}
 
 	private:
 
-
-		T object{ VK_NULL_HANDLE };
-		std::function<void(T)> deleter;
-		void Clean();
+		bool m_destroy = true;
+		T m_object{ VK_NULL_HANDLE };
+		std::function<void(T)> m_deleter { nullptr };
 	};
-
-	template <typename T>
-	inline void VkManagedObject<T>::Clean()
-	{
-		if (this->object != VK_NULL_HANDLE)
-		{
-			this->deleter(object);
-			this->object = VK_NULL_HANDLE;
-
-		}
-	}
 }
 

@@ -4,10 +4,10 @@
 #include "VkManagedQueue.h"
 #include <assert.h>
 
-Vulkan::VkManagedCommandPool::VkManagedCommandPool(VkManagedDevice * device, VkManagedQueue * queue, bool transientPool)
+Vulkan::VkManagedCommandPool::VkManagedCommandPool(const VkDevice& device, VkManagedQueue * queue, bool transientPool)
 {
 	assert(device != nullptr);
-	m_device = *device;
+
 	m_submitQueue = queue;
 	VkCommandPoolCreateInfo poolCI = {};
 	poolCI.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -16,63 +16,34 @@ Vulkan::VkManagedCommandPool::VkManagedCommandPool(VkManagedDevice * device, VkM
 	if (transientPool)
 		poolCI.flags = poolCI.flags | VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
 
-	VkResult result = vkCreateCommandPool(m_device, &poolCI, nullptr, ++m_commandPool);
-
+	VkCommandPool pool = VK_NULL_HANDLE;
+	VkResult result = vkCreateCommandPool(device, &poolCI, nullptr, &pool);
 	assert(result == VK_SUCCESS);
+	m_commandPool.set_object(pool, device, vkDestroyCommandPool);
 	
 }
 
-Vulkan::VkManagedCommandBuffer Vulkan::VkManagedCommandPool::CreateCommandBuffer(VkCommandBufferLevel bufferLevel, uint32_t count)
+Vulkan::VkManagedCommandBuffer Vulkan::VkManagedCommandPool::CreateCommandBuffer(const VkDevice& device, VkCommandBufferLevel bufferLevel, uint32_t count)
 {
 	VkCommandBufferAllocateInfo cmdBufferAI = {};
 	cmdBufferAI.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	cmdBufferAI.commandPool = m_commandPool;
-	cmdBufferAI.level = bufferLevel;
-	cmdBufferAI.commandBufferCount = count;
-	try
-	{
-		VkManagedCommandBuffer buffer(m_device, cmdBufferAI);
-		return buffer;
-	}
-	catch(...)
-	{
-		throw;
-	}
-
-
-}
-
-void Vulkan::VkManagedCommandPool::CreateCommandBuffer(VkCommandBufferLevel bufferLevel, uint32_t count, VkManagedCommandBuffer *& buffer)
-{
-	VkCommandBufferAllocateInfo cmdBufferAI = {};
-	cmdBufferAI.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	cmdBufferAI.commandPool = m_commandPool;
+	cmdBufferAI.commandPool = m_commandPool.object();
 	cmdBufferAI.level = bufferLevel;
 	cmdBufferAI.commandBufferCount = count;
 
-	if (buffer != nullptr)
-	{
-		buffer->Free();
-		delete buffer;
-	}
+	VkManagedCommandBuffer buffer(device, cmdBufferAI);
 
-	try 
-	{
-		buffer = new VkManagedCommandBuffer(m_device, cmdBufferAI);
-	}
-	catch (...)
-	{
-		throw;
-	}
-
+	return buffer;
 }
 
-Vulkan::VkManagedQueue * Vulkan::VkManagedCommandPool::PoolQueue()
-{
-	return m_submitQueue;
-}
 
-Vulkan::VkManagedCommandPool::operator VkCommandPool() const
+
+void Vulkan::VkManagedCommandPool::Free(VkManagedCommandBuffer * buffer, const VkDevice & device)
 {
-	return m_commandPool;
+	assert(buffer != nullptr);
+	if (!buffer->m_buffers.empty())
+	{
+		vkFreeCommandBuffers(device, m_commandPool.object(), static_cast<uint32_t>(buffer->m_buffers.size()), buffer->m_buffers.data());
+		buffer->m_buffers.clear();
+	}
 }

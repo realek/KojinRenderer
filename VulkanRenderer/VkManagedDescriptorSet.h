@@ -5,10 +5,11 @@
 namespace Vulkan
 {
 	class VkManagedBuffer;
-	class VkManagedImage;
+	struct VkManagedImage;
 	class VkManagedDescriptorSet
 	{
 	public:
+		VkManagedDescriptorSet() {}
 		void LoadCombinedSamplerImageArray(uint32_t dstSetIndex,std::vector<VkManagedImage*> images, uint32_t dstBind,std::vector<VkSampler> samplers);
 		void LoadCombinedSamplerImage(uint32_t dstSetIndex, VkManagedImage * image, uint32_t dstBind, VkSampler sampler);
 		void LoadUniformBuffer(uint32_t dstSetIndex, VkManagedBuffer * buffer, uint32_t dstBind);

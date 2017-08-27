@@ -3,181 +3,104 @@
 #include "VkManagedDevice.h"
 #include <assert.h>
 
-Vulkan::VkManagedFrameBuffer::VkManagedFrameBuffer(VkManagedDevice * device, VkRenderPass pass)
+void Vulkan::VkManagedFrameBuffer::Build(const VkDevice& device, const VkPhysicalDevice& pDevice, VkRenderPass pass, VkExtent2D extent, uint32_t layerCount, VkManagedFrameBufferUsage usageMask, VkFormat colorFormat, VkFormat depthFormat)
 {
-	assert(device != nullptr);
-	assert(pass != VK_NULL_HANDLE);
-	m_mdevice = device;
-	m_pass = pass;
-	m_device = *m_mdevice;
-}
-
-void Vulkan::VkManagedFrameBuffer::Build(VkExtent2D extent, bool sample, bool copy, VkFormat format, VkManagedFrameBufferAttachment singleAttachment)
-{
-	assert(format != VK_FORMAT_UNDEFINED);
 	uint32_t usage = 0;
-	std::vector<VkImageView> attachments;
-	if (singleAttachment == VkManagedFrameBufferAttachment::ColorAttachment)
+	std::vector<VkImageView> fbAttachments;
+	VkExtent3D imgExtent = { extent.width, extent.height, 1U };
+	if (colorFormat != VK_FORMAT_UNDEFINED) 
 	{
-		if (!m_mdevice->CheckFormatFeature(VkFormatFeatureFlagBits::VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT, format, VK_IMAGE_TILING_OPTIMAL))
-		{
-			throw std::invalid_argument("Provided color format does not support optimal tiling");
-		}
-
+		bool res = CheckFormatFeature(pDevice, VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT, colorFormat, VK_IMAGE_TILING_OPTIMAL);
+		assert(res);
 		usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-		if (sample)
+		if (usageMask & vkm_sample_color)
 			usage = usage | VK_IMAGE_USAGE_SAMPLED_BIT;
-		if (copy)
+		if (usageMask & vkm_copy_color)
 			usage = usage | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+		
+		VkImage colorImage = VK_NULL_HANDLE;
+		VkImageCreateInfo imageCI = GetImage2DCreateInfo(usage, imgExtent, layerCount, VK_IMAGE_TILING_OPTIMAL, colorFormat);
+		VkResult result = vkCreateImage(device, &imageCI, nullptr, &colorImage);
+		assert(result == VK_SUCCESS);
+		m_colorImage.set_object(colorImage, device, vkDestroyImage);
+		
+		VkDeviceMemory colorImageMemory = VK_NULL_HANDLE;
+		VkMemoryAllocateInfo imageMemoryAI = GetImageMemoryAllocateInfo(device, pDevice, colorImage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		result = vkAllocateMemory(device, &imageMemoryAI, nullptr, &colorImageMemory);
+		assert(result == VK_SUCCESS);
+		m_colorImageMemory.set_object(colorImageMemory, device, vkFreeMemory);
 
-		if (m_colorAttachment == nullptr)
-			m_colorAttachment = new VkManagedImage(m_mdevice);
 
-		m_colorAttachment->Build(extent, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 1, VK_IMAGE_TILING_OPTIMAL, format, VK_IMAGE_ASPECT_COLOR_BIT, usage);
+		result = vkBindImageMemory(device, colorImage, colorImageMemory, 0);
+		assert(result == VK_SUCCESS);
 
-		attachments.push_back(*m_colorAttachment);
+		VkImageView colorImageView = VK_NULL_HANDLE;
+		VkImageViewCreateInfo imageViewCI = GetImageViewCreateInfo(colorImage, layerCount, imageCI.imageType,
+			colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 0, (usageMask & vkm_force_array) == 1 ? true : false);
+		result = vkCreateImageView(device, &imageViewCI, nullptr, &colorImageView);
+		assert(result == VK_SUCCESS);
+		m_colorImageView.set_object(colorImageView, device, vkDestroyImageView);
+
+		fbAttachments.push_back(colorImageView);
 	}
-	else if (singleAttachment == VkManagedFrameBufferAttachment::DepthAttachment)
+
+	if (depthFormat != VK_FORMAT_UNDEFINED) 
 	{
-		if (!m_mdevice->CheckFormatFeature(VkFormatFeatureFlagBits::VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT, format, VK_IMAGE_TILING_OPTIMAL))
-		{
-			throw std::invalid_argument("Provided depth format does not support optimal tiling");
-		}
+		bool res = CheckFormatFeature(pDevice, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT, depthFormat, VK_IMAGE_TILING_OPTIMAL);
+		assert(res);
 
 		usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-		if (sample)
+		if (usageMask & vkm_sample_depth)
 			usage = usage | VK_IMAGE_USAGE_SAMPLED_BIT;
-		if (copy)
+		if (usageMask & vkm_copy_depth)
 			usage = usage | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 
-		if (m_depthAttachment == nullptr)
-			m_depthAttachment = new VkManagedImage(m_mdevice);
-
 		uint32_t depthAspect = VK_IMAGE_ASPECT_DEPTH_BIT;
-		if (format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT || format == VK_FORMAT_D16_UNORM_S8_UINT)
+		if (depthFormat == VK_FORMAT_D32_SFLOAT_S8_UINT || depthFormat == VK_FORMAT_D24_UNORM_S8_UINT || depthFormat == VK_FORMAT_D16_UNORM_S8_UINT)
 			depthAspect = depthAspect | VK_IMAGE_ASPECT_STENCIL_BIT;
 
-		m_depthAttachment->Build(extent, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 1, VK_IMAGE_TILING_OPTIMAL, format, depthAspect, usage);
-		attachments.push_back(*m_depthAttachment);
+
+		VkImage depthImage = VK_NULL_HANDLE;
+		VkImageCreateInfo imageCI = GetImage2DCreateInfo(usage, imgExtent, layerCount, VK_IMAGE_TILING_OPTIMAL, depthFormat);
+		VkResult result = vkCreateImage(device, &imageCI, nullptr, &depthImage);
+		assert(result == VK_SUCCESS);
+		m_depthImage.set_object(depthImage, device, vkDestroyImage);
+
+		VkDeviceMemory depthImageMemory = VK_NULL_HANDLE;
+		VkMemoryAllocateInfo imageMemoryAI = GetImageMemoryAllocateInfo(device, pDevice, depthImage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		result = vkAllocateMemory(device, &imageMemoryAI, nullptr, &depthImageMemory);
+		assert(result == VK_SUCCESS);
+		m_depthImageMemory.set_object(depthImageMemory, device, vkFreeMemory);
+
+
+		result = vkBindImageMemory(device, depthImage, depthImageMemory, 0);
+		assert(result == VK_SUCCESS);
+
+		VkImageView depthImageView = VK_NULL_HANDLE;
+		VkImageViewCreateInfo imageViewCI = GetImageViewCreateInfo(depthImage, layerCount, imageCI.imageType,
+			depthFormat, depthAspect, 0, (usageMask & vkm_force_array) == 1 ? true : false);
+		result = vkCreateImageView(device, &imageViewCI, nullptr, &depthImageView);
+		assert(result == VK_SUCCESS);
+		m_depthImageView.set_object(depthImageView, device, vkDestroyImageView);
+
+		fbAttachments.push_back(depthImageView);
 	}
+
+	assert(fbAttachments.size() > 0);
 
 	VkFramebufferCreateInfo framebufferInfo = {};
 	framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-	framebufferInfo.renderPass = m_pass;
-	framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-	framebufferInfo.pAttachments = attachments.data();
+	framebufferInfo.renderPass = pass;
+	framebufferInfo.attachmentCount = static_cast<uint32_t>(fbAttachments.size());
+	framebufferInfo.pAttachments = fbAttachments.data();
 	framebufferInfo.width = extent.width;
 	framebufferInfo.height = extent.height;
-	framebufferInfo.layers = 1;
-	VkResult result = vkCreateFramebuffer(m_device, &framebufferInfo, nullptr, ++m_framebuffer);
+	framebufferInfo.layers = layerCount;
 
-	if (result != VK_SUCCESS) {
-		//clear attachments
-		if (singleAttachment == VkManagedFrameBufferAttachment::ColorAttachment)
-			m_colorAttachment->Clear();
-		else if (singleAttachment == VkManagedFrameBufferAttachment::DepthAttachment)
-			m_depthAttachment->Clear();
-
-		throw std::runtime_error("Unable to create frame buffer, reason: " + Vulkan::VkResultToString(result));
-	}
-}
-
-void Vulkan::VkManagedFrameBuffer::Build(VkExtent2D extent, bool sampleColor, bool copyColor,  bool sampleDepth, bool copyDepth, VkFormat colorFormat, VkFormat depthFormat)
-{
-	assert(depthFormat != VK_FORMAT_UNDEFINED);
-	assert(colorFormat != VK_FORMAT_UNDEFINED);
-
-	uint32_t usage = 0;
-	std::vector<VkImageView> attachments;
-
-	if (!m_mdevice->CheckFormatFeature(VkFormatFeatureFlagBits::VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT, colorFormat, VK_IMAGE_TILING_OPTIMAL))
-	{
-		throw std::invalid_argument("Provided color format does not support optimal tiling");
-	}
-
-	usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-	if (sampleColor)
-		usage = usage | VK_IMAGE_USAGE_SAMPLED_BIT;
-	if (copyColor)
-		usage = usage | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-
-	if (m_colorAttachment == nullptr)
-		m_colorAttachment = new VkManagedImage(m_mdevice);
-
-	m_colorAttachment->Build(extent, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 1, VK_IMAGE_TILING_OPTIMAL, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, usage);
-
-	attachments.push_back(*m_colorAttachment);
-
-	if (!m_mdevice->CheckFormatFeature(VkFormatFeatureFlagBits::VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT, depthFormat, VK_IMAGE_TILING_OPTIMAL))
-	{
-		throw std::invalid_argument("Provided depth format does not support optimal tiling");
-	}
-
-	usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-	if (sampleDepth)
-		usage = usage | VK_IMAGE_USAGE_SAMPLED_BIT;
-	if (copyDepth)
-		usage = usage | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-
-	if (m_depthAttachment == nullptr)
-		m_depthAttachment = new VkManagedImage(m_mdevice);
-
-	uint32_t depthAspect = VK_IMAGE_ASPECT_DEPTH_BIT;
-	if (depthFormat == VK_FORMAT_D32_SFLOAT_S8_UINT || depthFormat == VK_FORMAT_D24_UNORM_S8_UINT || depthFormat == VK_FORMAT_D16_UNORM_S8_UINT)
-		depthAspect = depthAspect | VK_IMAGE_ASPECT_STENCIL_BIT;
-
-	m_depthAttachment->Build(extent, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 1, VK_IMAGE_TILING_OPTIMAL, depthFormat, depthAspect, usage);
-	attachments.push_back(*m_depthAttachment);
+	VkFramebuffer framebuffer = VK_NULL_HANDLE;
+	VkResult result = vkCreateFramebuffer(device, &framebufferInfo, nullptr, &framebuffer);
+	assert(result == VK_SUCCESS);
+	m_framebuffer.set_object(framebuffer, device, vkDestroyFramebuffer);
 	
-	VkFramebufferCreateInfo framebufferInfo = {};
-	framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-	framebufferInfo.renderPass = m_pass;
-	framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-	framebufferInfo.pAttachments = attachments.data();
-	framebufferInfo.width = extent.width;
-	framebufferInfo.height = extent.height;
-	framebufferInfo.layers = 1;
-	VkResult result = vkCreateFramebuffer(m_device, &framebufferInfo, nullptr, ++m_framebuffer);
-
-	if (result != VK_SUCCESS) {
-		//clear attachments
-		m_colorAttachment->Clear();
-		m_depthAttachment->Clear();
-
-		throw std::runtime_error("Unable to create frame buffer, reason: " + Vulkan::VkResultToString(result));
-	}
-}
-
-Vulkan::VkManagedFrameBuffer::~VkManagedFrameBuffer()
-{
-	if (m_colorAttachment != nullptr)
-		delete m_colorAttachment;
-	if (m_depthAttachment != nullptr)
-		delete m_depthAttachment;
-}
-
-//Clear frame buffer internal data
-void Vulkan::VkManagedFrameBuffer::Clear()
-{
-	if (m_framebuffer != VK_NULL_HANDLE)
-		++m_framebuffer;
-	if (m_colorAttachment != nullptr)
-		delete m_colorAttachment;
-	if (m_depthAttachment != nullptr)
-		delete m_depthAttachment;
-}
-
-VkFramebuffer Vulkan::VkManagedFrameBuffer::FrameBuffer()
-{
-	return m_framebuffer;
-}
-
-Vulkan::VkManagedImage * Vulkan::VkManagedFrameBuffer::ColorAttachment() const
-{
-	return this->m_colorAttachment;
-}
-
-Vulkan::VkManagedImage * Vulkan::VkManagedFrameBuffer::DepthAttachment() const
-{
-	return this->m_depthAttachment;
+	m_layerCount = layerCount;
 }

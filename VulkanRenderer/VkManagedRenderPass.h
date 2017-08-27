@@ -1,7 +1,8 @@
 #pragma once
 #include "VulkanObject.h"
 #include <memory>
-#include <map>
+#include <vector>
+#include "VkManagedFrameBuffer.h"
 #include "VkManagedStructures.h"
 
 namespace Vulkan
@@ -13,13 +14,12 @@ namespace Vulkan
 		PerDraw = 1
 	};
 
-	class VkManagedImage;
-	class VkManagedFrameBuffer;
+
 	class VulkanImageUnit;
 	class VulkanCommandUnit;
 
 	
-	class VkManagedImage;
+	struct VkManagedImage;
 	class VkManagedDevice;
 	class VkManagedCommandBuffer;
 	class VkManagedDescriptorSet;
@@ -31,24 +31,83 @@ namespace Vulkan
 	{
 	public:
 
-		VkManagedRenderPass(VkManagedDevice * device);
-		void Build(VkExtent2D extent, VkFormat depthFormat);
-		void Build(VkExtent2D extent, VkFormat colorFormat, VkFormat depthFormat);
+		inline VkManagedRenderPass() {};
+		inline ~VkManagedRenderPass() 
+		{
+			if (m_fbs.size() > 0)
+			{
+				for (VkManagedFrameBuffer * fb : m_fbs)
+					delete fb;
+			}
+		};
+		void Build(const VkDevice & device, VkExtent2D extent, VkFormat depthFormat);
+		void Build(const VkDevice & device, VkExtent2D extent, VkFormat colorFormat, VkFormat depthFormat);
 		void SetPipeline(VkManagedPipeline * pipeline, VkDynamicStatesBlock dynamicStates, VkPipelineBindPoint bindPoint);
 		void UpdateDynamicStates(VkDynamicStatesBlock dynamicStates);
 		void PreRecordData(VkCommandBuffer commandBuffer, uint32_t frameBufferIndex);
 		void Record(const std::vector<VkClearValue>& values, std::vector<VkManagedDescriptorSet*> descriptors, std::vector<VkPushConstant>& pushConstants, VkManagedBuffer * indexBuffer, VkManagedBuffer * vertexBuffer, std::vector<VkIndexedDraw>& draws);
-		VkManagedRenderPass();
-		~VkManagedRenderPass();
-		void SetFrameBufferCount(uint32_t count, bool setFinalLayout, bool sampleColor, bool copyColor, bool sampleDepth, bool copyDepth);
-		operator VkRenderPass() const;
+		void SetFrameBufferCount(const VkDevice & device, const VkPhysicalDevice pDevice, uint32_t count, uint32_t layerCount, VkManagedFrameBufferUsage mask);
 		VkExtent2D GetExtent();
 		VkExtent3D GetExtent3D();
-		VkDevice GetDevice();
-		size_t FramebufferCount();
-		VkFramebuffer GetFrameBuffer(uint32_t index = 0);
-		std::vector<VkFramebuffer> GetFrameBuffers();
-		Vulkan::VkManagedImage * GetAttachment(size_t index, VkImageUsageFlagBits attachmentType);
+
+		inline const size_t FramebufferCount()
+		{
+			return m_fbs.size();
+		}
+
+		inline const VkFramebuffer& GetFrameBuffer(uint32_t index = 0)
+		{
+			return m_fbs[index]->frameBuffer();
+		}
+
+		inline std::vector<VkFramebuffer> Vulkan::VkManagedRenderPass::GetFrameBuffers()
+		{
+			std::vector<VkFramebuffer> fbs;
+			fbs.resize(m_fbs.size());
+
+			for (size_t i = 0; i < fbs.size(); i++)
+				fbs[i] = m_fbs[i]->frameBuffer();
+
+			return fbs;
+		}
+
+		inline VkManagedImage GetAttachment(size_t index, VkImageUsageFlagBits attachmentType)
+		{
+			switch (attachmentType)
+			{
+			case VkImageUsageFlagBits::VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT:
+			{
+				VkManagedImage img = m_fbs[index]->colorAttachment();
+				img.layout = m_colorFinalLayout;
+				img.format = m_colorformat;
+				img.imageExtent.width = m_extent.width;
+				img.imageExtent.height = m_extent.height;
+				img.imageExtent.depth = 1U;
+				return img;
+			}
+
+			case VkImageUsageFlagBits::VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT:
+			{
+
+				VkManagedImage img = m_fbs[index]->depthAttachment();
+				img.layout = m_depthFinalLayout;
+				img.format = m_depthFormat;
+				img.imageExtent.width = m_extent.width;
+				img.imageExtent.height = m_extent.height;
+				img.imageExtent.depth = 1U;
+				return img;
+			}
+
+			default:
+				assert(false && "Incorrect attachment type provided.");
+				return {};
+			}
+		}
+
+		inline const VkRenderPass& renderPass() const
+		{
+			return m_pass.object();
+		}
 
 	private:
 
@@ -77,11 +136,8 @@ namespace Vulkan
 		VkFormat m_colorformat;
 		VkFormat m_depthFormat;
 		VkExtent2D m_extent;
-		VkManagedDevice * m_mdevice = nullptr;
-		VkManagedObject<VkDevice> m_device{ vkDestroyDevice, false };
-		VkManagedObject<VkRenderPass> m_pass{ m_device, vkDestroyRenderPass };
+		VkManagedObject<VkRenderPass> m_pass;
 		std::vector<VkManagedFrameBuffer*> m_fbs;
-		size_t m_fbSize = 0;
 
 	};
 }

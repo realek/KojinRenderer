@@ -22,7 +22,7 @@ void Vulkan::VkManagedDescriptorSet::LoadCombinedSamplerImageArray(uint32_t dstS
 		{
 			VkDescriptorImageInfo textureInfo = {};
 			textureInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			textureInfo.imageView = *images[i];
+			textureInfo.imageView = images[i]->imageView;
 			textureInfo.sampler = samplers[i];
 			combinedSamplerImages[i] = textureInfo;
 		}
@@ -56,7 +56,7 @@ void Vulkan::VkManagedDescriptorSet::LoadCombinedSamplerImage(uint32_t dstSetInd
 	}
 	VkDescriptorImageInfo diffuseTextureInfo = {};
 	diffuseTextureInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	diffuseTextureInfo.imageView = *image;
+	diffuseTextureInfo.imageView = image->imageView;
 	diffuseTextureInfo.sampler = sampler;
 
 	VkWriteDescriptorSet descriptorVertexWrite = {};
@@ -80,7 +80,7 @@ void Vulkan::VkManagedDescriptorSet::LoadUniformBuffer(uint32_t dstSetIndex, VkM
 		throw std::runtime_error("Maximum number for descriptors of type VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER has been reached. Unable to load more descriptors");
 	}
 	VkDescriptorBufferInfo bufferInfo = {};
-	bufferInfo.buffer = *buffer;
+	bufferInfo.buffer = buffer->buffer();
 	bufferInfo.offset = 0;
 	bufferInfo.range = buffer->Size();
 

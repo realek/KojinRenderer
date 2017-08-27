@@ -9,6 +9,7 @@
 
 Vulkan::VkManagedInstance::VkManagedInstance(VkApplicationInfo * appInfo, std::vector<const char*> layers)
 {
+	VkResult result;
 	VkInstanceCreateInfo instanceCI = {};
 	instanceCI.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	instanceCI.pApplicationInfo = appInfo;
@@ -27,8 +28,10 @@ Vulkan::VkManagedInstance::VkManagedInstance(VkApplicationInfo * appInfo, std::v
 	instanceCI.enabledLayerCount = 0;
 #endif // !NDEBUG
 
-	if (vkCreateInstance(&instanceCI, nullptr, ++m_instance) != VK_SUCCESS)
-		throw std::exception("Unable to create VkInstance object.");
+	VkInstance instance = VK_NULL_HANDLE;
+	result = vkCreateInstance(&instanceCI, nullptr, &instance);
+	assert(result == VK_SUCCESS);
+	m_instance.set_object(instance, vkDestroyInstance);
 
 	// acquire devices and data
 	try
@@ -50,17 +53,18 @@ Vulkan::VkManagedInstance::~VkManagedInstance()
 
 VkInstance Vulkan::VkManagedInstance::Instance()
 {
-	return m_instance;
+	return m_instance.object();
 }
 
 VkSurfaceKHR Vulkan::VkManagedInstance::Surface()
 {
-	assert(m_surface != VK_NULL_HANDLE);
-	return m_surface;
+	//assert(m_surface != VK_NULL_HANDLE);
+	return m_surface.object();
 }
 
 VkSurfaceKHR Vulkan::VkManagedInstance::MakeSurface(void * window, uint32_t width, uint32_t height)
 {
+	VkResult result;
 	SDL_SysWMinfo windowInfo;
 	SDL_VERSION(&windowInfo.version);
 	SDL_Window * win = reinterpret_cast<SDL_Window*>(window);
@@ -75,8 +79,10 @@ VkSurfaceKHR Vulkan::VkManagedInstance::MakeSurface(void * window, uint32_t widt
 	surfaceCI.hinstance = GetModuleHandle(NULL);
 	surfaceCI.hwnd = windowInfo.info.win.window;
 	
-	if (vkCreateWin32SurfaceKHR(m_instance, &surfaceCI, nullptr, ++m_surface) != VK_SUCCESS)
-		throw std::exception("Unable to create Win32 KHR Surface!");
+	VkSurfaceKHR surface = VK_NULL_HANDLE;
+	result = vkCreateWin32SurfaceKHR(m_instance.object(), &surfaceCI, nullptr, &surface);
+	assert(result == VK_SUCCESS);
+	m_surface.set_object(surface, m_instance.object(), vkDestroySurfaceKHR);
 
 #endif // _WIN32
 	//TODO: add linux & mac here later
@@ -85,33 +91,33 @@ VkSurfaceKHR Vulkan::VkManagedInstance::MakeSurface(void * window, uint32_t widt
 	//get surface capabilities for all physical devices
 	for(VkPhysicalDeviceData* deviceData : devices)
 	{
-		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(deviceData->device, m_surface, &deviceData->deviceSurfaceData.capabilities);
+		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(deviceData->device, m_surface.object(), &deviceData->deviceSurfaceData.capabilities);
 		uint32_t count = 0;
-		vkGetPhysicalDeviceSurfaceFormatsKHR(deviceData->device, m_surface, &count, nullptr);
+		vkGetPhysicalDeviceSurfaceFormatsKHR(deviceData->device, m_surface.object(), &count, nullptr);
 		if (count != 0)
 		{
 			deviceData->deviceSurfaceData.formats.resize(count);
-			vkGetPhysicalDeviceSurfaceFormatsKHR(deviceData->device, m_surface, &count, deviceData->deviceSurfaceData.formats.data());
+			vkGetPhysicalDeviceSurfaceFormatsKHR(deviceData->device, m_surface.object(), &count, deviceData->deviceSurfaceData.formats.data());
 		}
 		count = 0;
-		vkGetPhysicalDeviceSurfacePresentModesKHR(deviceData->device, m_surface, &count, nullptr);
+		vkGetPhysicalDeviceSurfacePresentModesKHR(deviceData->device, m_surface.object(), &count, nullptr);
 		if (count != 0)
 		{
 			deviceData->deviceSurfaceData.presentModes.resize(count);
-			vkGetPhysicalDeviceSurfacePresentModesKHR(deviceData->device, m_surface, &count, deviceData->deviceSurfaceData.presentModes.data());
+			vkGetPhysicalDeviceSurfacePresentModesKHR(deviceData->device, m_surface.object(), &count, deviceData->deviceSurfaceData.presentModes.data());
 		}
-		deviceData->deviceSurfaceData.surface = m_surface;
+		deviceData->deviceSurfaceData.surface = m_surface.object();
 		deviceData->deviceSurfaceData.windowExtent.height = height;
 		deviceData->deviceSurfaceData.windowExtent.width = width;
 	}
 
-	return m_surface;
+	return m_surface.object();
 }
 
 Vulkan::VkManagedDevice * Vulkan::VkManagedInstance::CreateVkManagedDevice(size_t physDeviceIndex, std::vector<const char*> requiredExtensions, bool fPresent,bool fGraphics, bool fTransfer, bool fCompute, bool fSparse)
 {
 	//a surface must exist before creating a logical device
-	assert(m_surface != VK_NULL_HANDLE);
+	//assert(m_surface != VK_NULL_HANDLE);
 
 	//get queues
 	uint32_t queueFamCount = 0;
@@ -153,7 +159,7 @@ Vulkan::VkManagedDevice * Vulkan::VkManagedInstance::CreateVkManagedDevice(size_
 			}
 
 			VkBool32 presentSupport = false;
-			vkGetPhysicalDeviceSurfaceSupportKHR(devices[physDeviceIndex]->device, index, m_surface, &presentSupport);
+			vkGetPhysicalDeviceSurfaceSupportKHR(devices[physDeviceIndex]->device, index, m_surface.object(), &presentSupport);
 			if (presentSupport)
 			{
 				devices[physDeviceIndex]->presentFamilies.push_back(index);
@@ -244,14 +250,14 @@ Vulkan::VkManagedDevice * Vulkan::VkManagedInstance::CreateVkManagedDevice(size_
 void Vulkan::VkManagedInstance::AcquirePhysicalDevices()
 {
 	uint32_t count = 0;
-	vkEnumeratePhysicalDevices(m_instance, &count, nullptr);
+	vkEnumeratePhysicalDevices(m_instance.object(), &count, nullptr);
 
 	if (count == 0)
 		throw std::runtime_error("No GPUs with Vulkan support were found on the current system");
 	std::vector<VkPhysicalDevice> systemDevices;
 	systemDevices.resize(count);
 	devices.resize(count);
-	vkEnumeratePhysicalDevices(m_instance, &count, systemDevices.data());
+	vkEnumeratePhysicalDevices(m_instance.object(), &count, systemDevices.data());
 
 	for (uint32_t i = 0; i < count;++i) 
 	{

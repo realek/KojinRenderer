@@ -2,13 +2,12 @@
 #include "VkManagedQueue.h"
 #include <assert.h>
 
-Vulkan::VkManagedCommandBuffer::VkManagedCommandBuffer(VkDevice device, VkCommandBufferAllocateInfo allocInfo) : bufferLevel(allocInfo.level), m_pool(allocInfo.commandPool)
+Vulkan::VkManagedCommandBuffer::VkManagedCommandBuffer(const VkDevice& device, VkCommandBufferAllocateInfo allocInfo) : bufferLevel(allocInfo.level)
 {
 	m_buffers.resize(allocInfo.commandBufferCount,VK_NULL_HANDLE);
 	VkResult result = vkAllocateCommandBuffers(device, &allocInfo, m_buffers.data());
 	if (result != VK_SUCCESS)
 		throw std::runtime_error("Failed to allocate managed command buffer, reason: " + VkResultToString(result));
-	m_device = device;
 }
 
 VkCommandBuffer Vulkan::VkManagedCommandBuffer::Begin(VkCommandBufferUsageFlags usage, size_t index)
@@ -58,18 +57,7 @@ void Vulkan::VkManagedCommandBuffer::End()
 	}
 }
 
-void Vulkan::VkManagedCommandBuffer::Free()
-{
-	
-	if (!m_buffers.empty())
-	{
-		vkFreeCommandBuffers(m_device, m_pool, static_cast<uint32_t>(m_buffers.size()), m_buffers.data());
-		bufferLevel = VK_COMMAND_BUFFER_LEVEL_MAX_ENUM;
-		m_buffers.clear();
-	}
-}
-
-VkResult Vulkan::VkManagedCommandBuffer::Submit(VkQueue queue, std::vector<VkPipelineStageFlags> waitStages, std::vector<VkSemaphore> signal, std::vector<VkSemaphore> wait)
+VkResult Vulkan::VkManagedCommandBuffer::Submit(const VkQueue queue, std::vector<VkPipelineStageFlags> waitStages, std::vector<VkSemaphore> signal, std::vector<VkSemaphore> wait)
 {
 	assert(bufferLevel != VK_COMMAND_BUFFER_LEVEL_MAX_ENUM);
 	if (!waitStages.empty())
@@ -89,7 +77,7 @@ VkResult Vulkan::VkManagedCommandBuffer::Submit(VkQueue queue, std::vector<VkPip
 	return vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
 }
 
-VkResult Vulkan::VkManagedCommandBuffer::Submit(VkQueue queue, std::vector<VkPipelineStageFlags> waitStages, std::vector<VkSemaphore> signal, std::vector<VkSemaphore> wait, size_t index)
+VkResult Vulkan::VkManagedCommandBuffer::Submit(const VkQueue queue, std::vector<VkPipelineStageFlags> waitStages, std::vector<VkSemaphore> signal, std::vector<VkSemaphore> wait, size_t index)
 {
 	assert(bufferLevel != VK_COMMAND_BUFFER_LEVEL_MAX_ENUM);
 	if (!waitStages.empty())

@@ -1,11 +1,11 @@
 #pragma once
 #include "VulkanObject.h"
 #include "VkManagedStructures.h"
+#include "VkManagedQueue.h"
 #include <vector>
 #include <memory>
 namespace Vulkan
 {
-	class VkManagedQueue;
 	class VkManagedInstance;
 	class VkManagedDevice
 	{
@@ -27,6 +27,10 @@ namespace Vulkan
 		void UnmarkAllQueues();
 		bool CheckFormatFeature(VkFormatFeatureFlags feature, VkFormat format, VkImageTiling tiling);
 
+		const VkDevice& device() 
+		{
+			return m_device.object();
+		}
 
 	private:
 		VkFormat FindDepthFormat();
@@ -35,7 +39,7 @@ namespace Vulkan
 		friend class VkManagedInstance;
 
 	private:
-		VkManagedObject<VkDevice> m_device{vkDestroyDevice};
+		VkManagedObject<VkDevice> m_device;
 		std::vector<std::vector<VkManagedQueue*>> m_queues;
 		VkFormat m_depthFormat;
 		VkPhysicalDeviceData * m_physicalDevice = nullptr;

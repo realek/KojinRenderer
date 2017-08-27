@@ -379,7 +379,7 @@ int main()
 	}
 
 
-
+	
 	std::cout <<std::endl<< "Finished Vulkan resource cleanup." << std::endl;
 	IMG_Quit();
 	SDL_Quit();

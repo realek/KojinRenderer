@@ -9,18 +9,16 @@ namespace Vulkan
 	class VkManagedDescriptorPool 
 	{
 	public:
-		VkManagedDescriptorPool(VkManagedDevice * device);
-		VkManagedDescriptorSet AllocateDescriptorSet(uint32_t setCount, VkDescriptorSetLayout layout);
-		void AllocateDescriptorSet(uint32_t setCount, VkDescriptorSetLayout layout, VkManagedDescriptorSet *& descriptorSet);
-		void FreeDescriptorSet(VkManagedDescriptorSet * descSet);
+
+		Vulkan::VkManagedDescriptorSet AllocateDescriptorSet(const VkDevice& device, uint32_t setCount, VkDescriptorSetLayout layout);
+		void FreeDescriptorSet(const VkDevice & device, VkManagedDescriptorSet * descSet);
 		void SetDescriptorCount(VkDescriptorType desc, uint32_t count);
 		void ClearPool();
 		uint32_t Size();
-		void BuildPool(uint32_t maxSets);
-
+		void BuildPool(const VkDevice& device, uint32_t maxSets);
 	private:
-		VkManagedObject<VkDevice> m_device{ vkDestroyDevice,false };
-		VkManagedObject<VkDescriptorPool> m_descriptorPool{ m_device, vkDestroyDescriptorPool };
+
+		VkManagedObject<VkDescriptorPool> m_descriptorPool;
 		uint32_t m_descriptorCounts[11]{ 0 };
 		struct
 		{

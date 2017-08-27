@@ -29,8 +29,8 @@ namespace Vulkan
 
 	private:
 
-		VkManagedObject<VkInstance> m_instance{ vkDestroyInstance};
-		VkManagedObject<VkSurfaceKHR> m_surface{m_instance, vkDestroySurfaceKHR};
+		VkManagedObject<VkInstance> m_instance;
+		VkManagedObject<VkSurfaceKHR> m_surface;
 		std::vector<VkPhysicalDeviceData*> devices;
 	};
 }

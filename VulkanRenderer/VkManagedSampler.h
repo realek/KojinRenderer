@@ -16,13 +16,16 @@ namespace Vulkan
 	class VkManagedSampler
 	{
 	public:
-		VkManagedSampler(VkManagedDevice * device, VkManagedSamplerMode mode, float anisotrophy, VkBorderColor color, VkBool32 compare = VK_FALSE);
-		void BasicEdit(VkManagedSamplerMode mode, float anisotrophy, VkBorderColor color, VkBool32 compare);
-		void MipMapEdit(VkFilter magfilter, VkFilter minFilter, VkSamplerMipmapMode mipmapMode);
-		operator VkSampler() const;
+		VkManagedSampler(const VkDevice& device, VkManagedSamplerMode mode, float anisotrophy, VkBorderColor color, VkBool32 compare = VK_FALSE);
+		void BasicEdit(const VkDevice& device, VkManagedSamplerMode mode, float anisotrophy, VkBorderColor color, VkBool32 compare);
+		void MipMapEdit(const VkDevice& device, VkFilter magfilter, VkFilter minFilter, VkSamplerMipmapMode mipmapMode);
+		const VkSampler sampler() const 
+		{
+			return m_sampler.object();
+		}
 	private:
-		VkManagedObject<VkDevice> m_device{ vkDestroyDevice, false };
-		VkManagedObject<VkSampler> m_sampler{ m_device, vkDestroySampler };
+
+		VkManagedObject<VkSampler> m_sampler;
 		VkSamplerCreateInfo m_cSamplerInfo = {};
 		VkManagedSamplerMode m_cMode = UNDEFINED_UNDEFINED_COORDINATES;
 	};

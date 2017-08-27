@@ -2,10 +2,10 @@
 #include "VkManagedDevice.h"
 #include <assert.h>
 
-Vulkan::VkManagedSampler::VkManagedSampler(VkManagedDevice * device, VkManagedSamplerMode mode, float anisotrophy, VkBorderColor color, VkBool32 compare)
+Vulkan::VkManagedSampler::VkManagedSampler(const VkDevice& device, VkManagedSamplerMode mode, float anisotrophy, VkBorderColor color, VkBool32 compare)
 {
-	assert(device != nullptr);
-	m_device = *device;
+	assert(device != VK_NULL_HANDLE);
+
 	VkSamplerCreateInfo samplerInfo = {};
 	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
@@ -39,14 +39,15 @@ Vulkan::VkManagedSampler::VkManagedSampler(VkManagedDevice * device, VkManagedSa
 	else if (mode == COLOR_NORMALIZED_COORDINATES || mode == DEPTH_NORMALIZED_COORDINATES)
 		samplerInfo.unnormalizedCoordinates = VK_FALSE;
 
-	VkResult result = vkCreateSampler(m_device, &samplerInfo, nullptr, ++m_sampler);
-	if (result != VK_SUCCESS)
-		throw std::runtime_error("Unable to create texture sampler. Reason: " + Vulkan::VkResultToString(result));
+	VkSampler sampler = VK_NULL_HANDLE;
+	VkResult result = vkCreateSampler(device, &samplerInfo, nullptr, &sampler);
+	assert(result == VK_SUCCESS);
+	m_sampler.set_object(sampler, device, vkDestroySampler);
 
 	m_cSamplerInfo = samplerInfo;
 }
 
-void Vulkan::VkManagedSampler::BasicEdit(VkManagedSamplerMode mode, float anisotrophy, VkBorderColor color, VkBool32 compare)
+void Vulkan::VkManagedSampler::BasicEdit(const VkDevice& device, VkManagedSamplerMode mode, float anisotrophy, VkBorderColor color, VkBool32 compare)
 {
 	bool update = false;
 	VkSamplerCreateInfo samplerInfo = m_cSamplerInfo;
@@ -96,13 +97,15 @@ void Vulkan::VkManagedSampler::BasicEdit(VkManagedSamplerMode mode, float anisot
 
 	if (update)
 	{
-		VkResult result = vkCreateSampler(m_device, &samplerInfo, nullptr, ++m_sampler);
-		if (result != VK_SUCCESS)
-			throw std::runtime_error("Unable to create texture sampler. Reason: " + Vulkan::VkResultToString(result));
+		VkSampler sampler = VK_NULL_HANDLE;
+		VkResult result = vkCreateSampler(device, &samplerInfo, nullptr, &sampler);
+		assert(result == VK_SUCCESS);
+		m_sampler.set_object(sampler, device, vkDestroySampler);
 		m_cSamplerInfo = samplerInfo;
 	}
 }
-void Vulkan::VkManagedSampler::MipMapEdit(VkFilter magfilter, VkFilter minFilter, VkSamplerMipmapMode mipmapMode)
+
+void Vulkan::VkManagedSampler::MipMapEdit(const VkDevice& device, VkFilter magfilter, VkFilter minFilter, VkSamplerMipmapMode mipmapMode)
 {
 	bool update = false;
 	VkSamplerCreateInfo samplerInfo = m_cSamplerInfo;
@@ -126,13 +129,10 @@ void Vulkan::VkManagedSampler::MipMapEdit(VkFilter magfilter, VkFilter minFilter
 
 	if(update)
 	{
-		VkResult result = vkCreateSampler(m_device, &samplerInfo, nullptr, ++m_sampler);
-		if (result != VK_SUCCESS)
-			throw std::runtime_error("Unable to create texture sampler. Reason: " + Vulkan::VkResultToString(result));
+		VkSampler sampler = VK_NULL_HANDLE;
+		VkResult result = vkCreateSampler(device, &samplerInfo, nullptr, &sampler);
+		assert(result == VK_SUCCESS);
+		m_sampler.set_object(sampler, device, vkDestroySampler);
 		m_cSamplerInfo = samplerInfo;
 	}
-}
-Vulkan::VkManagedSampler::operator VkSampler() const
-{
-	return m_sampler;
 }

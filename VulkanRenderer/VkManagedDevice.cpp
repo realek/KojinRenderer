@@ -13,10 +13,11 @@ const std::vector<VkFormat> k_depthFormats{
 
 Vulkan::VkManagedDevice::VkManagedDevice(VkDeviceCreateInfo createInfo, VkPhysicalDeviceData * physicalDevice)
 {
+	VkDevice device = VK_NULL_HANDLE;
+	VkResult result = vkCreateDevice(physicalDevice->device, &createInfo, nullptr, &device);
+	assert(result == VK_SUCCESS);
+	m_device.set_object(device, vkDestroyDevice);
 
-	if (vkCreateDevice(physicalDevice->device, &createInfo, nullptr, ++m_device) != VK_SUCCESS) {
-		throw std::runtime_error("Unable to create Vulkan logical device from provided physical device.");
-	}
 	m_physicalDevice = physicalDevice;
 
 	try
@@ -43,11 +44,6 @@ Vulkan::VkManagedDevice::~VkManagedDevice()
 			}
 		}
 	}
-}
-
-Vulkan::VkManagedDevice::operator VkDevice() const
-{
-	return m_device;
 }
 
 uint32_t Vulkan::VkManagedDevice::GetMemoryType(uint32_t desiredType, VkMemoryPropertyFlags memFlags) {
@@ -85,9 +81,8 @@ VkFormat Vulkan::VkManagedDevice::Depthformat()
 
 void Vulkan::VkManagedDevice::WaitForIdle()
 {
-	VkResult result = vkDeviceWaitIdle(m_device);
-	if (result != VK_SUCCESS)
-		throw std::runtime_error("VkManagedDevice failed while waiting on logical device. Reason: " + VkResultToString(result));
+	VkResult result = vkDeviceWaitIdle(m_device.object());
+	assert(result == VK_SUCCESS);
 }
 
 Vulkan::VkSurfaceData Vulkan::VkManagedDevice::GetPhysicalDeviceSurfaceData()
@@ -209,7 +204,7 @@ void Vulkan::VkManagedDevice::GetAllQueues()
 		for(uint32_t j = 0; j < m_physicalDevice->queueFamilies[i].queueCount;++j)
 		{
 			VkQueue queue;
-			vkGetDeviceQueue(m_device, i, j, &queue);
+			vkGetDeviceQueue(m_device.object(), i, j, &queue);
 			queues[j] = new VkManagedQueue(queue, i, j, canPresent);
 		}
 		m_queues[i] = queues;

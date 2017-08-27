@@ -65,7 +65,7 @@ std::shared_ptr<Vulkan::Mesh> Vulkan::Mesh::LoadMesh(const char * filename,int f
 					aiVector3D pos = mesh->mVertices[j];
 					aiVector3D normal = mesh->mNormals[j];
 					aiVector3D texCoord = mesh->HasTextureCoords(0) ? mesh->mTextureCoords[0][j] : zeroVec;
-
+					aiVector3D tangent = mesh->mTangents[j];
 
 					VkVertex vertex = {};
 
@@ -80,6 +80,13 @@ std::shared_ptr<Vulkan::Mesh> Vulkan::Mesh::LoadMesh(const char * filename,int f
 						normal.x,
 						normal.y,
 						normal.z
+					};
+
+					vertex.tanget = 
+					{
+						tangent.x,
+						tangent.y,
+						tangent.z
 					};
 
 					vertex.texCoord = {

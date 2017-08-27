@@ -1,25 +1,34 @@
 #pragma once
 #include "VulkanObject.h"
+#include "VkManagedQueue.h"
 #include <vector>
 namespace Vulkan
 {
 	class VkManagedCommandBuffer;
-	class VkManagedQueue;
-	class VkManagedDevice;
 	class VkManagedCommandPool
 	{
 	public:
-		VkManagedCommandPool(VkManagedDevice * device, VkManagedQueue * queue, bool transientPool = false);
+		VkManagedCommandPool(const VkDevice& device, VkManagedQueue * queue, bool transientPool = false);
+
+		Vulkan::VkManagedCommandBuffer CreateCommandBuffer(const VkDevice& device, VkCommandBufferLevel bufferLevel, uint32_t count);
 		VkManagedCommandPool(const VkManagedCommandPool&) = delete;
 		VkManagedCommandPool & operator=(const VkManagedCommandPool&) = delete;
-		VkManagedCommandBuffer CreateCommandBuffer(VkCommandBufferLevel bufferLevel, uint32_t count);
-		void CreateCommandBuffer(VkCommandBufferLevel bufferLevel, uint32_t count,VkManagedCommandBuffer *& buffer);
-		VkManagedQueue * PoolQueue();
-		operator VkCommandPool() const;
+
+		void Free(VkManagedCommandBuffer * buffer, const VkDevice& device);
+		
+		inline VkManagedQueue* PoolQueue()
+		{
+			return m_submitQueue;
+		}
+
+		inline const VkCommandPool& pool() const
+		{
+			return m_commandPool.object();
+		}
+
 	private:
 
-		VkManagedObject<VkDevice> m_device{ vkDestroyDevice, false };
-		VkManagedObject<VkCommandPool> m_commandPool{ m_device, vkDestroyCommandPool };
+		VkManagedObject<VkCommandPool> m_commandPool;
 		VkManagedQueue * m_submitQueue = nullptr;
 	};
 }

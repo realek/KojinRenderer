@@ -10,7 +10,8 @@ wrapers.
 #include <unordered_map>
 #include <glm\matrix.hpp>
 #include <vulkan\vulkan.h>
-
+#include "VkManagedDescriptorSet.h"
+#include "VkManagedCommandBuffer.h"
 
 #ifndef RENDER_ENGINE_NAME
 #define RENDER_ENGINE_NAME "KojinRenderer"
@@ -45,7 +46,7 @@ namespace Vulkan
 	class Material;
 
 
-	class VkManagedImage;
+	struct VkManagedImage;
 	class VkManagedRenderPass;
 	class VkManagedPipeline;
 	class VkManagedDescriptorPool;
@@ -62,8 +63,8 @@ namespace Vulkan
 	struct vec4x4x6_vec4_container;
 	struct mat4_vec4_float_container;
 	struct mat4x6_container;
+	struct VkManagedImageResources;
 	class VkManagedBuffer;
-	
 
 	class KojinRenderer
 	{
@@ -101,7 +102,7 @@ namespace Vulkan
 		void CreateDynamicUniformBuffer(VkManagedBuffer *& dyn_buffer, uint32_t objectCount, uint32_t bufferDataSize);
 		void CreateUniformBufferSet(VkManagedBuffer *& stagingBuffer, std::vector<VkManagedBuffer*>& buffers, uint32_t objectCount, uint32_t bufferDataSize);
 		void CreateUniformBufferPair(VkManagedBuffer *& stagingBuffer, VkManagedBuffer *& buffer, uint32_t bufferDataSize);
-		void Clean();
+		void CleanNonVulkanItems();
 	private:
 
 		VkManagedInstance * m_vkInstance = nullptr;
@@ -113,26 +114,21 @@ namespace Vulkan
 		VkManagedPipeline * m_vkPipelineFWD = nullptr;
 		VkManagedPipeline * m_vkPipelineSDWProj = nullptr;
 		VkManagedDescriptorPool * m_vkDescriptorPool = nullptr;
-		VkManagedDescriptorSet * m_vDescriptorSetFWD = nullptr;
-		VkManagedDescriptorSet * m_fDescriptorSetFWD = nullptr;
-		VkManagedDescriptorSet * m_vDescriptorSetSDWProj = nullptr;
+		VkManagedDescriptorSet m_vDescriptorSetFWD;
+		VkManagedDescriptorSet m_fDescriptorSetFWD;
+		VkManagedDescriptorSet m_vDescriptorSetSDWProj;
 		VkManagedQueue * m_vkPresentQueue = nullptr;
 		VkManagedSemaphore * m_semaphores = nullptr;
 		VkManagedSemaphore * m_passSemaphore = nullptr;
 		VkManagedBuffer * m_meshVertexData = nullptr;
 		VkManagedBuffer * m_meshIndexData = nullptr;
 
-		VkManagedCommandBuffer * m_shadowPassCommands = nullptr;
-		VkManagedCommandBuffer * m_swapChainbuffers = nullptr;
-		VkManagedCommandBuffer * m_uniformBufferUpdater = nullptr;
+		VkManagedCommandBuffer m_shadowPassCommands;
+		VkManagedCommandBuffer m_swapChainbuffers;
+		VkManagedCommandBuffer m_miscCmdBuffer;
 
 		VkManagedSampler * m_colorSampler = nullptr;
 		VkManagedSampler * m_depthSampler = nullptr;
-
-		std::unordered_map<uint32_t, int> m_meshDraws;
-		//one transform matrix, one color vector and one float for specularity
-		std::vector<mat4_vec4_float_container> m_meshPartData;
-		std::vector<uint32_t> m_meshPartTextures;
 
 		VkManagedBuffer * m_uniformVModelDynamicBuffer = nullptr;
 		void * m_uniformVModelDynamicBufferAlignedData = nullptr;
@@ -143,10 +139,22 @@ namespace Vulkan
 		VkManagedBuffer * m_uniformShadowstagingBufferFWD = nullptr;
 		VkManagedBuffer * m_uniformShadowBufferFWD = nullptr;
 
+		int m_layeredShadowMapIndex = -1; // -1 is reserved for the shadowmap
+		typedef std::unordered_map<int, VkManagedImageResources> DeviceImageResources;
+		DeviceImageResources m_deviceLoadedResources;
+		typedef std::unordered_map<int, VkManagedImage> DeviceImageList;
+		DeviceImageList m_deviceLoadedImages;
+
+		std::unordered_map<int, int> m_meshDraws;
+		//one transform matrix, one color vector and one float for specularity
+		std::vector<mat4_vec4_float_container> m_meshPartData;
+		std::vector<int> m_meshPartTextures;
+
+	
+
 		int m_objectCount = 0;
 		int m_objectCountOld = 0;
-		VkManagedImage * m_layeredShadowMap = nullptr;
-		std::unordered_map<uint32_t, std::shared_ptr<VkManagedImage>> m_deviceLoadedTextures;
+
 		std::unordered_map<uint32_t, Light*> m_lights;
 		std::unordered_map<uint32_t, Camera*> m_cameras;
 		std::unordered_map<uint32_t, Texture*> m_virtualTextures;

@@ -9,15 +9,7 @@
 #include <array>
 #include <assert.h>
 
-
-Vulkan::VkManagedRenderPass::VkManagedRenderPass(VkManagedDevice * device)
-{
-	assert(device != nullptr);
-	m_mdevice = device;
-	m_device = *m_mdevice;
-}
-
-void Vulkan::VkManagedRenderPass::Build(VkExtent2D extent, VkFormat depthFormat)
+void Vulkan::VkManagedRenderPass::Build(const VkDevice& device, VkExtent2D extent, VkFormat depthFormat)
 {
 	assert(depthFormat != VK_FORMAT_UNDEFINED);
 
@@ -67,9 +59,10 @@ void Vulkan::VkManagedRenderPass::Build(VkExtent2D extent, VkFormat depthFormat)
 	renderPassCI.dependencyCount = static_cast<uint32_t>(subPassDeps.size());
 	renderPassCI.pDependencies = subPassDeps.data();
 
-	VkResult result = vkCreateRenderPass(m_device, &renderPassCI, nullptr, ++m_pass);
-	if (result != VK_SUCCESS)
-		throw std::runtime_error("Unable to create render pass. Reason: " + Vulkan::VkResultToString(result));
+	VkRenderPass pass = VK_NULL_HANDLE;
+	VkResult result = vkCreateRenderPass(device, &renderPassCI, nullptr, &pass);
+	assert(result == VK_SUCCESS);
+	m_pass.set_object(pass, device, vkDestroyRenderPass);
 
 	m_extent = extent;
 	m_colorformat = VK_FORMAT_UNDEFINED;
@@ -80,7 +73,7 @@ void Vulkan::VkManagedRenderPass::Build(VkExtent2D extent, VkFormat depthFormat)
 
 }
 
-void Vulkan::VkManagedRenderPass::Build(VkExtent2D extent, VkFormat colorFormat, VkFormat depthFormat)
+void Vulkan::VkManagedRenderPass::Build(const VkDevice& device, VkExtent2D extent, VkFormat colorFormat, VkFormat depthFormat)
 {
 	assert(colorFormat != VK_FORMAT_UNDEFINED);
 	assert(depthFormat != VK_FORMAT_UNDEFINED);
@@ -150,9 +143,10 @@ void Vulkan::VkManagedRenderPass::Build(VkExtent2D extent, VkFormat colorFormat,
 	renderPassCI.pDependencies = subPassDeps.data();
 
 
-	VkResult result = vkCreateRenderPass(m_device, &renderPassCI, nullptr, ++m_pass);
-	if (result != VK_SUCCESS)
-		throw std::runtime_error("Unable to create render pass. Reason: " + Vulkan::VkResultToString(result));
+	VkRenderPass pass = VK_NULL_HANDLE;
+	VkResult result = vkCreateRenderPass(device, &renderPassCI, nullptr, &pass);
+	assert(result == VK_SUCCESS);
+	m_pass.set_object(pass, device, vkDestroyRenderPass);
 
 	m_extent = extent;
 	m_colorformat = colorFormat;
@@ -164,8 +158,6 @@ void Vulkan::VkManagedRenderPass::Build(VkExtent2D extent, VkFormat colorFormat,
 void Vulkan::VkManagedRenderPass::SetPipeline(VkManagedPipeline * pipeline, VkDynamicStatesBlock dynamicStates, VkPipelineBindPoint bindPoint)
 {
 	assert(pipeline != nullptr);
-	if (!pipeline->CreatedWithPass(m_pass))
-		throw std::runtime_error("Provided pipeline was not created with this render pass");
 
 	m_currentPipeline = pipeline;
 	m_currentPipelineStateBlock = dynamicStates;
@@ -198,18 +190,18 @@ void Vulkan::VkManagedRenderPass::Record(const std::vector<VkClearValue>& values
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	renderPassInfo.clearValueCount = (uint32_t)values.size();
 	renderPassInfo.pClearValues = values.data();
-	renderPassInfo.renderPass = m_pass;
+	renderPassInfo.renderPass = m_pass.object();
 	renderPassInfo.renderArea.offset = { 0, 0 };
 	renderPassInfo.renderArea.extent = m_extent;
 
-	renderPassInfo.framebuffer = *m_fbs[m_currentFBindex];
+	renderPassInfo.framebuffer = m_fbs[m_currentFBindex]->frameBuffer();
 	
 	vkCmdBeginRenderPass(m_currentCommandBuffer, &renderPassInfo, VkSubpassContents::VK_SUBPASS_CONTENTS_INLINE);
-	VkBuffer vertexBuffers[] = { *vertexBuffer };
+	VkBuffer vertexBuffers[] = { vertexBuffer->buffer() };
 	VkDeviceSize offset =  0 ;
 	vkCmdBindVertexBuffers(m_currentCommandBuffer, 0, 1, vertexBuffers, &offset);
-	vkCmdBindIndexBuffer(m_currentCommandBuffer, *indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-	vkCmdBindPipeline(m_currentCommandBuffer, m_currentPipelineBindpoint, *m_currentPipeline);
+	vkCmdBindIndexBuffer(m_currentCommandBuffer, indexBuffer->buffer(), 0, VK_INDEX_TYPE_UINT32);
+	vkCmdBindPipeline(m_currentCommandBuffer, m_currentPipelineBindpoint, m_currentPipeline->pipeline());
 
 	uint32_t diffSets = static_cast<uint32_t>(descriptors.size());
 	size_t drawCount = draws.size();
@@ -232,7 +224,7 @@ void Vulkan::VkManagedRenderPass::Record(const std::vector<VkClearValue>& values
 				}
 			}
 		}
-		vkCmdBindDescriptorSets(m_currentCommandBuffer, m_currentPipelineBindpoint, *m_currentPipeline, 0, (uint32_t)descSets.size(), descSets.data(), (uint32_t)dynOffsets.size(), dynOffsets.data());
+		vkCmdBindDescriptorSets(m_currentCommandBuffer, m_currentPipelineBindpoint, m_currentPipeline->layout(), 0, (uint32_t)descSets.size(), descSets.data(), (uint32_t)dynOffsets.size(), dynOffsets.data());
 		if (VK_INCOMPLETE == m_currentPipeline->SetDynamicState(m_currentCommandBuffer, m_currentPipelineStateBlock))
 		{
 			throw std::runtime_error("Incomplete state block provided for the bound pipeline.");
@@ -245,16 +237,6 @@ void Vulkan::VkManagedRenderPass::Record(const std::vector<VkClearValue>& values
 		vkCmdDrawIndexed(m_currentCommandBuffer, draws[j].indexCount, 1, draws[j].indexStart, draws[j].vertexOffset, 0);
 	}
 	vkCmdEndRenderPass(m_currentCommandBuffer);
-}
-
-Vulkan::VkManagedRenderPass::VkManagedRenderPass()
-{
-}
-
-Vulkan::VkManagedRenderPass::~VkManagedRenderPass()
-{
-	for (VkManagedFrameBuffer* buffer : m_fbs)
-		delete(buffer);
 }
 
 //void Vulkan::VkManagedRenderPass::CreateAsForwardOmniShadowmapPass(VkDevice device, int32_t width, int32_t height, std::shared_ptr<VulkanImageUnit> imageUnit, std::shared_ptr<VulkanCommandUnit> cmdUnit, VkFormat imageFormat, VkFormat depthFormat)
@@ -347,9 +329,9 @@ Vulkan::VkManagedRenderPass::~VkManagedRenderPass()
 //	SetFrameBufferCount(1);
 //}
 
-void Vulkan::VkManagedRenderPass::SetFrameBufferCount(uint32_t count, bool setFinalLayout, bool sampleColor, bool copyColor, bool sampleDepth, bool copyDepth) 
+void Vulkan::VkManagedRenderPass::SetFrameBufferCount(const VkDevice& device, const VkPhysicalDevice pDevice, uint32_t count, uint32_t layerCount, VkManagedFrameBufferUsage mask)
 {
-	uint32_t size = static_cast<uint32_t>(m_fbSize);
+	uint32_t size = (uint32_t)m_fbs.size();
 	count = count - size;
 	if (count == 0)
 		return;
@@ -358,29 +340,9 @@ void Vulkan::VkManagedRenderPass::SetFrameBufferCount(uint32_t count, bool setFi
 	{
 		for (uint32_t i = 0; i < count; i++)
 		{
-			m_fbs.push_back(new VkManagedFrameBuffer(m_mdevice, m_pass));
-			if (m_colorformat == VK_FORMAT_UNDEFINED)
-			{
-				m_fbs[size]->Build(m_extent, sampleDepth, copyDepth, m_depthFormat, VkManagedFrameBufferAttachment::DepthAttachment);
-				if(setFinalLayout)
-					m_fbs[size]->DepthAttachment()->layout = m_depthFinalLayout;
-			}
-			else if (m_depthFormat == VK_FORMAT_UNDEFINED)
-			{
-				m_fbs[size]->Build(m_extent, sampleColor, copyColor, m_colorformat, VkManagedFrameBufferAttachment::ColorAttachment);
-				if(setFinalLayout)
-					m_fbs[size]->ColorAttachment()->layout = m_colorFinalLayout;
-			}
-			else
-			{
-				m_fbs[size]->Build(m_extent, sampleColor, copyColor, sampleDepth, copyDepth, m_colorformat, m_depthFormat);
-				if(setFinalLayout)
-				{
-					m_fbs[size]->DepthAttachment()->layout = m_depthFinalLayout;
-					m_fbs[size]->ColorAttachment()->layout = m_colorFinalLayout;
-				}
-
-			}
+			m_fbs.push_back(new VkManagedFrameBuffer());
+			m_fbs[size]->Build(device, pDevice, m_pass.object(), m_extent, layerCount, mask, m_colorformat, m_depthFormat);
+			size++;
 		}
 	}
 	catch (...)
@@ -401,51 +363,3 @@ VkExtent3D Vulkan::VkManagedRenderPass::GetExtent3D()
 
 	return {m_extent.width,m_extent.height,1U};
 }
-
-VkDevice Vulkan::VkManagedRenderPass::GetDevice()
-{
-	return m_device;
-}
-
-size_t Vulkan::VkManagedRenderPass::FramebufferCount()
-{
-	return m_fbSize;
-}
-
-VkFramebuffer Vulkan::VkManagedRenderPass::GetFrameBuffer(uint32_t index)
-{
-	return m_fbs[index]->FrameBuffer();
-}
-
-std::vector<VkFramebuffer> Vulkan::VkManagedRenderPass::GetFrameBuffers()
-{
-	std::vector<VkFramebuffer> fbs;
-	fbs.resize(m_fbSize);
-	
-	for(size_t i = 0; i < m_fbSize;i++)
-		fbs[i] = m_fbs[i]->FrameBuffer();
-
-	return fbs;
-}
-
-Vulkan::VkManagedImage * Vulkan::VkManagedRenderPass::GetAttachment(size_t index, VkImageUsageFlagBits attachmentType)
-{
-	switch (attachmentType)
-	{
-	case VkImageUsageFlagBits::VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT:
-		return m_fbs[index]->ColorAttachment();
-
-	case VkImageUsageFlagBits::VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT:
-		return m_fbs[index]->DepthAttachment();
-
-	default:
-		throw std::runtime_error("Incorrect attachment type provided.");
-	}
-}
-
-Vulkan::VkManagedRenderPass::operator VkRenderPass() const
-{
-	return m_pass;
-}
-
-

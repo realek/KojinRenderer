@@ -15,48 +15,48 @@ namespace Vulkan
 	};
 
 	struct VkDynamicStatesBlock;
-	class VkManagedDevice;
 	class VkManagedRenderPass;
 	class VkManagedPipeline
 	{
 	public:
-		VkManagedPipeline(VkManagedDevice * device);
-		VkManagedPipeline();
-		void Build(VkManagedRenderPass * renderPass, PipelineMode mode, const char * vertShader, const char * fragShader, std::vector<VkDynamicState> dynamicStates, std::vector<VkPushConstantRange> pushConstants);
-		void Build(VkManagedRenderPass * renderPass, PipelineMode mode, const char * vertShader, const char * fragShader, std::vector<VkDynamicState> dynamicStates);
+
+		inline VkManagedPipeline() {}
+		void Build(const VkDevice & device, const VkRenderPass& renderPass, PipelineMode mode, const char * vertShader, const char * fragShader, std::vector<VkDynamicState> dynamicStates, std::vector<VkPushConstantRange> pushConstants = std::vector<VkPushConstantRange>());
 		
-		operator VkPipeline()
+		inline const VkPipeline& pipeline()
 		{
-			return m_pipeline;
+			return m_pipeline.object();
 		}
 
-		operator VkPipelineLayout()
+		inline const VkPipelineLayout& layout()
 		{
-			return m_pipelineLayout;
+			return m_pipelineLayout.object();
 		}
-		
-		//check if the pipeline was created with the provided pass
-		bool CreatedWithPass(VkRenderPass pass);
 
-		VkPipeline GetPipeline() const;
-		VkPipelineLayout GetLayout() const;
-		VkDescriptorSetLayout GetVertexLayout() const;
-		VkDescriptorSetLayout GetFragmentLayout() const;
+		inline const VkDescriptorSetLayout& GetVertexLayout() const
+		{
+			return m_vertSetLayout.object();
+		}
+
+		inline const VkDescriptorSetLayout& GetFragmentLayout() const
+		{
+			return m_fragSetLayout.object();
+		}
+
 		std::vector<VkDynamicState> GetDynamicStates();
 		VkResult SetDynamicState(VkCommandBuffer buffer, VkDynamicStatesBlock states);
 		void SetPushConstant(VkCommandBuffer buffer, std::vector<VkPushConstant> vector);
+
 	private:
-		void CreateDescriptorSetLayout_HARDCODED_SHADOW();
-		void CreateDescriptorSetLayout_HARCDODED();
-		void CreateShaderModule(std::string & code, VkManagedObject<VkShaderModule>& shader);
+		void CreateDescriptorSetLayout_HARDCODED_SHADOW(const VkDevice & device, VkManagedObject<VkDescriptorSetLayout>& setLayout);
+		void CreateDescriptorSetLayout_HARCDODED(const VkDevice & device, VkManagedObject<VkDescriptorSetLayout>& vSetLayout, VkManagedObject<VkDescriptorSetLayout>& fSetLayout);
+		void CreateShaderModule(const VkDevice & device, std::string & code, VkManagedObject<VkShaderModule>& shader);
 		std::string ReadBinaryFile(const char * filename);
-	private:
-		VkManagedObject<VkDevice> m_device{ vkDestroyDevice,false };
-		VkManagedObject<VkDescriptorSetLayout> m_vertSetLayout{m_device,vkDestroyDescriptorSetLayout};
-		VkManagedObject<VkDescriptorSetLayout> m_fragSetLayout{m_device,vkDestroyDescriptorSetLayout};
-		VkManagedObject<VkPipeline> m_pipeline{ m_device,vkDestroyPipeline };
-		VkManagedObject<VkPipelineLayout> m_pipelineLayout{ m_device, vkDestroyPipelineLayout };
-		VkRenderPass m_linkedPass = VK_NULL_HANDLE;
+
+		VkManagedObject<VkDescriptorSetLayout> m_vertSetLayout;
+		VkManagedObject<VkDescriptorSetLayout> m_fragSetLayout;
+		VkManagedObject<VkPipeline> m_pipeline;
+		VkManagedObject<VkPipelineLayout> m_pipelineLayout;
 		std::vector<VkDynamicState> m_activeDynamicStates;
 	};
 
