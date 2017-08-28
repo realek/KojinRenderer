@@ -110,9 +110,8 @@ void main()
 		vec3 L; // fragment light dir
 		vec3 V; // fragment eye 
 		vec3 D; // light forward from rotation
-		float atten = inLights[i].lightProps[1]; //initialize attenuation to intensity
-		if(atten == 0)
-			continue;
+		float atten = 1.0f;
+		
 		D = normalize(-inLights[i].direction.xyz);
 		V = normalize(-inLights[i].direction.xyz - inFragPos);
 		int lightType = int(inLights[i].lightProps[0]);
@@ -133,14 +132,16 @@ void main()
 			float falloff = inLights[i].lightProps[2];
 			if(dist < falloff) //falloff
 			{
-				atten = clamp(1.0 - pow(dist,2)/pow(falloff,2), 0.0, 1.0);
+				atten = max(0.0, 1.0 - dist*dist/(pow(falloff,2)));
+				atten*=atten;
 				if(lightType == 1) // is spot thus extra per vert testing
 				{
 					float coneAngle = degrees(acos(dot(L, D)));
 					float angle = inLights[i].lightProps[3];
 					if(coneAngle < angle) //angle
 					{
-						atten = clamp(atten - (coneAngle/angle), 0.0, 1.0);
+						atten = max(0, atten - (coneAngle/angle));
+						atten*atten;
 
 					}
 					else
@@ -160,10 +161,11 @@ void main()
 				specular = vec4(pow(max(dot(reflect(-L,inN), V), 0.0), inMaterialSpecularity));	
 			}
 			atten *= filterPCF(texDim, shadow_data.biasVP[i]*inVertex,i); //meh performance loss
+			lightColor += atten*(diffuse+specular);
 		}
         
 
-		lightColor += atten*(diffuse+specular);
+
 
 
 	}
