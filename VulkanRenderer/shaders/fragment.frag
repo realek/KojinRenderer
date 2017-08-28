@@ -97,8 +97,10 @@ vec3 Clamp(vec3 value, float min, float max)
 void main() 
 {
 	outColor = inColor * (inMaterialColor*texture(texSampler, inTexCoord));
+
 	vec4 lightColor = vec4(0.0f,0.0f,0.0f,0.0f);
 	float diffuseFrac = 1.0 - inAmbientLight.w;
+
 	ivec2 texDim = textureSize(depthSampler, 0).xy;
 	
 	for(int i = 0;i < 6; ++i)
@@ -109,12 +111,15 @@ void main()
 		vec3 V; // fragment eye 
 		vec3 D; // light forward from rotation
 		float atten = inLights[i].lightProps[1]; //initialize attenuation to intensity
+		if(atten == 0)
+			continue;
 		D = normalize(-inLights[i].direction.xyz);
 		V = normalize(-inLights[i].direction.xyz - inFragPos);
 		int lightType = int(inLights[i].lightProps[0]);
-
+		
 		if(lightType == 2)
 		{
+			
 			L = D;
 		}
 		else
@@ -124,7 +129,7 @@ void main()
 		
 		if(lightType != 2) //is point or spot
 		{
-			float dist = length(L);
+			float dist = length(inLights[i].position.xyz - inFragPos);
 			float falloff = inLights[i].lightProps[2];
 			if(dist < falloff) //falloff
 			{
