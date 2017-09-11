@@ -89,9 +89,9 @@ Vulkan::KojinRenderer::KojinRenderer(SDL_Window * window, const char * appName, 
 		m_vkDescriptorPool->SetDescriptorCount(VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2);
 		m_vkDescriptorPool->SetDescriptorCount(VkDescriptorType::VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2);
 		m_semaphores = new VkManagedSemaphore(m_vkDevice->device(), 2); // 1 present and 2 pass 
-		m_swapChainbuffers = m_vkMainCmdPool->CreateCommandBuffer(m_vkDevice->device(), VK_COMMAND_BUFFER_LEVEL_PRIMARY, m_vkSwapchain->ImageCount());
+		m_swapChainCommandBuffers = m_vkMainCmdPool->CreateCommandBuffer(m_vkDevice->device(), VK_COMMAND_BUFFER_LEVEL_PRIMARY, m_vkSwapchain->ImageCount());
 		m_miscCmdBuffer = m_vkMainCmdPool->CreateCommandBuffer(m_vkDevice->device(), VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
-		m_shadowPassCommands = m_vkMainCmdPool->CreateCommandBuffer(m_vkDevice->device(), VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
+		m_renderCommandBuffer = m_vkMainCmdPool->CreateCommandBuffer(m_vkDevice->device(), VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
 		m_colorSampler = new VkManagedSampler(m_vkDevice->device(), VkManagedSamplerMode::COLOR_NORMALIZED_COORDINATES, 16, VK_BORDER_COLOR_INT_OPAQUE_BLACK);
 		m_depthSampler = new VkManagedSampler(m_vkDevice->device(), VkManagedSamplerMode::DEPTH_NORMALIZED_COORDINATES, 0, VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE);
 
@@ -102,9 +102,40 @@ Vulkan::KojinRenderer::KojinRenderer(SDL_Window * window, const char * appName, 
 		m_miscCmdBuffer.End(0);
 		m_miscCmdBuffer.Submit(m_vkMainCmdPool->PoolQueue()->queue, {}, {}, {}, 0);
 		vkQueueWaitIdle(m_vkMainCmdPool->PoolQueue()->queue);
+
 		//insert layered shadowmap
 		m_deviceLoadedImages.insert(std::make_pair(m_layeredShadowMapIndex, VkManagedImage()));
 		m_deviceLoadedResources.insert(std::make_pair(m_layeredShadowMapIndex, VkManagedImageResources()));
+
+		//insert render target
+		m_deviceLoadedImages.insert(std::make_pair(m_renderTargetIndex, VkManagedImage()));
+		m_deviceLoadedResources.insert(std::make_pair(m_renderTargetIndex, VkManagedImageResources()));
+		//setup render target
+		{
+			VkExtent3D ext = m_vkRenderpassFWD->GetExtent3D();
+			const VkDevice& device = m_vkDevice->device();
+
+			VkManagedImage& img = m_deviceLoadedImages[m_renderTargetIndex];
+			VkManagedImageResources& imgRes = m_deviceLoadedResources[m_renderTargetIndex];
+
+			VkImageCreateInfo imageCI = GetImage2DCreateInfo(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, ext, 1, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_B8G8R8A8_UNORM);
+			VkResult result = vkCreateImage(device, &imageCI, nullptr, &img.image);
+			assert(result == VK_SUCCESS);
+			imgRes.image.set_object(img.image, device, vkDestroyImage);
+
+			VkMemoryAllocateInfo imageMemoryAI = GetImageMemoryAllocateInfo(device, m_vkDevice->PhysicalDevice(), img.image, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+			result = vkAllocateMemory(device, &imageMemoryAI, nullptr, &img.imageMemory);
+			assert(result == VK_SUCCESS);
+			imgRes.imageMemory.set_object(img.imageMemory, device, vkFreeMemory);
+
+			result = vkBindImageMemory(device, img.image, img.imageMemory, 0);
+			assert(result == VK_SUCCESS);
+
+			img.layers = 1;
+			img.imageExtent = imageCI.extent;
+			img.format = imageCI.format;
+			img.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+		}
 	}
 	catch(...)
 	{
@@ -455,11 +486,23 @@ void Vulkan::KojinRenderer::Render()
 	m_miscCmdBuffer.Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 	{
 		VkCommandBuffer uniformCmdBuffer = m_miscCmdBuffer.Buffer();
-		VkManagedImage& shMap = m_deviceLoadedImages[m_layeredShadowMapIndex];
-		if (shMap.layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+
+		//render target & shadowmap layout check
 		{
-			shMap.SetLayout(uniformCmdBuffer, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 0, shMap.layers, VK_QUEUE_FAMILY_IGNORED);
+			VkManagedImage& shMap = m_deviceLoadedImages[m_layeredShadowMapIndex];
+			if (shMap.layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+			{
+				shMap.SetLayout(uniformCmdBuffer, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 0, shMap.layers, VK_QUEUE_FAMILY_IGNORED);
+			}
+
+			VkManagedImage& rt = m_deviceLoadedImages[m_renderTargetIndex];
+			if (rt.layout != VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+			{
+				rt.SetLayout(uniformCmdBuffer, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0, rt.layers, VK_QUEUE_FAMILY_IGNORED);
+			}
 		}
+
+
 		update_dynamic_uniformBuffer(m_uniformVModelDynamicBuffer, m_meshPartData);
 
 		vec4x4x6_vec4_container light_data = {};
@@ -511,9 +554,11 @@ void Vulkan::KojinRenderer::Render()
 	clearValues[0].color = { 0,0.15f,0.1f,1.0f };
 	clearValues[1].depthStencil = { 1, 0 };
 
-	m_shadowPassCommands.Begin(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
+	m_renderCommandBuffer.Begin(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
+	VkCommandBuffer cmds = m_renderCommandBuffer.Buffer();
+	//shadow pass cmds
 	{
-		VkCommandBuffer shadowCmds = m_shadowPassCommands.Buffer();
+
 
 		states.hasDepthBias = VK_TRUE;
 		uint32_t i = 0;
@@ -535,7 +580,7 @@ void Vulkan::KojinRenderer::Render()
 			states.depthBias.depthClamp = 0.0f;
 
 			m_vkRenderPassSDWProj->SetPipeline(m_vkPipelineSDWProj, states, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS);
-			m_vkRenderPassSDWProj->PreRecordData(shadowCmds, 0); //we have 1 framebuffer
+			m_vkRenderPassSDWProj->PreRecordData(cmds, 0); //we have 1 framebuffer
 			std::vector<VkPushConstant> constants(2);
 
 			constants[0].data = &l.second->GetLightViewMatrix();
@@ -563,62 +608,65 @@ void Vulkan::KojinRenderer::Render()
 			copyExtent.depth = 1;
 			copyExtent.height = VkShadowmapDefaults::k_resolution;
 			copyExtent.width = copyExtent.height;
-			passDepth.Copy(shadowCmds, copyExtent, &shMap, m_vkPresentQueue->familyIndex, { 0,0,0 }, { 0,0,0 }, { (0),(0),(0),(1) }, dstRes); //needs per layer setup here
+			passDepth.Copy(cmds, copyExtent, &shMap, m_vkPresentQueue->familyIndex, { 0,0,0 }, { 0,0,0 }, { (0),(0),(0),(1) }, dstRes); //needs per layer setup here
 			i++;
 		}
 
 	}
-	m_shadowPassCommands.End();
-	m_shadowPassCommands.Submit(m_vkPresentQueue->queue, { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT }, { m_semaphores->Next() }, { m_semaphores->Last() });
-
-	m_swapChainbuffers.Begin(VkCommandBufferUsageFlagBits::VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
+	//fwd pass cmds
 	{
-		for (uint32_t cmdIndex = 0; cmdIndex < m_swapChainbuffers.Size(); ++cmdIndex)
+		states.hasDepthBias = VK_FALSE;
+		VkManagedImage renderTarget = m_deviceLoadedImages[m_renderTargetIndex];
+
+		for (std::pair<uint32_t, Camera*> camera : m_cameras)
 		{
-			VkCommandBuffer cBuffer = m_swapChainbuffers.Buffer(cmdIndex);
+			states.viewports[0] = camera.second->m_viewPort;
+			states.scissors[0] = camera.second->m_scissor;
 
-			states.hasDepthBias = VK_FALSE;
+			m_vkRenderpassFWD->SetPipeline(m_vkPipelineFWD, states, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS);
+			m_vkRenderpassFWD->PreRecordData(cmds, 0); //we have 1 framebuffer
+			std::vector<VkPushConstant> constants(2);
+			constants[0].data = &camera.second->m_viewMatrix;
+			constants[0].offset = 0;
+			constants[0].size = sizeof(camera.second->m_viewMatrix);
+			constants[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+			constants[1].data = &camera.second->m_projectionMatrix;
+			constants[1].offset = constants[0].size;
+			constants[1].size = sizeof(camera.second->m_projectionMatrix);
+			constants[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+			m_vkRenderpassFWD->Record(clearValues, { &m_vDescriptorSetFWD, &m_fDescriptorSetFWD }, constants, m_meshIndexData, m_meshVertexData, indexdraws);
 
-			uint32_t u = 0;
-			for (std::pair<uint32_t, Camera*> camera : m_cameras)
-			{
-				states.viewports[0] = camera.second->m_viewPort;
-				states.scissors[0] = camera.second->m_scissor;
+			//copy pass result
 
-				m_vkRenderpassFWD->SetPipeline(m_vkPipelineFWD, states, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS);
-				m_vkRenderpassFWD->PreRecordData(cBuffer, 0); //we have 1 framebuffer
-				std::vector<VkPushConstant> constants(2);
-				constants[0].data = &camera.second->m_viewMatrix;
-				constants[0].offset = 0;
-				constants[0].size = sizeof(camera.second->m_viewMatrix);
-				constants[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-				constants[1].data = &camera.second->m_projectionMatrix;
-				constants[1].offset = constants[0].size;
-				constants[1].size = sizeof(camera.second->m_projectionMatrix);
-				constants[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-				m_vkRenderpassFWD->Record(clearValues, { &m_vDescriptorSetFWD, &m_fDescriptorSetFWD }, constants, m_meshIndexData, m_meshVertexData, indexdraws);
+			VkManagedImage passColor = m_vkRenderpassFWD->GetAttachment(0, VkImageUsageFlagBits::VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
 
-				//copy pass result
+			VkExtent3D copyExtent = {};
+			copyExtent.depth = 1;
+			copyExtent.width = (uint32_t)camera.second->m_viewPort.width;
+			copyExtent.height = (uint32_t)camera.second->m_viewPort.height;
 
-				VkManagedImage passColor = m_vkRenderpassFWD->GetAttachment(0, VkImageUsageFlagBits::VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
-				VkManagedImage* scImage = m_vkSwapchain->SwapchainImage(cmdIndex);
+			VkOffset3D copyOffset = {};
+			copyOffset.z = 0; // same depth
+			copyOffset.x = camera.second->m_scissor.offset.x;
+			copyOffset.y = camera.second->m_scissor.offset.y;
 
-				VkExtent3D copyExtent = {};
-				copyExtent.depth = 1;
-				copyExtent.width = (uint32_t)camera.second->m_viewPort.width;
-				copyExtent.height = (uint32_t)camera.second->m_viewPort.height;
-
-				VkOffset3D copyOffset = {};
-				copyOffset.z = 0; // same depth
-				copyOffset.x = camera.second->m_scissor.offset.x;
-				copyOffset.y = camera.second->m_scissor.offset.y;
-
-				passColor.Copy(cBuffer, copyExtent, scImage, VK_QUEUE_FAMILY_IGNORED, copyOffset, copyOffset);
-			}
+			passColor.Copy(cmds, copyExtent, &renderTarget, VK_QUEUE_FAMILY_IGNORED, copyOffset, copyOffset);
 		}
 	}
-	m_swapChainbuffers.End();
-	m_swapChainbuffers.Submit(m_vkPresentQueue->queue, { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT }, { m_semaphores->Next() }, { m_semaphores->Last() });
+	m_renderCommandBuffer.End();
+	m_renderCommandBuffer.Submit(m_vkPresentQueue->queue, { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT }, { m_semaphores->Next() }, { m_semaphores->Last() });
+
+	m_swapChainCommandBuffers.Begin(VkCommandBufferUsageFlagBits::VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
+	{
+		VkManagedImage renderTarget = m_deviceLoadedImages[m_renderTargetIndex];
+		for (uint32_t cmdIndex = 0; cmdIndex < m_swapChainCommandBuffers.Size(); ++cmdIndex)
+		{
+			VkManagedImage* scImage = m_vkSwapchain->SwapchainImage(cmdIndex);
+			renderTarget.Copy(m_swapChainCommandBuffers.Buffer(cmdIndex), renderTarget.imageExtent, scImage);
+		}
+	}
+	m_swapChainCommandBuffers.End();
+	m_swapChainCommandBuffers.Submit(m_vkPresentQueue->queue, { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT }, { m_semaphores->Next() }, { m_semaphores->Last() });
 	
 	//present
 	m_vkSwapchain->PresentCurrentImage(&scImage, m_vkPresentQueue, { m_semaphores->Last()}); // pass waiting semaphores

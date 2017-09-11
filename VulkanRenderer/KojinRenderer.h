@@ -123,8 +123,8 @@ namespace Vulkan
 		VkManagedBuffer * m_meshVertexData = nullptr;
 		VkManagedBuffer * m_meshIndexData = nullptr;
 
-		VkManagedCommandBuffer m_shadowPassCommands;
-		VkManagedCommandBuffer m_swapChainbuffers;
+		VkManagedCommandBuffer m_renderCommandBuffer;
+		VkManagedCommandBuffer m_swapChainCommandBuffers;
 		VkManagedCommandBuffer m_miscCmdBuffer;
 
 		VkManagedSampler * m_colorSampler = nullptr;
@@ -139,7 +139,9 @@ namespace Vulkan
 		VkManagedBuffer * m_uniformShadowstagingBufferFWD = nullptr;
 		VkManagedBuffer * m_uniformShadowBufferFWD = nullptr;
 
-		int m_layeredShadowMapIndex = -1; // -1 is reserved for the shadowmap
+		const int m_layeredShadowMapIndex = -2; // -2 is reserved for the shadowmap
+		const int m_renderTargetIndex = -1;
+
 		typedef std::unordered_map<int, VkManagedImageResources> DeviceImageResources;
 		DeviceImageResources m_deviceLoadedResources;
 		typedef std::unordered_map<int, VkManagedImage> DeviceImageList;

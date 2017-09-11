@@ -267,13 +267,13 @@ int main()
 		camera = renderer->CreateCamera({ 0, 1, -4 },true);
 		camera->LookAt({ 0,0,0 });
 		
-		//camera1 = renderer->CreateCamera({ 0, 1, 4 },true);
-		//camera1->SetViewport({ 0.0f,0.0f }, { 0.35f,0.35f });
-		//camera1->LookAt({ 0,0.0,0.0 });
+		camera1 = renderer->CreateCamera({ 0, 1, 4 },true);
+		camera1->SetViewport({ 0.0f,0.0f }, { 0.35f,0.35f });
+		camera1->LookAt({ 0,0.0,0.0 });
 
-		//camera2 = renderer->CreateCamera({ 3, 2, 0 }, true);
-		//camera2->SetViewport({ 0.65f,0.0f }, { 0.35f,0.35f });
-		//camera2->LookAt({ 0,0,0 });
+		camera2 = renderer->CreateCamera({ 3, 2, 0 }, true);
+		camera2->SetViewport({ 0.65f,0.0f }, { 0.35f,0.35f });
+		camera2->LookAt({ 0,0,0 });
 
 		lightDirectional = renderer->CreateLight({ 0,0, 0 });
 		lightDirectional->SetType(Vulkan::LightType::Directional);
@@ -355,7 +355,7 @@ int main()
 			cubeMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 2,1,2 }, { 45, rotmod, 0 }, { 1,1,1 });
 			sphereMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ -2,1,1 }, { 0,rotmod,0 }, { 1,1,1 });
 
-			renderer->Draw({ mesh.get(),planeMesh.get(), cubeMesh.get(), sphereMesh.get() }, { &material, &planeMaterial, &whiteMaterial, &whiteMaterial});
+			renderer->Draw({ mesh.get(),planeMesh.get(), cubeMesh.get(), cubeMesh.get() }, { &material, &planeMaterial, &whiteMaterial, &whiteMaterial});
 
 			renderer->Render();
 			//

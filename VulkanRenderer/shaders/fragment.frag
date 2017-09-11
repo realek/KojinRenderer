@@ -160,7 +160,9 @@ void main()
 			{
 				specular = vec4(pow(max(dot(reflect(-L,inN), V), 0.0), inMaterialSpecularity));	
 			}
-			atten *= filterPCF(texDim, shadow_data.biasVP[i]*inVertex,i); //meh performance loss
+			vec4 shc = shadow_data.biasVP[i] * inVertex;
+			shc = shc/shc.w;
+			atten *= filterPCF(texDim, shc,i); //meh performance loss
 			lightColor += atten*(diffuse+specular);
 		}
         
