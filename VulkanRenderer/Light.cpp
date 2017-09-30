@@ -52,7 +52,7 @@ glm::mat4 Vulkan::Light::GetLightProjectionMatrix()
 	glm::mat4 depthProj;
 	if (m_lightType == LightType::Directional)
 	{
-		depthProj = glm::ortho<float>(-5, 5, -5, 5, -10,
+		depthProj = glm::ortho<float>(-20, 20, -20, 20, -30,
 			Vulkan::VkViewportDefaults::k_CameraZFar);
 	}
 	else if (m_lightType == LightType::Spot)

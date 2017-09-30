@@ -71,6 +71,10 @@ bool a = false; //left
 bool d = false; //right
 bool q = false; // up
 bool z = false; // down
+bool aF = false;
+bool aB = false;
+bool aL = false;
+bool aR = false;
 bool f1 = false; // frameRate
 void SDL_INPUT()
 {
@@ -120,6 +124,28 @@ void SDL_INPUT()
 			break;
 		}
 
+		case SDLK_UP: 
+		{
+			aF = true;
+			break;
+		}
+
+		case SDLK_DOWN: 
+		{
+			aB = true;
+			break;
+		}
+
+		case SDLK_RIGHT: 
+		{
+			aR = true;
+			break;
+		}
+		case SDLK_LEFT: 
+		{
+			aL = true;
+			break;
+		}
 		}
 		break;
 
@@ -129,7 +155,7 @@ void SDL_INPUT()
 }
 void RESET_INPUT()
 {
-	w = a = s = d = z = q = false;
+	aF = aB = aL = aR = w = a = s = d = z = q = false;
 }
 void InitSDL()
 {
@@ -171,7 +197,11 @@ int main()
 		Vulkan::Light* light3;
 		Vulkan::Light* light4;
 		Vulkan::Light* lightDirectional;
-		std::shared_ptr<Vulkan::Mesh> mesh;
+		std::shared_ptr<Vulkan::Mesh> troper;
+		std::shared_ptr<Vulkan::Mesh> troper1;
+		std::shared_ptr<Vulkan::Mesh> troper2;
+		std::shared_ptr<Vulkan::Mesh> troper3;
+		std::shared_ptr<Vulkan::Mesh> at_at;
 		std::shared_ptr<Vulkan::Mesh> planeMesh;
 		std::shared_ptr<Vulkan::Mesh> cubeMesh;
 		std::shared_ptr<Vulkan::Mesh> sphereMesh;
@@ -195,11 +225,15 @@ int main()
 			planeMesh = Vulkan::Mesh::GetPlane();
 			sphereMesh = Vulkan::Mesh::GetSphere();
 			
-			mesh = Vulkan::Mesh::LoadMesh("models/Stormtrooper.obj");
+			at_at = Vulkan::Mesh::LoadMesh("models/Walker.fbx");
+			troper = Vulkan::Mesh::LoadMesh("models/Stormtrooper.obj");
+			troper1 = Vulkan::Mesh::LoadMesh("models/Stormtrooper.obj");
+			troper2 = Vulkan::Mesh::LoadMesh("models/Stormtrooper.obj");
+			troper3 = Vulkan::Mesh::LoadMesh("models/Stormtrooper.obj");
 			material.albedo = renderer->LoadTexture("textures/Stormtrooper_Diffuse.png",false);
-			material.specularity = 1000;
+			material.specularity = 0.1f;
 			whiteMaterial.albedo = renderer->GetTextureWhite();
-			whiteMaterial.specularity = 1000;
+			whiteMaterial.specularity = 0.1f;
 			planeMesh = Vulkan::Mesh::GetPlane();
 
 		}
@@ -264,16 +298,15 @@ int main()
 
 		////Light and camera Test
 		//{
-		camera = renderer->CreateCamera({ 0, 1, -4 },true);
+		camera = renderer->CreateCamera({ 0, 5, -15 },true);
 		camera->LookAt({ 0,0,0 });
-		
-		camera1 = renderer->CreateCamera({ 0, 1, 4 },true);
+	/*	camera1 = renderer->CreateCamera({ 0, 1, 4 },true);
 		camera1->SetViewport({ 0.0f,0.0f }, { 0.35f,0.35f });
 		camera1->LookAt({ 0,0.0,0.0 });
 
 		camera2 = renderer->CreateCamera({ 3, 2, 0 }, true);
 		camera2->SetViewport({ 0.65f,0.0f }, { 0.35f,0.35f });
-		camera2->LookAt({ 0,0,0 });
+		camera2->LookAt({ 0,0,0 });*/
 
 		lightDirectional = renderer->CreateLight({ 0,0, 0 });
 		lightDirectional->SetType(Vulkan::LightType::Directional);
@@ -283,43 +316,43 @@ int main()
 		lightDirectional->m_rotation = { 50 , -30, 0 };
 		lightDirectional->diffuseColor = glm::vec4(1.0, 1.0, 1.0, 1.0);
 
-        light = renderer->CreateLight({ 0.0,2, -3.0 });
+        light = renderer->CreateLight({ 0.0,3, -5.0 });
         light->SetType(Vulkan::LightType::Spot);
-        light->range = 10.0f;
+        light->range = 25.0f;
         light->intensity = 1.0f;
-        light->angle = 30;
+        light->angle = 60;
         light->m_rotation = { 45,0,0 };
         light->diffuseColor = glm::vec4(0.0, 0.65, 0.85, 1.0);
 
-        light1 = renderer->CreateLight({ 0.0,2, 3.0 });
+        light1 = renderer->CreateLight({ 0.0,3, 6.0 });
         light1->SetType(Vulkan::LightType::Spot);
-        light1->range = 10.0f;
+        light1->range = 25.0f;
         light1->intensity = 1.0f;
-        light1->angle = 30;
+        light1->angle = 60;
         light1->m_rotation = { 45,180,0 };
         light1->diffuseColor = glm::vec4(0.65, 0.15, 0.25, 1.0);
 
-        light2 = renderer->CreateLight({ 2.0 ,2, 0.0 });
+        light2 = renderer->CreateLight({ 4.0 ,6, 0.0 });
         light2->SetType(Vulkan::LightType::Spot);
-        light2->range = 10.0f;
+        light2->range = 25.0f;
         light2->intensity = 1.0f;
-        light2->angle = 30;
+        light2->angle = 60;
         light2->m_rotation = { 45,-90,0 };
         light2->diffuseColor = glm::vec4(0.25, 0.25, 0.65, 1.0);
 
-		light3 = renderer->CreateLight({ -2.0 ,2, 0.0 });
+		light3 = renderer->CreateLight({ -4.0 ,6, 1.0 });
 		light3->SetType(Vulkan::LightType::Spot);
-		light3->range = 10.0f;
+		light3->range = 20.0f;
 		light3->intensity = 1.0f;
-		light3->angle = 30;
+		light3->angle = 60;
 		light3->m_rotation = { 45,0,0 };
 		light3->diffuseColor = glm::vec4(0.35, 0.85, 0, 1.0);
 
-		light4 = renderer->CreateLight({ 0.0 ,2, 2.0 });
+		light4 = renderer->CreateLight({ 0.0 ,4, 7.0 });
 		light4->SetType(Vulkan::LightType::Spot);
-		light4->range = 10.0f;
+		light4->range = 25.0f;
 		light4->intensity = 1.0f;
-		light4->angle = 30;
+		light4->angle = 75;
 		light4->m_rotation = { 45, 180 ,0 };
 		light4->diffuseColor = glm::vec4(0.55, 0.25, 0.15, 1.0);
 		
@@ -350,12 +383,17 @@ int main()
 			//update objects here
 			rotmod += 15 * frameDeltaTime;
 
-			mesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 0,0,0 }, { 0,rotmod,0 }, { 0.5,0.5,0.5 });
-			planeMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 0,0,0 }, { 0, 0, 0 }, { 2,2,2 });
+			at_at->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 0,0,0 }, { 0,rotmod,0 }, { 0.15,0.15,0.15 });
+			troper->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 5,0,-6 }, { 0,15,0 }, { 0.5,0.5,0.5 });
+			troper1->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 5,0,-4 }, { 0,5,0 }, { 0.5,0.5,0.5 });
+			troper2->modelMatrix = VkWorldSpace::ComputeModelMatrix({ -6,0,3 }, { 0,45,0 }, { 0.5,0.5,0.5 });
+			troper3->modelMatrix = VkWorldSpace::ComputeModelMatrix({ -5,0,1 }, { 0,-15,0 }, { 0.5,0.5,0.5 });
+			planeMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 0,0,0 }, { 0, 0, 0 }, { 40,2,40 });
 			cubeMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ 2,1,2 }, { 45, rotmod, 0 }, { 1,1,1 });
 			sphereMesh->modelMatrix = VkWorldSpace::ComputeModelMatrix({ -2,1,1 }, { 0,rotmod,0 }, { 1,1,1 });
 
-			renderer->Draw({ mesh.get(),planeMesh.get(), cubeMesh.get(), cubeMesh.get() }, { &material, &planeMaterial, &whiteMaterial, &whiteMaterial});
+			renderer->Draw({ at_at.get(), troper.get(), troper1.get(), troper2.get(), troper3.get(), planeMesh.get(), sphereMesh.get(), cubeMesh.get() },
+			{ &whiteMaterial, &material, &material, &material, &material, &planeMaterial, &whiteMaterial, &whiteMaterial});
 
 			renderer->Render();
 			//
@@ -367,6 +405,14 @@ int main()
 			else if (d) light->m_position.x += frameDeltaTime * 5;
 			else if (q) light->m_position.y += frameDeltaTime * 5;
 			else if (z) light->m_position.y -= frameDeltaTime * 5;
+
+			if (aF) camera->m_position.z += frameDeltaTime * 5;
+			else if (aB) camera->m_position.z -= frameDeltaTime * 5;
+			else if (aL) camera->m_position.x -= frameDeltaTime * 5;
+			else if (aR) camera->m_position.x += frameDeltaTime * 5;
+
+			camera->Update();
+
 			running = SDLExitInput();
 			RESET_INPUT();
 

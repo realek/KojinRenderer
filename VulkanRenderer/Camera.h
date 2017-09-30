@@ -28,6 +28,7 @@ namespace Vulkan
 		const uint32_t id;
 		void SetOrthographic(float orthoSize = VkViewportDefaults::k_CameraOrthoSize);
 		void SetPerspective();
+		void Update();
 		void SetPositionRotation(glm::vec3 position, glm::vec3 rotation);
 		void SetViewport(glm::vec2 screenCoords, glm::vec2 scale);
 		void LookAt(glm::vec3 target);

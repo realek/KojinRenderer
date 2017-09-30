@@ -147,7 +147,7 @@ namespace Vulkan
 		typedef std::unordered_map<int, VkManagedImage> DeviceImageList;
 		DeviceImageList m_deviceLoadedImages;
 
-		std::unordered_map<int, int> m_meshDraws;
+		std::vector<int> m_meshDraws;
 		//one transform matrix, one color vector and one float for specularity
 		std::vector<mat4_vec4_float_container> m_meshPartData;
 		std::vector<int> m_meshPartTextures;

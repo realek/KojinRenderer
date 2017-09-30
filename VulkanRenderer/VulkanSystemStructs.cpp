@@ -17,7 +17,7 @@ const glm::mat4 Vulkan::VkShadowmapDefaults::k_shadowBiasMatrix ={
 	0.5, 0.5, 0.0, 1.0};
 const float Vulkan::VkShadowmapDefaults::k_depthBias = 0.05f;
 const float Vulkan::VkShadowmapDefaults::k_depthBiasSlope = 0.25f;
-const uint32_t Vulkan::VkShadowmapDefaults::k_resolution = 512;
+const uint32_t Vulkan::VkShadowmapDefaults::k_resolution = 1024;
 const VkFormat Vulkan::VkShadowmapDefaults::k_attachmentRGBFormat = VK_FORMAT_R32_SFLOAT;
 const VkFormat Vulkan::VkShadowmapDefaults::k_attachmentDepthFormat = VK_FORMAT_D32_SFLOAT;
 const std::vector<VkClearValue> Vulkan::VkShadowmapDefaults::k_clearValues = 

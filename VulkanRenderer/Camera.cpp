@@ -66,6 +66,11 @@ void Vulkan::Camera::SetPerspective()
 	m_projectionMatrix = glm::perspective(glm::radians(m_fov), aspect, m_zNear, m_zFar);
 }
 
+void Vulkan::Camera::Update() 
+{
+	ComputeViewMatrix(m_position, m_rotation, m_viewMatrix);
+}
+
 void Vulkan::Camera::SetPositionRotation(glm::vec3 position, glm::vec3 rotation)
 {
 	m_position = position;

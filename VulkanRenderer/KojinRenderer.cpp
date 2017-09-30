@@ -180,16 +180,17 @@ void Vulkan::KojinRenderer::Draw(std::vector<Mesh*> meshes, std::vector<Material
 	m_meshPartTextures.reserve(meshSize);
 	for(size_t i = 0; i < meshSize; ++i)
 	{
-		if (std::find_if(m_meshDraws.begin(), m_meshDraws.end(),
-			[&meshes, &i](std::pair<const uint32_t, int> a)->bool { return a.first == meshes[i]->id; }) != m_meshDraws.end())
-		{
-			m_meshDraws[meshes[i]->id]++;
-		}
-		else
-		{
-			m_meshDraws.insert(std::make_pair(meshes[i]->id, 1));
-		}
+	//	if (std::find_if(m_meshDraws.begin(), m_meshDraws.end(),
+	//		[&meshes, &i](std::pair<const uint32_t, int> a)->bool { return a.first == meshes[i]->id; }) != m_meshDraws.end())
+	//	{
+	//		m_meshDraws[meshes[i]->id]++;
+	//	}
+	//	else
+	//	{
+	//		m_meshDraws.insert(std::make_pair(meshes[i]->id, 1));
+	//	}
 		m_objectCount++;
+		m_meshDraws.push_back(meshes[i]->id);
 		m_meshPartData.push_back({ meshes[i]->modelMatrix, materials[i]->diffuseColor, materials[i]->specularity });
 		m_meshPartTextures.push_back(materials[i]->albedo->id);
 	}
@@ -518,20 +519,12 @@ void Vulkan::KojinRenderer::Render()
 	std::vector<VkIndexedDraw> indexdraws;
 	indexdraws.resize(m_objectCount);
 	{
-		uint32_t objIndex = 0;
-		for(std::pair<const int,int>& pair : m_meshDraws)
+		for(size_t objIndex = 0; objIndex < m_meshDraws.size();++objIndex)
 		{
-			IMeshData * meshD = Mesh::GetMeshData(pair.first);
-			for(int i = 0; i < pair.second;++i)
-			{
-				indexdraws[objIndex].indexCount = meshD->indiceCount;
-				indexdraws[objIndex].indexStart = meshD->indiceRange.start;
-				indexdraws[objIndex].vertexOffset = meshD->vertexRange.start;
-				objIndex++;
-			}
-
-
-
+			IMeshData * meshD = Mesh::GetMeshData(m_meshDraws[objIndex]);
+			indexdraws[objIndex].indexCount = meshD->indiceCount;
+			indexdraws[objIndex].indexStart = meshD->indiceRange.start;
+			indexdraws[objIndex].vertexOffset = meshD->vertexRange.start;
 		}
 	}
 

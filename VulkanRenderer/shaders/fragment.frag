@@ -38,15 +38,11 @@ float textureProj(vec4 P, vec2 off, int arrayIdx)
 {
 	float shadow = 1.0;
 	vec4 shadowCoord = P / P.w;
-	if ( shadowCoord.z > -1.0 && shadowCoord.z < 1.0 ) 
-	{
-		float dist = texture( depthSampler, vec3(shadowCoord.xy + off,arrayIdx) ).r;
-		if ( shadowCoord.w > 0.0 && dist < shadowCoord.z ) 
-		{
-			shadow = inAmbientLight.a;
-		}
-
-	}
+	float dist = texture( depthSampler, vec3(shadowCoord.xy + off,arrayIdx) ).r;
+	
+	if (shadowCoord.w > 0.0 && dist < shadowCoord.z) 
+		shadow = inAmbientLight.a;
+		
 	return shadow;
 }
 
@@ -105,8 +101,6 @@ void main()
 	
 	for(int i = 0;i < 6; ++i)
 	{
-		vec4 specular = vec4(0.0,0.0,0.0,0.0);
-		vec4 diffuse = vec4(0.0,0.0,0.0,0.0);
 		vec3 L; // fragment light dir
 		vec3 V; // fragment eye 
 		vec3 D; // light forward from rotation
@@ -115,53 +109,36 @@ void main()
 		D = normalize(-inLights[i].direction.xyz);
 		V = normalize(-inLights[i].direction.xyz - inFragPos);
 		int lightType = int(inLights[i].lightProps[0]);
+		L = D;
 		
-		if(lightType == 2)
-		{
-			
-			L = D;
-		}
-		else
-		{
-			L = normalize(inLights[i].position.xyz - inFragPos); 
-		}
 		
-		if(lightType != 2) //is point or spot
+		if(lightType != 2)
 		{
+			L = normalize(inLights[i].position.xyz - inFragPos);
+			//compute non-directional light data
 			float dist = length(inLights[i].position.xyz - inFragPos);
 			float falloff = inLights[i].lightProps[2];
-			if(dist < falloff) //falloff
+			float distFactor = step(0,sign(falloff-dist));
+			atten = distFactor * max(0.0, 1.0 - dist*dist/(pow(falloff,2)));
+			atten*=atten;
+			if(lightType == 1) // is spot thus extra per vert testing
 			{
-				atten = max(0.0, 1.0 - dist*dist/(pow(falloff,2)));
-				atten*=atten;
-				if(lightType == 1) // is spot thus extra per vert testing
-				{
-					float coneAngle = degrees(acos(dot(L, D)));
-					float angle = inLights[i].lightProps[3];
-					if(coneAngle < angle) //angle
-					{
-						atten = max(0, atten - (coneAngle/angle));
-						atten*atten;
-
-					}
-					else
-						atten = 0.0f;						
-				}
-			}
-			else
-				atten = 0.0f;
-
+				float coneAngle = degrees(acos(dot(L, D)));
+				float angle = inLights[i].lightProps[3];
+				float angleFactor = step(0,sign(angle-coneAngle));
+				atten = max(0, angleFactor * (atten - (coneAngle/angle)));
+			}		
 		}
-		
+				
 		if(atten > 0)
 		{
-			diffuse = diffuseFrac * max(0.0,dot(L, inN)) * inLights[i].color; // diffuse component
-			if(inMaterialSpecularity > 0)
-			{
-				specular = vec4(pow(max(dot(reflect(-L,inN), V), 0.0), inMaterialSpecularity));	
-			}
+			float incAngle = dot(L,inN);
+			vec4 diffuse = diffuseFrac * max(0.0,incAngle) * inLights[i].color; // diffuse component
+			float gauss = acos(dot(V,inN)) / inMaterialSpecularity;
+			gauss = exp(-(gauss*gauss));
+			gauss = abs(sign(incAngle)) * gauss;
+			vec4 specular = vec4(1) * gauss; // vec4(pow(max(dot(reflect(-L,inN), V), 0.0), inMaterialSpecularity));
 			vec4 shc = shadow_data.biasVP[i] * inVertex;
-			shc = shc/shc.w;
 			atten *= filterPCF(texDim, shc,i); //meh performance loss
 			lightColor += atten*(diffuse+specular);
 		}
